@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === Response Metric (legacy) === */
+.response-value {
+  @apply text-3xl font-extrabold text-[#2b3674];
+}
+
+.response-label {
+  @apply text-base text-gray-400;
+}
+
+/* === Chart Labels === */
+.bar-label {
+  @apply text-[11px] text-gray-400;
+}
+
+.bar-xaxis {
+  @apply text-[11px] text-[#A0AEC0];
+}
+
+/* === Metric Row (inline number + label) === */
+.metric-row {
+  @apply flex items-center gap-1;
+}
+
+.metric-number {
+  @apply text-[28px] font-extrabold text-[#2b3674];
+}
+
+.metric-label {
+  @apply text-base text-[#A3AED0];
+}
+
+/* === Response Bar Styles === */
+.response-bar {
+  @apply fill-[url(#brightGradient)];
+}
+
+.response-bar-wide {
+  --bar-size: 16px;
+}
+
+/* === Metric Aligned Row (for precise spacing) === */
+.metric-aligned-row {
+  @apply flex items-baseline;
+}
+
+.metric-number-aligned {
+  @apply text-[28px] font-extrabold text-[#2b3674] min-w-[60px];
+}
+
+.metric-label-aligned {
+  @apply text-base text-[#A3AED0] ml-6;
+}

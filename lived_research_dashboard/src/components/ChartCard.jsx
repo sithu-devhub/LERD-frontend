@@ -1,3 +1,4 @@
+// src/components/ChartCard.js
 import React from 'react';
 
 export default function ChartCard({ title, content }) {
