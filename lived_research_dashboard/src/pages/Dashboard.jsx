@@ -26,7 +26,7 @@ const pieData = [
   { name: 'Satisfied', value: 12 },
   { name: 'Somewhat Satisfied', value: 20 },
 ];
-const pieColors = ['#3406FF', '#6ad2ff', '#E0E0E0'];
+const pieColors = ['#3F11FF', '#6ad2ff', '#E0E0E0'];
 
 
 const satisfactionTrend = [
