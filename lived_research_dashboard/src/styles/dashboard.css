@@ -54,3 +54,77 @@
 .metric-label-aligned {
   @apply text-base text-[#A3AED0] ml-6;
 }
+
+/* === Satisfaction Trend === */
+.trend-chart .recharts-cartesian-axis-tick tspan {
+  @apply fill-[#A3AED0] text-sm;
+}
+
+/* === Shared Chart Tooltip (use for ALL charts) === */
+/* Base bubble (shared) */
+.chart-tooltip,
+.trend-tooltip {
+  @apply relative text-white rounded-lg shadow-md px-3 py-2 text-[12px] pointer-events-none;
+  background-color: #b0bbd5;          /* shared bubble background */
+  transform: translateY(-50%);        /* center vertically on anchor */
+  z-index: 50;                        /* above bars/slices */
+}
+
+/* Optional inner text style (kept from your file) */
+.trend-tooltip__total { @apply font-bold mb-1.5; }
+.trend-tooltip__row   { @apply flex items-center gap-2 my-0.5; }
+.trend-dot            { @apply w-2 h-2 rounded-full inline-block; }
+.trend-dot--very      { @apply bg-[#5B4EFF]; }
+.trend-dot--satisfied { @apply bg-[#40CFFF]; }
+.trend-dot--somewhat  { @apply bg-[#E0E6F5]; }
+.trend-tooltip__label { @apply w-[130px]; }
+.trend-tooltip__value { @apply ml-auto; }
+
+/* Legend inside card (top-right) */
+.trend-legend {
+  @apply absolute top-0 right-0 flex gap-4 text-xs text-[#A3AED0] pointer-events-none;
+}
+.trend-legend__item { @apply flex items-center gap-1.5; }
+
+/* Legend below chart (centered) */
+.trend-legend--below {
+  @apply static mt-3 flex justify-center gap-6 text-xs text-[#A3AED0] pointer-events-none;
+}
+
+/* Position bubble LEFT/RIGHT of anchor (shared) */
+.chart-tooltip--right,
+.trend-tooltip--right {
+  transform: translate(12px, -50%);                 /* bubble to right of anchor */
+}
+.chart-tooltip--left,
+.trend-tooltip--left {
+  transform: translate(calc(-100% - 12px), -50%);   /* bubble to left of anchor */
+}
+
+/* Arrow triangles (shared) */
+.chart-tooltip--left::before,
+.chart-tooltip--right::before,
+.trend-tooltip--left::before,
+.trend-tooltip--right::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border-style: solid;
+  border-width: 6px;
+  z-index: 51;
+}
+
+/* Bubble is on the LEFT, arrow points RIGHT (toward anchor) */
+.chart-tooltip--left::before,
+.trend-tooltip--left::before {
+  right: -6px;
+  border-color: transparent transparent transparent #b0bbd5; /* match bubble */
+}
+
+/* Bubble is on the RIGHT, arrow points LEFT (toward anchor) */
+.chart-tooltip--right::before,
+.trend-tooltip--right::before {
+  left: -6px;
+  border-color: transparent #b0bbd5 transparent transparent; /* match bubble */
+}
