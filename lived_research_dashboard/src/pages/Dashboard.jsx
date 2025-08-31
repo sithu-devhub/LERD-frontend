@@ -1,9 +1,10 @@
 import React from 'react';
 import ChartCard from '../components/ChartCard';
 import '../styles/dashboard.css';
+import NpsGauge from "../components/NpsGauge";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, LabelList,
+  ResponsiveContainer, LabelList, Legend, ReferenceLine,
 } from 'recharts';
 
 const responseData = [
@@ -20,15 +21,106 @@ const pieData = [
 const pieColors = ['#3F11FF', '#6AD2FF', '#E0E0E0'];
 
 const satisfactionTrend = [
-  { year: '2023', very: 36, satisfied: 40, somewhat: 22 },
-  { year: '2024', very: 36, satisfied: 40, somewhat: 22 },
-  { year: '2025', very: 36, satisfied: 40, somewhat: 22 },
+  { year: '2023', very: 26, satisfied: 40, somewhat: 32 },
+  { year: '2024', very: 56, satisfied: 20, somewhat: 22 },
+  { year: '2025', very: 36, satisfied: 30, somewhat: 32 },
 ];
 
-const promoterData = [
-  { name: 'Promoter', value: 15, color: '#5B4EFF' },
+const TrendTooltip = ({ active, payload, coordinate, viewBox }) => {
+  if (!active || !payload?.length) return null;
+
+  const byKey = Object.fromEntries(payload.map(p => [p.dataKey, p.value]));
+  const total = (byKey.somewhat || 0) + (byKey.satisfied || 0) + (byKey.very || 0);
+
+  const midX = (viewBox?.x ?? 0) + ((viewBox?.width ?? 0) / 2);
+  const side = (coordinate?.x != null && midX)
+    ? ((coordinate.x < midX) ? 'right' : 'left')
+    : 'left';
+
+  const rows = [
+    { key: 'very',      label: 'Very Satisfied',     cls: 'trend-dot trend-dot--very',      val: byKey.very },
+    { key: 'satisfied', label: 'Satisfied',          cls: 'trend-dot trend-dot--satisfied', val: byKey.satisfied },
+    { key: 'somewhat',  label: 'Somewhat Satisfied', cls: 'trend-dot trend-dot--somewhat',  val: byKey.somewhat },
+  ];
+
+  return (
+    <div className={`trend-tooltip trend-tooltip--${side}`}>
+      <div className="trend-tooltip__total">{total}%</div>
+      {rows.map(r => (
+        <div key={r.key} className="trend-tooltip__row">
+          <span className={r.cls} />
+          <span className="trend-tooltip__value">{r.val}%</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+/* Pie tooltip that reuses the same bubble + arrow classes */
+const PieTooltip = ({ active, payload, coordinate, viewBox }) => {
+  if (!active || !payload?.length) return null;
+
+  const val = payload?.[0]?.value; // your pie values are already percentages
+
+  const midX = (viewBox?.x ?? 0) + ((viewBox?.width ?? 0) / 2);
+  const side = (coordinate?.x != null && midX)
+    ? ((coordinate.x < midX) ? 'right' : 'left')
+    : 'left';
+
+  return (
+    <div className={`trend-tooltip trend-tooltip--${side}`}>
+      <div className="trend-tooltip__total">{val}%</div>
+    </div>
+  );
+};
+
+const TrendLegendBelow = () => (
+  <div className="trend-legend--below">
+    <div className="trend-legend__item">
+      <span className="trend-dot trend-dot--very" /> Very Satisfied
+    </div>
+    <div className="trend-legend__item">
+      <span className="trend-dot trend-dot--satisfied" /> Satisfied
+    </div>
+    <div className="trend-legend__item">
+      <span className="trend-dot trend-dot--somewhat" /> Somewhat Satisfied
+    </div>
+  </div>
+);
+
+const ServiceTooltip = ({ active, payload, coordinate, viewBox }) => {
+  if (!active || !payload?.length) return null;
+
+  const byKey = Object.fromEntries(payload.map(p => [p.dataKey, p.value]));
+  const total = (byKey.always || 0) + (byKey.most || 0);
+
+  const midX = (viewBox?.x ?? 0) + ((viewBox?.width ?? 0) / 2);
+  const side = (coordinate?.x != null && midX)
+    ? (coordinate.x < midX ? 'right' : 'left')
+    : 'left';
+
+  const rows = [
+    { key: 'always', label: 'Always', cls: 'trend-dot trend-dot--very', val: byKey.always },       // dark blue
+    { key: 'most',   label: 'Most of the time', cls: 'trend-dot trend-dot--satisfied', val: byKey.most }, // light blue
+  ];
+
+  return (
+    <div className={`trend-tooltip trend-tooltip--${side}`}>
+      <div className="trend-tooltip__total">{total}%</div>
+      {rows.map(r => (
+        <div key={r.key} className="trend-tooltip__row">
+          <span className={r.cls} />
+          <span className="trend-tooltip__value">{r.val}%</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const npsDistribution = [
+  { name: 'Promoter', value: 15, color: '#7FDBFF' },
   { name: 'Passive', value: 10, color: '#7FDBFF' },
-  { name: 'Detractor', value: 11, color: '#E0E0E0' },
+  { name: 'Detractor', value: 11, color: '#7FDBFF' },
 ];
 
 const serviceData = [
@@ -75,7 +167,6 @@ export default function Dashboard() {
                   </defs>
                   <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ className: 'bar-xaxis' }} />
                   <YAxis hide />
-                  <Tooltip cursor={false} />
                   <Bar dataKey="value" fill="url(#brightGradient)" radius={[10, 10, 0, 0]} barSize={18}>
                     <LabelList dataKey="value" position="top" className="bar-label" />
                   </Bar>
@@ -102,6 +193,16 @@ export default function Dashboard() {
                       <Cell key={i} fill={pieColors[i]} />
                     ))}
                   </Pie>
+
+                  {/* ADDED: Tooltip for Pie using same bubble + arrow */}
+                  <Tooltip
+                    cursor={false}
+                    content={<PieTooltip />}
+                    offset={0}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    wrapperStyle={{ zIndex: 9999, overflow: 'visible' }}
+                    contentStyle={{ background: 'transparent', border: 'none', boxShadow: 'none' }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
 
@@ -132,42 +233,56 @@ export default function Dashboard() {
           }
         />
 
-        {/* Net Promoter Score */}
+        {/* Satisfaction Trend */}
         <ChartCard
-          title="Net Promoter Score"
+          title="Customer Satisfaction Trend"
           content={
-            <>
-              <div className="text-4xl font-bold text-[#5B4EFF]">72</div>
-              <div className="text-sm text-gray-400">-100 to +100</div>
-            </>
+            <div className="trend-chart relative">
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={satisfactionTrend} barCategoryGap="35%">
+                  <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: '#A3AED0', fontSize: 14 }} />
+                  <YAxis hide />
+                  <Tooltip
+                    cursor={{ fill: 'transparent' }}
+                    content={<TrendTooltip />}
+                    offset={0}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    wrapperStyle={{ zIndex: 9999, overflow: 'visible' }}
+                    contentStyle={{ background: 'transparent', border: 'none', boxShadow: 'none' }}
+                  />
+
+                  {/* bottom → middle → top */}
+                  <Bar dataKey="somewhat" stackId="a" fill="#E0E6F5" />
+                  <Bar dataKey="satisfied" stackId="a" fill="#40CFFF" />
+                  <Bar dataKey="very" stackId="a" fill="#5B4EFF" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+
+              {/* absolute legend inside the card */}
+              <TrendLegendBelow />
+            </div>
           }
         />
       </div>
 
       <div className="grid grid-cols-3 gap-6 mb-6">
-        {/* Satisfaction Trend */}
+        {/* Net Promoter Score */}
         <ChartCard
-          title="Customer Satisfaction Trend"
+          title="Net Promoter Score"
           content={
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={satisfactionTrend}>
-                <XAxis dataKey="year" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="very" stackId="a" fill="#5B4EFF" />
-                <Bar dataKey="satisfied" stackId="a" fill="#7FDBFF" />
-                <Bar dataKey="somewhat" stackId="a" fill="#E0E0E0" />
-              </BarChart>
-            </ResponsiveContainer>
+            <>
+              <NpsGauge value={72} />
+              {/* pass any NPS number here */}
+            </>
           }
         />
 
-        {/* Promoter Statistic */}
+        {/* NPS Distribution */}
         <ChartCard
-          title="Promoter Statistic"
+          title="NPS Distribution"
           content={
             <div className="space-y-3">
-              {promoterData.map((item, i) => (
+              {npsDistribution.map((item, i) => (
                 <div key={i}>
                   <div className="flex justify-between text-sm text-gray-700 mb-1">
                     <span>{item.name}</span>
@@ -189,20 +304,89 @@ export default function Dashboard() {
         <ChartCard
           title="Service Attribute"
           content={
-            <>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={serviceData}>
-                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="most" stackId="a" fill="#7FDBFF" />
-                  <Bar dataKey="always" stackId="a" fill="#5B4EFF" />
+            <div className="relative">
+              {/* top-right text like Figma */}
+              <div className="absolute right-0 -mt-2 text-sm text-[#A3AED0]">
+                Selected Attributes
+              </div>
+
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart
+                  data={serviceData}
+                  barCategoryGap="35%" // match Trend
+                  margin={{ top: 30, right: 24, left: 0, bottom: 8 }}
+                >
+                  {/* 60% and 80% dashed reference lines */}
+                  <ReferenceLine
+                    y={80}
+                    stroke="#A3AED0"
+                    strokeDasharray="6 6"
+                    ifOverflow="extendDomain"
+                    label={{ value: '80%', position: 'right', fill: '#A3AED0', fontSize: 12 }}
+                  />
+                  <ReferenceLine
+                    y={60}
+                    stroke="#A3AED0"
+                    strokeDasharray="6 6"
+                    ifOverflow="extendDomain"
+                    label={{ value: '60%', position: 'right', fill: '#A3AED0', fontSize: 12 }}
+                  />
+
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    interval={0}
+                    tick={{ fill: '#A3AED0', fontSize: 12 }}
+                  />
+                  <YAxis hide />
+
+                  <Tooltip
+                    cursor={{ fill: 'transparent' }}
+                    content={<ServiceTooltip />}
+                    offset={0}
+                    allowEscapeViewBox={{ x: true, y: true }}
+                    wrapperStyle={{ zIndex: 9999, overflow: 'visible' }}
+                    contentStyle={{ background: 'transparent', border: 'none', boxShadow: 'none' }}
+                  />
+
+                  {/* bottom segment: flat top */}
+                  <Bar
+                    dataKey="most"
+                    stackId="a"
+                    fill="#6AD2FF"
+                    stroke="none"
+                    barSize={32}             // fixed width to match Trend bars
+                    radius={[0, 0, 0, 0]}
+                  />
+
+                  {/* top segment: rounded cap */}
+                  <Bar
+                    dataKey="always"
+                    stackId="a"
+                    fill="#3F11FF"
+                    stroke="none"
+                    barSize={32}             // same fixed width
+                    radius={[8, 8, 0, 0]}    // rounded top corners
+                    minPointSize={6}         // keeps rounded cap visible for small values
+                  />
                 </BarChart>
               </ResponsiveContainer>
-              <div className="text-xs text-gray-500 mt-2">Selected Attributes</div>
-            </>
+
+              {/* legend below */}
+              <div className="trend-legend--below mt-2">
+                <div className="trend-legend__item">
+                  <span className="trend-dot trend-dot--very" /> Always
+                </div>
+                <div className="trend-legend__item">
+                  <span className="trend-dot trend-dot--satisfied" /> Most of the time
+                </div>
+              </div>
+            </div>
           }
         />
+
+
       </div>
     </div>
   );
