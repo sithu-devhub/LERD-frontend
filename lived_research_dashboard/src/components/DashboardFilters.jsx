@@ -26,22 +26,26 @@ const Chip = ({ label, value, active, onClick }) => (
   <button
     onClick={onClick}
     className={[
-      "group inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-medium transition",
+      "group inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition",
+      // ✅ keep ash background in both states; force white text in both states
       active
-        ? "border-blue-200 bg-blue-50 text-black shadow-sm"
-        : "border-slate-200 bg-white text-slate-600 hover:border-slate-300",
+        ? "bg-[#bfc8dd] text-white shadow-sm"
+        : "bg-[#bfc8dd] text-white hover:bg-[#c7d0e3]",
     ].join(" ")}
   >
     <span className="inline-flex items-center gap-2">
-      <span className="text-slate-400">{label}</span>
-      <DividerDot />
-      <span className={active ? "text-black" : "text-slate-800"}>{value}</span>
+      {/* ✅ labels always white */}
+      <span className="text-white">{label}</span>
+      {/* optional: make the divider dot light white */}
+      <span className="mx-2 inline-block h-1 w-1 rounded-full bg-white/60" />
+      {/* ✅ values always white */}
+      <span className="text-white">{value}</span>
     </span>
-    <ChevronDown
-      className={"h-4 w-4 " + (active ? "text-black" : "text-slate-400")}
-    />
+    {/* ✅ chevron also white */}
+    <ChevronDown className="h-4 w-4 text-white" />
   </button>
 );
+
 
 const FloatingCard = React.forwardRef(function FloatingCard(
   { children, width = 320 },
