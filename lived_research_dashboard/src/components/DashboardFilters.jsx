@@ -27,25 +27,20 @@ const Chip = ({ label, value, active, onClick }) => (
     onClick={onClick}
     className={[
       "group inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition",
-      // keep ash background in both states; force white text in both states
+      // ash background in both states; force white text in both states
       active
         ? "bg-[#bfc8dd] text-white shadow-sm"
         : "bg-[#bfc8dd] text-white hover:bg-[#c7d0e3]",
     ].join(" ")}
   >
     <span className="inline-flex items-center gap-2">
-      {/* labels always white */}
       <span className="text-white">{label}</span>
-      {/* optional: make the divider dot light white */}
       <span className="mx-2 inline-block h-1 w-1 rounded-full bg-white/60" />
-      {/*  values always white */}
       <span className="text-white">{value}</span>
     </span>
-    {/*  chevron also white */}
     <ChevronDown className="h-4 w-4 text-white" />
   </button>
 );
-
 
 const FloatingCard = React.forwardRef(function FloatingCard(
   { children, width = 320 },
@@ -69,11 +64,7 @@ function MenuItem({ checked, children, onClick }) {
       className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-slate-50"
     >
       <span>{children}</span>
-      {checked ? (
-        <Check className="h-4 w-4 text-blue-600" />
-      ) : (
-        <span className="h-4 w-4" />
-      )}
+      {checked ? <Check className="h-4 w-4 text-blue-600" /> : <span className="h-4 w-4" />}
     </button>
   );
 }
@@ -86,11 +77,7 @@ function GenderMenu({ value, onChange, onClose }) {
     <FloatingCard ref={ref}>
       <div className="flex flex-col gap-1">
         {options.map((opt) => (
-          <MenuItem
-            key={opt}
-            checked={value === opt}
-            onClick={() => onChange(opt)}
-          >
+          <MenuItem key={opt} checked={value === opt} onClick={() => onChange(opt)}>
             {opt}
           </MenuItem>
         ))}
@@ -107,11 +94,7 @@ function ClientTypeMenu({ value, onChange, onClose }) {
     <FloatingCard ref={ref}>
       <div className="flex flex-col gap-1">
         {options.map((opt) => (
-          <MenuItem
-            key={opt}
-            checked={value === opt}
-            onClick={() => onChange(opt)}
-          >
+          <MenuItem key={opt} checked={value === opt} onClick={() => onChange(opt)}>
             {opt}
           </MenuItem>
         ))}
@@ -127,7 +110,7 @@ function MonthButton({ label, active, onClick }) {
       className={[
         "rounded-xl px-3 py-2 text-sm transition",
         active
-          ? "bg-[#bfc8dd] text-white" // Selected month → ash background + white text
+          ? "bg-[#bfc8dd] text-white"                 // Selected month → ash + white
           : "bg-slate-100 text-black hover:bg-slate-200", // Unselected months
       ].join(" ")}
     >
@@ -136,25 +119,18 @@ function MonthButton({ label, active, onClick }) {
   );
 }
 
-
 function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose }) {
   const ref = useRef(null);
   useClickOutside(ref, onClose);
 
-  const months = [
-    "Jan","Feb","Mar","Apr","May","Jun",
-    "Jul","Aug","Sep","Oct","Nov","Dec",
-  ];
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   const handleMonthClick = (idx) => {
     if (start === null || (start !== null && end !== null)) {
       onSetRange({ start: idx, end: null });
     } else if (start !== null && end === null) {
-      if (idx < start) {
-        onSetRange({ start: idx, end: start });
-      } else {
-        onSetRange({ start, end: idx });
-      }
+      if (idx < start) onSetRange({ start: idx, end: start });
+      else onSetRange({ start, end: idx });
     }
   };
 
@@ -205,10 +181,7 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose }) {
             {end !== null ? `${months[end]} ${year}` : "Current"}
           </span>
         </span>
-        <button
-          onClick={onClose}
-          className="rounded-lg px-2 py-1 text-black hover:bg-white"
-        >
+        <button onClick={onClose} className="rounded-lg px-2 py-1 text-black hover:bg-white">
           Done
         </button>
       </div>
@@ -230,6 +203,14 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
 
   const [open, setOpen] = useState(null);
 
+  // 🔽 auto-scroll the bar into view whenever a dropdown opens
+  const barRef = useRef(null);
+  useEffect(() => {
+    if (open && barRef.current) {
+      barRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [open]);
+
   useEffect(() => {
     if (typeof onChange === "function") {
       onChange({ gender, clientType, year, ...range });
@@ -237,8 +218,7 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
   }, [gender, clientType, year, range]);
 
   const periodLabel = useMemo(() => {
-    const months = ["Jan","Feb","Mar","Apr","May","Jun",
-                    "Jul","Aug","Sep","Oct","Nov","Dec"];
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     if (range.start !== null && range.end !== null) {
       return `${months[range.start]} ${year} – ${months[range.end]} ${year}`;
     } else if (range.start !== null) {
@@ -248,15 +228,14 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
   }, [range, year]);
 
   return (
-    <div className={`w-full ${className}`}>
+    <div ref={barRef} className={`w-full ${className}`}>
       <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
         <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-400">
-        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-[#F3F0FF]">
+          <div className="flex items-center justify-center h-6 w-6 rounded-full bg-[#F3F0FF]">
             <MdBarChart className="h-4 w-4 text-[#4318FF]" />
+          </div>
+          Data filter:
         </div>
-        Data filter:
-        </div>
-
 
         <div className="relative">
           <Chip
