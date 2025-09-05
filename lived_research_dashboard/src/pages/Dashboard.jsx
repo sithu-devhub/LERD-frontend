@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import ChartCard from '../components/ChartCard';
 import '../styles/dashboard.css';
 import NpsGauge from "../components/NpsGauge";
+import DashboardFilters from "../components/DashboardFilters";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, LabelList, Legend, ReferenceLine,
 } from 'recharts';
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 const responseData = [
   { name: 'Village Name 1', value: 88 },
@@ -56,11 +59,10 @@ const TrendTooltip = ({ active, payload, coordinate, viewBox }) => {
   );
 };
 
-/* Pie tooltip that reuses the same bubble + arrow classes */
 const PieTooltip = ({ active, payload, coordinate, viewBox }) => {
   if (!active || !payload?.length) return null;
 
-  const val = payload?.[0]?.value; // your pie values are already percentages
+  const val = payload?.[0]?.value;
 
   const midX = (viewBox?.x ?? 0) + ((viewBox?.width ?? 0) / 2);
   const side = (coordinate?.x != null && midX)
@@ -100,8 +102,8 @@ const ServiceTooltip = ({ active, payload, coordinate, viewBox }) => {
     : 'left';
 
   const rows = [
-    { key: 'always', label: 'Always', cls: 'trend-dot trend-dot--very', val: byKey.always },       // dark blue
-    { key: 'most',   label: 'Most of the time', cls: 'trend-dot trend-dot--satisfied', val: byKey.most }, // light blue
+    { key: 'always', label: 'Always', cls: 'trend-dot trend-dot--very', val: byKey.always },
+    { key: 'most',   label: 'Most of the time', cls: 'trend-dot trend-dot--satisfied', val: byKey.most },
   ];
 
   return (
@@ -133,8 +135,26 @@ const serviceData = [
 ];
 
 export default function Dashboard() {
+  // Filter state to pass to the filter bar (matches your FilterState)
+  const [filters, setFilters] = useState({
+    gender: 'All',
+    clientTypes: ['Residents'], // or [] to represent “All”
+    period: { month: 'Jan', year: new Date().getFullYear() }
+  });
+
+  // Stable adapter for DashboardFilters -> this page’s FilterState
+  const handleFilterChange = useCallback(({ gender, clientType, year, startMonth }) => {
+    setFilters(prev => ({
+      ...prev,
+      gender,
+      clientTypes: clientType === 'All' ? [] : [clientType],
+      period: { year, month: MONTHS[startMonth] }
+    }));
+    // TODO: trigger your data reload here using the new `filters`
+  }, []);
+
   return (
-    <div className="p-0"> {/* content only; AppLayout provides padding/background */}
+    <div className="p-0">
       <h1 className="text-2xl font-semibold text-gray-800 mb-6">
         Dashboard – Retirement Village
       </h1>
@@ -159,7 +179,6 @@ export default function Dashboard() {
               <ResponsiveContainer width="100%" height={140}>
                 <BarChart data={responseData} margin={{ top: 10, bottom: 10 }}>
                   <defs>
-                    {/* fixed hex (was '#3406ffff') */}
                     <linearGradient id="brightGradient" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#3406FF" />
                       <stop offset="100%" stopColor="#C6BBFF" />
@@ -193,8 +212,6 @@ export default function Dashboard() {
                       <Cell key={i} fill={pieColors[i]} />
                     ))}
                   </Pie>
-
-                  {/* ADDED: Tooltip for Pie using same bubble + arrow */}
                   <Tooltip
                     cursor={false}
                     content={<PieTooltip />}
@@ -250,15 +267,12 @@ export default function Dashboard() {
                     wrapperStyle={{ zIndex: 9999, overflow: 'visible' }}
                     contentStyle={{ background: 'transparent', border: 'none', boxShadow: 'none' }}
                   />
-
-                  {/* bottom → middle → top */}
                   <Bar dataKey="somewhat" stackId="a" fill="#E0E6F5" />
                   <Bar dataKey="satisfied" stackId="a" fill="#40CFFF" />
                   <Bar dataKey="very" stackId="a" fill="#5B4EFF" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
 
-              {/* absolute legend inside the card */}
               <TrendLegendBelow />
             </div>
           }
@@ -272,7 +286,6 @@ export default function Dashboard() {
           content={
             <>
               <NpsGauge value={72} />
-              {/* pass any NPS number here */}
             </>
           }
         />
@@ -305,7 +318,6 @@ export default function Dashboard() {
           title="Service Attribute"
           content={
             <div className="relative">
-              {/* top-right text like Figma */}
               <div className="absolute right-0 -mt-2 text-sm text-[#A3AED0]">
                 Selected Attributes
               </div>
@@ -313,10 +325,9 @@ export default function Dashboard() {
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart
                   data={serviceData}
-                  barCategoryGap="35%" // match Trend
+                  barCategoryGap="35%"
                   margin={{ top: 30, right: 24, left: 0, bottom: 8 }}
                 >
-                  {/* 60% and 80% dashed reference lines */}
                   <ReferenceLine
                     y={80}
                     stroke="#A3AED0"
@@ -350,30 +361,26 @@ export default function Dashboard() {
                     contentStyle={{ background: 'transparent', border: 'none', boxShadow: 'none' }}
                   />
 
-                  {/* bottom segment: flat top */}
                   <Bar
                     dataKey="most"
                     stackId="a"
                     fill="#6AD2FF"
                     stroke="none"
-                    barSize={32}             // fixed width to match Trend bars
+                    barSize={32}
                     radius={[0, 0, 0, 0]}
                   />
-
-                  {/* top segment: rounded cap */}
                   <Bar
                     dataKey="always"
                     stackId="a"
                     fill="#3F11FF"
                     stroke="none"
-                    barSize={32}             // same fixed width
-                    radius={[8, 8, 0, 0]}    // rounded top corners
-                    minPointSize={6}         // keeps rounded cap visible for small values
+                    barSize={32}
+                    radius={[8, 8, 0, 0]}
+                    minPointSize={6}
                   />
                 </BarChart>
               </ResponsiveContainer>
 
-              {/* legend below */}
               <div className="trend-legend--below mt-2">
                 <div className="trend-legend__item">
                   <span className="trend-dot trend-dot--very" /> Always
@@ -385,9 +392,21 @@ export default function Dashboard() {
             </div>
           }
         />
+      </div>
 
-
+      {/* Filter bar */}
+      <div className="mb-6">
+        <DashboardFilters
+          value={{
+            gender: filters.gender,
+            clientType: filters.clientTypes[0] || 'All',
+            year: filters.period.year,
+            startMonth: MONTHS.indexOf(filters.period.month),
+          }}
+          onChange={handleFilterChange}
+        />
       </div>
     </div>
+
   );
 }
