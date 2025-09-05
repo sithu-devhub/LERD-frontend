@@ -27,21 +27,21 @@ const Chip = ({ label, value, active, onClick }) => (
     onClick={onClick}
     className={[
       "group inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition",
-      // ✅ keep ash background in both states; force white text in both states
+      // keep ash background in both states; force white text in both states
       active
         ? "bg-[#bfc8dd] text-white shadow-sm"
         : "bg-[#bfc8dd] text-white hover:bg-[#c7d0e3]",
     ].join(" ")}
   >
     <span className="inline-flex items-center gap-2">
-      {/* ✅ labels always white */}
+      {/* labels always white */}
       <span className="text-white">{label}</span>
       {/* optional: make the divider dot light white */}
       <span className="mx-2 inline-block h-1 w-1 rounded-full bg-white/60" />
-      {/* ✅ values always white */}
+      {/*  values always white */}
       <span className="text-white">{value}</span>
     </span>
-    {/* ✅ chevron also white */}
+    {/*  chevron also white */}
     <ChevronDown className="h-4 w-4 text-white" />
   </button>
 );
@@ -127,14 +127,15 @@ function MonthButton({ label, active, onClick }) {
       className={[
         "rounded-xl px-3 py-2 text-sm transition",
         active
-          ? "bg-blue-600 text-white"
-          : "bg-slate-100 text-black hover:bg-slate-200",
+          ? "bg-[#bfc8dd] text-white" // Selected month → ash background + white text
+          : "bg-slate-100 text-black hover:bg-slate-200", // Unselected months
       ].join(" ")}
     >
       {label}
     </button>
   );
 }
+
 
 function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose }) {
   const ref = useRef(null);
