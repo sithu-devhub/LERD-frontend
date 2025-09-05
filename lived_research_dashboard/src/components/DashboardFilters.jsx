@@ -1,5 +1,6 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Check, X } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Check, X } from "lucide-react"; 
+import { MdBarChart } from "react-icons/md";
 
 // Small helper for outside-click
 function useClickOutside(ref, handler) {
@@ -136,23 +137,12 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose }) {
   useClickOutside(ref, onClose);
 
   const months = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
+    "Jan","Feb","Mar","Apr","May","Jun",
+    "Jul","Aug","Sep","Oct","Nov","Dec",
   ];
 
   const handleMonthClick = (idx) => {
     if (start === null || (start !== null && end !== null)) {
-      // reset range
       onSetRange({ start: idx, end: null });
     } else if (start !== null && end === null) {
       if (idx < start) {
@@ -228,7 +218,6 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
   const defaultYear = value?.year || today.getFullYear();
   const [year, setYear] = useState(defaultYear);
 
-  // NEW: track start & end months
   const [range, setRange] = useState({
     start: value?.startMonth ?? null,
     end: value?.endMonth ?? null,
@@ -243,20 +232,8 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
   }, [gender, clientType, year, range]);
 
   const periodLabel = useMemo(() => {
-    const months = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
+    const months = ["Jan","Feb","Mar","Apr","May","Jun",
+                    "Jul","Aug","Sep","Oct","Nov","Dec"];
     if (range.start !== null && range.end !== null) {
       return `${months[range.start]} ${year} – ${months[range.end]} ${year}`;
     } else if (range.start !== null) {
@@ -268,13 +245,18 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
   return (
     <div className={`w-full ${className}`}>
       <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
-        <div className="text-xs font-medium uppercase tracking-wide text-slate-400">
-          Data filter:
+        <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-[#F3F0FF]">
+            <MdBarChart className="h-4 w-4 text-[#4318FF]" />
         </div>
+        Data filter:
+        </div>
+
+
         <div className="relative">
           <Chip
             label="Gender"
-            value={gender === "All" ? "All" : gender}
+            value={gender}
             active={open === "gender"}
             onClick={() => setOpen(open === "gender" ? null : "gender")}
           />
@@ -293,7 +275,7 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
         <div className="relative">
           <Chip
             label="Client type"
-            value={clientType === "All" ? "All" : clientType}
+            value={clientType}
             active={open === "client"}
             onClick={() => setOpen(open === "client" ? null : "client")}
           />
