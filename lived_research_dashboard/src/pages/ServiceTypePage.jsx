@@ -36,13 +36,11 @@ function ServiceTile({
         "px-6 py-6",
         "flex flex-col justify-center",          // center content, fill square
         "focus:outline-none",                     // no blue focus ring
-  disabled
-    ? "bg-[#BFC7DC] text-white opacity-70 cursor-not-allowed" // inactive
-    : isSelected
-    ? "bg-gradient-to-r from-[#7B61FF] to-[#3F11FF] text-white" // selected
-    : "bg-white text-[#2B3674] border border-[#E9EEF7] hover:border-[#C8D3EE] hover:shadow" // unselected
-
-
+        disabled
+          ? "bg-[#BFC7DC] text-white opacity-70 cursor-not-allowed" // inactive
+          : isSelected
+          ? "bg-gradient-to-r from-[#7B61FF] to-[#3F11FF] text-white" // selected
+          : "bg-white text-[#2B3674] border border-[#E9EEF7] hover:border-[#C8D3EE] hover:shadow" // unselected
       ].join(" ")}
     >
       {/* radio dot */}
@@ -186,6 +184,7 @@ export default function ServiceType() {
             label="CHSP"
             selected={selected}
             onChange={setSelected}
+            disabled={true}
           />
         </div>
         <div className="w-full" style={{ aspectRatio: "2 / 1", minHeight: 50 }}>
@@ -202,6 +201,7 @@ export default function ServiceType() {
             label="Kites"
             selected={selected}
             onChange={setSelected}
+            disabled={true}
           />
         </div>
       </div>
