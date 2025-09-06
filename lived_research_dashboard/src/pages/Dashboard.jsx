@@ -120,7 +120,6 @@ const LABEL_FONT_FAMILY = "Inter, system-ui, -apple-system, Segoe UI, Roboto, Ar
 const LABEL_FONT_SIZE = 12;
 const LABEL_LINE_HEIGHT = 16;
 const AXIS_BOTTOM_PADDING = 8;
-// extra right margin & where to draw % labels so they are visible
 const GUIDE_LABEL_OFFSET = 18;
 const GUIDE_MARGIN_RIGHT = 84;
 
@@ -191,7 +190,7 @@ const WrappedTick = ({ x, y, payload, linesMap, maxLines }) => {
 };
 
 const PercentLabel = ({ viewBox, value, color = '#A3AED0' }) => {
-  const x = viewBox.x + viewBox.width + GUIDE_LABEL_OFFSET; // inside reserved margin
+  const x = viewBox.x + viewBox.width + GUIDE_LABEL_OFFSET;
   const y = viewBox.y;
   return (
     <text x={x} y={y} dy={4} fill={color} fontSize={12} textAnchor="start">
@@ -201,7 +200,7 @@ const PercentLabel = ({ viewBox, value, color = '#A3AED0' }) => {
 };
 /* ======= /helpers ======= */
 
-/* ======= Dropdown for Selected Attributes ======= */
+/* ======= Dropdown for Selected Attributes (mock style) ======= */
 function useClickAway(ref, onAway) {
   React.useEffect(() => {
     function handler(e) {
@@ -217,13 +216,32 @@ function useClickAway(ref, onAway) {
   }, [ref, onAway]);
 }
 
+const CheckBoxIcon = ({ checked }) => (
+  <span
+    className={`flex h-4 w-4 items-center justify-center rounded-[4px] border ${
+      checked ? "bg-[#3F11FF] border-[#3F11FF]" : "bg-white border-[#DCE1ED]"
+    }`}
+  >
+    <svg width="10" height="10" viewBox="0 0 24 24">
+      <path
+        d="M20 6L9 17l-5-5"
+        fill="none"
+        stroke={checked ? "#FFFFFF" : "transparent"}
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  </span>
+);
+
 const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange, className = "" }) => {
   const [open, setOpen] = React.useState(false);
   const boxRef = React.useRef(null);
   useClickAway(boxRef, () => setOpen(false));
 
   React.useEffect(() => {
-    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    const onKey = (e) => e.key === "Escape" && setOpen(false);
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, []);
@@ -236,51 +254,63 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange, className
   };
 
   const allChecked = selectedSet.size === allItems.length;
-  const toggleAll = () => {
-    if (allChecked) onChange(new Set());
-    else onChange(new Set(allItems));
-  };
+  const clearAll = () => onChange(new Set());
+  const selectAll = () => onChange(new Set(allItems));
 
   return (
     <div ref={boxRef} className={`relative inline-block ${className}`}>
-      {/* BIGGER, ACCESSIBLE TRIGGER */}
+      {/* text-only trigger; brighter hover blue to match theme */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="group inline-flex items-center gap-2 text-sm text-[#A3AED0]
-                   hover:text-[#7E89B6] px-3 py-2 -mx-3 -my-2 rounded-md
-                   hover:bg-gray-50 focus:outline-none
-                   focus:ring-2 focus:ring-[#3F11FF]/40 cursor-pointer"
+        className="inline-flex items-center gap-2 text-sm text-[#A3AED0] hover:text-[#3F11FF] focus:outline-none cursor-pointer"
       >
         <span className="select-none">Selected Attributes</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" className="opacity-70 transition-transform group-aria-expanded:rotate-180">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          className="opacity-70 transition-transform"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+        >
           <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="2" />
         </svg>
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-[280px] rounded-xl shadow-lg bg-white ring-1 ring-black/5 z-50" role="menu">
-          <div className="px-3 py-2 border-b border-gray-100 flex items-center justify-between">
-            <span className="text-sm font-medium text-gray-700">Attributes</span>
-            <button onClick={toggleAll} className="text-xs text-[#3F11FF] hover:underline">
+        <div
+          className="absolute right-0 mt-2 w-[320px] rounded-2xl bg-white shadow-[0_8px_24px_rgba(20,25,39,0.12)] ring-1 ring-black/5 z-50"
+          role="menu"
+        >
+          {/* header */}
+          <div className="px-4 py-3 border-b border-[#E7ECF6] flex items-center justify-between">
+            <span className="text-[15px] font-semibold text-[#2B3674]">Attributes</span>
+            <button
+              onClick={allChecked ? clearAll : selectAll}
+              className="text-[13px] font-medium text-[#3F11FF] hover:underline"
+            >
               {allChecked ? "Clear all" : "Select all"}
             </button>
           </div>
-          <div className="max-h-64 overflow-y-auto py-1">
-            {allItems.map((name) => {
+
+          {/* list */}
+          <div className="max-h-64 overflow-y-auto">
+            {allItems.map((name, idx) => {
               const checked = selectedSet.has(name);
+              const isLast = idx === allItems.length - 1;
               return (
-                <label key={name} className="flex items-center gap-3 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggle(name)}
-                    className="h-4 w-4 rounded border-gray-300 text-[#3F11FF] focus:ring-[#3F11FF]"
-                  />
-                  <span className="select-none">{name}</span>
-                </label>
+                <button
+                  type="button"
+                  key={name}
+                  onClick={() => toggle(name)}
+                  className={`w-full px-4 py-3 text-left text-[15px] text-[#2B3674] 
+                              flex items-center gap-3 hover:bg-[#F6F8FF] ${!isLast ? "border-b border-[#EEF2FB]" : ""}`}
+                >
+                  <CheckBoxIcon checked={checked} />
+                  <span className="leading-snug">{name}</span>
+                </button>
               );
             })}
           </div>
@@ -463,7 +493,7 @@ export default function Dashboard() {
           title="Service Attribute"
           content={
             <div className="relative" ref={serviceCardRef}>
-              {/* DROPDOWN LAYERED ABOVE CHART */}
+              {/* DROPDOWN ABOVE CHART */}
               <div className="absolute right-0 -mt-2 z-50 pointer-events-auto">
                 <SelectedAttributesDropdown
                   allItems={allServiceNames}
@@ -472,7 +502,7 @@ export default function Dashboard() {
                 />
               </div>
 
-              {/* CHART stays below in stacking order */}
+              {/* CHART */}
               <div className="relative z-0">
                 {(() => {
                   const dataForChart = filteredServiceData;
