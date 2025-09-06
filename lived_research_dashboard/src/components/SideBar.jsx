@@ -1,12 +1,14 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles/sidebar.css';
+import { 
+  MdHome, 
+  MdShoppingCart, 
+  MdBarChart} from "react-icons/md";
+import { FaUsers } from "react-icons/fa";
+import AuthorisationIcon from "../icons/AuthorisationIcon";
+import LogoutIcon from "../icons/LogoutIcon";
 
-import DashboardIcon from '../icons/DashboardIcon';
-import ServiceTypeIcon from '../icons/ServiceTypeIcon';
-import AuthorisationIcon from '../icons/AuthorisationIcon';
-import LogoutIcon from '../icons/LogoutIcon';
-import RegionIcon from '../icons/RegionIcon';
 
 export default function SideBar() {
   const navigate = useNavigate();
@@ -25,12 +27,15 @@ export default function SideBar() {
   };
 
   const navItems = [
-    { name: 'Dashboard', path: '/dashboard', Icon: DashboardIcon },
-    { name: 'Service Type', path: '/service', Icon: ServiceTypeIcon },
-    { name: 'Region', path: '/region', Icon: RegionIcon },
+    { name: 'Dashboard', path: '/dashboard', Icon: MdHome },
+    { name: 'Service Type', path: '/service', Icon: MdShoppingCart },
+    { name: 'Region', path: '/region', Icon: MdBarChart },
     { name: 'Authorisation Management', path: '/auth', Icon: AuthorisationIcon },
     { name: 'Log out', action: 'logout', Icon: LogoutIcon },
   ];
+
+
+
 
   const handleLogout = () => {
     localStorage.removeItem('isAuthenticated');
@@ -104,19 +109,11 @@ export default function SideBar() {
         )}
       </div>
 
-
       {/* Nav */}
       <nav className="space-y-4 px-6">
         {navItems.map((item) => {
           const active = isActivePath(item.path);
           const Icon = item.Icon;
-
-          const isCustom =
-            Icon === DashboardIcon ||
-            Icon === ServiceTypeIcon ||
-            Icon === AuthorisationIcon ||
-            Icon === RegionIcon ||
-            Icon === LogoutIcon;
 
           return (
             <div
@@ -128,20 +125,9 @@ export default function SideBar() {
               tabIndex={0}
               onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleNavClick(item)}
             >
-
-              {isCustom ? (
-                <Icon
-                  className={`sidebar-icon ${active ? 'sidebar-icon-active' : 'sidebar-icon-inactive'}`}
-                  filled={active}
-                />
-
-              ) : (
-                <Icon
-                  className={`w-6 h-6 ${active ? 'sidebar-icon-active' : 'sidebar-icon-inactive'}`}
-                  strokeWidth={2.5}
-                />
-              )}
-
+              <Icon
+                className={`w-6 h-6 ${active ? 'sidebar-icon-active' : 'sidebar-icon-inactive'}`}
+              />
 
               {!collapsed && <span className="sidebar-label">{item.name}</span>}
               {active && <span className="sidebar-rail sidebar-rail--pill" />}
