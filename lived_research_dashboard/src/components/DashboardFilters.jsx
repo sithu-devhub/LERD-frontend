@@ -1,8 +1,8 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Check, X } from "lucide-react"; 
+import { ChevronDown, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { MdBarChart } from "react-icons/md";
 
-// Small helper for outside-click
+// outside-click helper
 function useClickOutside(ref, handler) {
   useEffect(() => {
     const listener = (e) => {
@@ -19,34 +19,32 @@ function useClickOutside(ref, handler) {
 }
 
 const DividerDot = () => (
-  <span className="mx-2 inline-block h-1 w-1 rounded-full bg-slate-300" />
+  <span className="mx-2 inline-block h-1 w-1 rounded-full bg-white/60" />
 );
 
-const Chip = ({ label, value, active, onClick }) => (
+// Chip (pill)
+const Chip = ({ label, value, active, onClick, chipRef }) => (
   <button
+    ref={chipRef}
+    onMouseDown={(e) => e.stopPropagation()}
+    onTouchStart={(e) => e.stopPropagation()}
     onClick={onClick}
     className={[
       "group inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition",
-      // keep ash background in both states; force white text in both states
-      active
-        ? "bg-[#bfc8dd] text-white shadow-sm"
-        : "bg-[#bfc8dd] text-white hover:bg-[#c7d0e3]",
+      active ? "bg-[#bfc8dd] text-white shadow-sm"
+             : "bg-[#bfc8dd] text-white hover:bg-[#c7d0e3]",
     ].join(" ")}
   >
     <span className="inline-flex items-center gap-2">
-      {/* labels always white */}
       <span className="text-white">{label}</span>
-      {/* optional: make the divider dot light white */}
-      <span className="mx-2 inline-block h-1 w-1 rounded-full bg-white/60" />
-      {/*  values always white */}
+      <DividerDot />
       <span className="text-white">{value}</span>
     </span>
-    {/*  chevron also white */}
     <ChevronDown className="h-4 w-4 text-white" />
   </button>
 );
 
-
+// Floating card
 const FloatingCard = React.forwardRef(function FloatingCard(
   { children, width = 320 },
   ref
@@ -69,28 +67,20 @@ function MenuItem({ checked, children, onClick }) {
       className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-black hover:bg-slate-50"
     >
       <span>{children}</span>
-      {checked ? (
-        <Check className="h-4 w-4 text-blue-600" />
-      ) : (
-        <span className="h-4 w-4" />
-      )}
+      {checked ? <Check className="h-4 w-4 text-blue-600" /> : <span className="h-4 w-4" />}
     </button>
   );
 }
 
-function GenderMenu({ value, onChange, onClose }) {
-  const ref = useRef(null);
-  useClickOutside(ref, onClose);
+// Menus accept a ref from parent so we can measure/scroll into view
+function GenderMenu({ value, onChange, onClose, menuRef }) {
+  useClickOutside(menuRef, onClose);
   const options = ["All", "Male", "Female", "Other"];
   return (
-    <FloatingCard ref={ref}>
+    <FloatingCard ref={menuRef}>
       <div className="flex flex-col gap-1">
         {options.map((opt) => (
-          <MenuItem
-            key={opt}
-            checked={value === opt}
-            onClick={() => onChange(opt)}
-          >
+          <MenuItem key={opt} checked={value === opt} onClick={() => onChange(opt)}>
             {opt}
           </MenuItem>
         ))}
@@ -99,19 +89,14 @@ function GenderMenu({ value, onChange, onClose }) {
   );
 }
 
-function ClientTypeMenu({ value, onChange, onClose }) {
-  const ref = useRef(null);
-  useClickOutside(ref, onClose);
+function ClientTypeMenu({ value, onChange, onClose, menuRef }) {
+  useClickOutside(menuRef, onClose);
   const options = ["All", "Residents", "Next of Kin"];
   return (
-    <FloatingCard ref={ref}>
+    <FloatingCard ref={menuRef}>
       <div className="flex flex-col gap-1">
         {options.map((opt) => (
-          <MenuItem
-            key={opt}
-            checked={value === opt}
-            onClick={() => onChange(opt)}
-          >
+          <MenuItem key={opt} checked={value === opt} onClick={() => onChange(opt)}>
             {opt}
           </MenuItem>
         ))}
@@ -126,9 +111,7 @@ function MonthButton({ label, active, onClick }) {
       onClick={onClick}
       className={[
         "rounded-xl px-3 py-2 text-sm transition",
-        active
-          ? "bg-[#bfc8dd] text-white" // Selected month → ash background + white text
-          : "bg-slate-100 text-black hover:bg-slate-200", // Unselected months
+        active ? "bg-[#bfc8dd] text-white" : "bg-slate-100 text-black hover:bg-slate-200",
       ].join(" ")}
     >
       {label}
@@ -136,30 +119,22 @@ function MonthButton({ label, active, onClick }) {
   );
 }
 
+function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuRef }) {
+  useClickOutside(menuRef, onClose);
 
-function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose }) {
-  const ref = useRef(null);
-  useClickOutside(ref, onClose);
-
-  const months = [
-    "Jan","Feb","Mar","Apr","May","Jun",
-    "Jul","Aug","Sep","Oct","Nov","Dec",
-  ];
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   const handleMonthClick = (idx) => {
     if (start === null || (start !== null && end !== null)) {
       onSetRange({ start: idx, end: null });
     } else if (start !== null && end === null) {
-      if (idx < start) {
-        onSetRange({ start: idx, end: start });
-      } else {
-        onSetRange({ start, end: idx });
-      }
+      if (idx < start) onSetRange({ start: idx, end: start });
+      else onSetRange({ start, end: idx });
     }
   };
 
   return (
-    <FloatingCard ref={ref} width={360}>
+    <FloatingCard ref={menuRef} width={360}>
       <div className="flex items-center justify-between px-1 pb-2">
         <button
           className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-sm text-black hover:bg-slate-50"
@@ -182,7 +157,6 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose }) {
             (start !== null && idx === start) ||
             (end !== null && idx === end) ||
             (start !== null && end !== null && idx > start && idx < end);
-
           return (
             <MonthButton
               key={m}
@@ -205,10 +179,7 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose }) {
             {end !== null ? `${months[end]} ${year}` : "Current"}
           </span>
         </span>
-        <button
-          onClick={onClose}
-          className="rounded-lg px-2 py-1 text-black hover:bg-white"
-        >
+        <button onClick={onClose} className="rounded-lg px-2 py-1 text-black hover:bg-white">
           Done
         </button>
       </div>
@@ -219,26 +190,39 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose }) {
 export default function DashboardFilters({ value, onChange, className = "" }) {
   const [gender, setGender] = useState(value?.gender || "All");
   const [clientType, setClientType] = useState(value?.clientType || "All");
-  const today = new Date();
-  const defaultYear = value?.year || today.getFullYear();
-  const [year, setYear] = useState(defaultYear);
+  const [year, setYear] = useState(value?.year || new Date().getFullYear());
 
   const [range, setRange] = useState({
     start: value?.startMonth ?? null,
     end: value?.endMonth ?? null,
   });
 
+  // which menu is open: 'gender' | 'client' | 'period' | null
   const [open, setOpen] = useState(null);
 
+  // chip refs (optional)
+  const genderChipRef = useRef(null);
+  const clientChipRef = useRef(null);
+  const periodChipRef = useRef(null);
+
+  // menu card refs (used to auto-scroll the dropdown into view)
+  const genderMenuRef = useRef(null);
+  const clientMenuRef = useRef(null);
+  const periodMenuRef = useRef(null);
+
+  // close when clicking outside the whole filter area
+  const rootRef = useRef(null);
+  useClickOutside(rootRef, () => setOpen(null));
+
+  // notify parent
   useEffect(() => {
     if (typeof onChange === "function") {
       onChange({ gender, clientType, year, ...range });
     }
-  }, [gender, clientType, year, range]);
+  }, [gender, clientType, year, range, onChange]);
 
   const periodLabel = useMemo(() => {
-    const months = ["Jan","Feb","Mar","Apr","May","Jun",
-                    "Jul","Aug","Sep","Oct","Nov","Dec"];
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     if (range.start !== null && range.end !== null) {
       return `${months[range.start]} ${year} – ${months[range.end]} ${year}`;
     } else if (range.start !== null) {
@@ -247,61 +231,100 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
     return "Select period";
   }, [range, year]);
 
+  // Toggle/switch menus + (optionally) scroll chip into view
+  const handleOpen = (key) => {
+    setOpen((prev) => (prev === key ? null : key));
+  };
+
+  // When a menu is open, make sure the dropdown itself is fully visible
+  useEffect(() => {
+    if (!open) return;
+
+    const map = {
+      gender: genderMenuRef.current,
+      client: clientMenuRef.current,
+      period: periodMenuRef.current,
+    };
+    const el = map[open];
+    if (!el) return;
+
+    // Wait a frame so layout is ready
+    const id = requestAnimationFrame(() => {
+      const rect = el.getBoundingClientRect();
+      const bottomPad = 16;
+      const topPad = 16;
+
+      // How much the bottom overflows past viewport?
+      const overflowBottom = rect.bottom - (window.innerHeight - bottomPad);
+      // If the top is above the viewport by more than topPad
+      const overflowTop = topPad - rect.top;
+
+      if (overflowBottom > 0) {
+        window.scrollBy({ top: overflowBottom, behavior: "smooth" });
+      } else if (overflowTop > 0) {
+        window.scrollBy({ top: -overflowTop, behavior: "smooth" });
+      }
+    });
+
+    return () => cancelAnimationFrame(id);
+  }, [open]);
+
   return (
-    <div className={`w-full ${className}`}>
+    <div ref={rootRef} className={`w-full ${className}`}>
       <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm">
         <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-400">
-        <div className="flex items-center justify-center h-6 w-6 rounded-full bg-[#F3F0FF]">
+          <div className="flex items-center justify-center h-6 w-6 rounded-full bg-[#F3F0FF]">
             <MdBarChart className="h-4 w-4 text-[#4318FF]" />
-        </div>
-        Data filter:
+          </div>
+          Data filter:
         </div>
 
-
+        {/* Gender */}
         <div className="relative">
           <Chip
+            chipRef={genderChipRef}
             label="Gender"
             value={gender}
             active={open === "gender"}
-            onClick={() => setOpen(open === "gender" ? null : "gender")}
+            onClick={() => handleOpen("gender")}
           />
           {open === "gender" && (
             <GenderMenu
               value={gender}
-              onChange={(v) => {
-                setGender(v);
-                setOpen(null);
-              }}
+              onChange={(v) => { setGender(v); setOpen(null); }}
               onClose={() => setOpen(null)}
+              menuRef={genderMenuRef}
             />
           )}
         </div>
 
+        {/* Client type */}
         <div className="relative">
           <Chip
+            chipRef={clientChipRef}
             label="Client type"
             value={clientType}
             active={open === "client"}
-            onClick={() => setOpen(open === "client" ? null : "client")}
+            onClick={() => handleOpen("client")}
           />
           {open === "client" && (
             <ClientTypeMenu
               value={clientType}
-              onChange={(v) => {
-                setClientType(v);
-                setOpen(null);
-              }}
+              onChange={(v) => { setClientType(v); setOpen(null); }}
               onClose={() => setOpen(null)}
+              menuRef={clientMenuRef}
             />
           )}
         </div>
 
+        {/* Period */}
         <div className="relative">
           <Chip
+            chipRef={periodChipRef}
             label="Period"
             value={periodLabel}
             active={open === "period"}
-            onClick={() => setOpen(open === "period" ? null : "period")}
+            onClick={() => handleOpen("period")}
           />
           {open === "period" && (
             <PeriodMenu
@@ -311,6 +334,7 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
               onSetRange={setRange}
               onChangeYear={setYear}
               onClose={() => setOpen(null)}
+              menuRef={periodMenuRef}
             />
           )}
         </div>

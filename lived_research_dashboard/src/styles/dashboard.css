@@ -128,3 +128,12 @@
   left: -6px;
   border-color: transparent #b0bbd5 transparent transparent; /* match bubble */
 }
+
+/* === Remove blue focus outline on chart click === */
+.recharts-wrapper:focus,
+.recharts-surface:focus,
+.recharts-layer:focus,
+.recharts-wrapper svg:focus,
+.recharts-wrapper svg *:focus {
+  outline: none !important;
+}
