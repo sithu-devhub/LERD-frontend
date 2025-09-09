@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useRef, useLayoutEffect } from 'react';
+import React, { useState, useCallback, useRef, useLayoutEffect, useEffect } from 'react';
+import { useParams, useLocation } from 'react-router-dom'; // ADDED
 import ChartCard from '../components/ChartCard';
 import '../styles/dashboard.css';
 import NpsGauge from "../components/NpsGauge";
@@ -322,6 +323,58 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange, className
 /* ======= /dropdown ======= */
 
 export default function Dashboard() {
+  // ===== DYNAMIC SERVICE NAME (ADDED) =====
+  const { serviceId } = useParams();
+  const location = useLocation();
+
+  // Humanize fallback: "home_care" -> "Home Care"
+  const humanize = (id) =>
+    (id ? String(id).replace(/[_-]+/g, ' ').replace(/\b\w/g, (m) => m.toUpperCase()) : 'Retirement Village');
+
+  const [serviceName, setServiceName] = useState(
+    // If you ever pass state.name from navigation, use it optimistically
+    location.state?.service || humanize(serviceId) || 'Retirement Village'
+  );
+  const [serviceLoading, setServiceLoading] = useState(false);
+  const [serviceError, setServiceError] = useState('');
+
+  useEffect(() => {
+    if (!serviceId) return; // stay with default title if no ID in URL
+    let aborted = false;
+
+    async function load() {
+      try {
+        setServiceLoading(true);
+        setServiceError('');
+        // endpoint to match mock/real API
+        const res = await fetch(`http://localhost:8000/api/services/${encodeURIComponent(serviceId)}`);
+        if (!res.ok) {
+          // If your mock server returns arrays, you can adapt parsing here.
+          throw new Error(`Failed to fetch service: ${res.status}`);
+        }
+        const data = await res.json(); // expected shape: { id, name, ... }
+        if (!aborted) {
+          const name = data?.name || data?.label || humanize(serviceId);
+          setServiceName(name);
+        }
+      } catch (e) {
+        if (!aborted) {
+          setServiceError(e?.message || 'Failed to load service');
+          setServiceName((prev) => prev || humanize(serviceId)); // ensure we show something readable
+        }
+      } finally {
+        if (!aborted) setServiceLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      aborted = true;
+    };
+  }, [serviceId]); // re-run if user navigates to a different service
+
+  // =======================================
+
   // Filter bar state
   const [filters, setFilters] = useState({
     gender: 'All',
@@ -362,7 +415,12 @@ export default function Dashboard() {
 
   return (
     <div className="p-0">
-      <h1 className="text-2xl font-semibold text-gray-800 mb-6">Dashboard – Retirement Village</h1>
+      <h1 className="text-2xl font-semibold text-gray-800 mb-6">
+        Dashboard – {serviceLoading ? 'Loading…' : serviceName}
+      </h1>
+      {serviceError && (
+        <div className="text-sm text-red-600 mb-4">{serviceError}</div>
+      )}
 
       <div className="grid grid-cols-3 gap-6 mb-6">
         {/* Response */}
@@ -465,7 +523,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-6 mb-6">
+      <div className="grid gap-6 mb-6 grid-cols-[1fr_1fr_2fr]">
         {/* Net Promoter Score */}
         <ChartCard title="Net Promoter Score" content={<NpsGauge value={72} />} />
 

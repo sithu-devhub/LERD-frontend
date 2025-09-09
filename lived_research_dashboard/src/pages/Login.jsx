@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { login } from '../api/authService'; 
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -9,12 +10,6 @@ const Login = () => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-
-  // Mock authentication data
-  const mockAdmin = {
-    username: 'admin',
-    password: 'admin'
-  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -31,18 +26,20 @@ const Login = () => {
     setIsLoading(true);
     setError('');
 
-    // Simulate API call delay
-    setTimeout(() => {
-      if (formData.username === mockAdmin.username && formData.password === mockAdmin.password) {
-        // Store login status in localStorage for persistence
-        localStorage.setItem('isAuthenticated', 'true');
-        localStorage.setItem('user', JSON.stringify({ username: formData.username, role: 'admin' }));
-        navigate('/dashboard');
-      } else {
-        setError('Invalid username or password.');
-      }
+    try {
+      // Call backend API instead of mockAdmin
+      const { data } = await login(formData.username, formData.password);
+
+      // Store login status in localStorage for persistence
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      navigate('/dashboard');
+    } catch (err) {
+      setError(err.message || 'Invalid username or password.');
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
 
   return (
@@ -133,7 +130,8 @@ const Login = () => {
           <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
             <p className="text-sm text-gray-600 font-semibold mb-2">Demo Credentials:</p>
             <p className="text-sm text-gray-500">Username: <span className="font-mono font-semibold">admin</span></p>
-            <p className="text-sm text-gray-500">Password: <span className="font-mono font-semibold">admin</span></p>
+            <p className="text-sm text-gray-500">Password: <span className="font-mono font-semibold">any</span></p>
+            <p className="text-xs text-gray-400 mt-1">(* In mock server, any non-empty password works)</p>
           </div>
         </div>
 
