@@ -137,3 +137,11 @@
 .recharts-wrapper svg *:focus {
   outline: none !important;
 }
+
+
+/* === Tailwind shine animation === */
+@keyframes shine {
+  0%   { transform: translateX(-150%); }
+  100% { transform: translateX(200%); }
+}
+
