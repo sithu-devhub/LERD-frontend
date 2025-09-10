@@ -106,7 +106,35 @@ export default function ResponseChart() {
       title="Response"
       content={
         <>
-          {loading && <div>Loading response data…</div>}
+          {loading && (
+            <div className="animate-pulse" ref={chartRef}>
+              {/* Big numbers placeholder */}
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex flex-col gap-4">
+                  <div className="h-6 w-28 bg-gray-300 rounded"></div>
+                  <div className="h-6 w-20 bg-gray-300 rounded"></div>
+                </div>
+
+                {/* Arrow button placeholder */}
+                <div className="w-8 h-8 rounded-full bg-gray-300"></div>
+              </div>
+
+              {/* Fake chart skeleton */}
+              <div className="w-full h-[200px] flex items-end justify-around gap-4">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex flex-col items-center gap-2">
+                    <div
+                      className={`w-6 bg-gray-300 rounded-t ${
+                        i % 2 === 0 ? "h-24" : "h-16"
+                      }`}
+                    ></div>
+                    <div className="h-3 w-12 bg-gray-200 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {error && <div className="text-red-500">{error}</div>}
           {!loading && !error && (
             <div ref={chartRef}>

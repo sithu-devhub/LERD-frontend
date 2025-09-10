@@ -410,8 +410,6 @@ export default function Dashboard() {
         {/* Response */}
         <ResponseChart />
 
-
-
         {/* Customer Satisfaction */}
         <CustomerSatisfaction />
 
