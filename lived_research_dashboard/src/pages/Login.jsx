@@ -25,18 +25,35 @@ const Login = () => {
     setError('');
 
     try {
-      // === HARDCODED LOGIN ===
-      if (formData.username === 'admin' && formData.password === '1234') {
-        // fake token + user
-        const fakeUser = { username: 'admin', role: 'superuser' };
-        const fakeToken = 'demo-token-123';
+      // === REAL API LOGIN ===
+      const res = await fetch('/api/Auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
 
-        localStorage.setItem('token', fakeToken);
-        localStorage.setItem('user', JSON.stringify(fakeUser));
+      if (!res.ok) {
+        throw new Error('Invalid username or password');
+      }
+
+      const data = await res.json();
+
+      if (data.accessToken) {
+        // Save tokens + user (with dummy position if not provided)
+        localStorage.setItem('accessToken', data.accessToken);
+        localStorage.setItem('refreshToken', data.refreshToken);
+        localStorage.setItem(
+          'user',
+          JSON.stringify({
+            username: formData.username,
+            fullName: data.fullName,
+            position: data.position || "Position"
+          })
+        );
 
         navigate('/dashboard');
       } else {
-        throw new Error('Invalid username or password');
+        throw new Error('Login failed. No token returned.');
       }
     } catch (err) {
       setError(err.message || 'Login failed.');
@@ -50,7 +67,7 @@ const Login = () => {
       {/* Left Side */}
       <div className="flex-1 bg-gradient-to-br from-blue-400 via-blue-500 to-purple-600 flex flex-col justify-between p-12 text-white relative">
         <div className="flex flex-col justify-center flex-1">
-          <h1 className="text-6xl font-bold mb-6">LET Dashboard</h1>
+          <h1 className="text-5xl font-bold mb-6">Customer Experience Dashboard</h1>
           <p className="text-xl opacity-90 max-w-md leading-relaxed">
             Empowering smarter decisions through a unified, insightful, and intuitive 
             dashboard experience.

@@ -1,20 +1,15 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles/sidebar.css';
-import { 
-  MdHome, 
-  MdShoppingCart, 
-  MdBarChart} from "react-icons/md";
+import { MdHome, MdShoppingCart, MdBarChart } from "react-icons/md";
 import { FaUsers } from "react-icons/fa";
 import AuthorisationIcon from "../icons/AuthorisationIcon";
 import LogoutIcon from "../icons/LogoutIcon";
-
 
 export default function SideBar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // collapsed state (persisted)
   const [collapsed, setCollapsed] = React.useState(
     () => localStorage.getItem('sidebarCollapsed') === '1'
   );
@@ -26,6 +21,36 @@ export default function SideBar() {
     });
   };
 
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    // Load from localStorage (fullName, position)
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+
+    // Optionally validate token with /me
+    async function validateToken() {
+      try {
+        const token = localStorage.getItem("accessToken");
+        if (!token) return;
+        const res = await fetch("/api/Auth/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) {
+          // invalid token → logout
+          handleLogout();
+        }
+      } catch (e) {
+        console.warn("Token validation failed:", e);
+      }
+    }
+
+    validateToken();
+  }, []);
+
+
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', Icon: MdHome },
     { name: 'Service Type', path: '/service', Icon: MdShoppingCart },
@@ -34,13 +59,17 @@ export default function SideBar() {
     { name: 'Log out', action: 'logout', Icon: LogoutIcon },
   ];
 
-
-
-
-  const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('user');
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/Auth/logout", { method: "POST" });
+    } catch (e) {
+      console.warn("Logout request failed:", e);
+    } finally {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+      navigate('/login');
+    }
   };
 
   const handleNavClick = (item) => {
@@ -77,16 +106,14 @@ export default function SideBar() {
           className="sidebar-toggle"
         >
           {collapsed ? (
-            // Double chevron pointing right (outline)
             <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7 6l6 6-6 6" />   {/* right arrow 1 */}
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 6l6 6-6 6" />  {/* right arrow 2 */}
+              <path strokeLinecap="round" strokeLinejoin="round" d="M7 6l6 6-6 6" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 6l6 6-6 6" />
             </svg>
           ) : (
-            // Double chevron pointing left (outline)
             <svg viewBox="0 0 24 24" className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 6l-6 6 6 6" />  {/* left arrow 1 */}
-              <path strokeLinecap="round" strokeLinejoin="round" d="M11 6l-6 6 6 6" />  {/* left arrow 2 */}
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 6l-6 6 6 6" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M11 6l-6 6 6 6" />
             </svg>
           )}
         </button>
@@ -97,15 +124,20 @@ export default function SideBar() {
         <img
           src="https://i.pravatar.cc/100?img=32"
           alt="Profile"
-          className={`rounded-full ${
-            collapsed ? 'w-8 h-8' : 'w-8 h-8'
-          }`}
+          className={`rounded-full ${collapsed ? 'w-8 h-8' : 'w-8 h-8'}`}
         />
         {!collapsed && (
           <div className="ml-3">
-            <p className="text-sm font-medium text-gray-800">Name</p>
-            <p className="text-xs text-gray-500">Position</p>
+            <p className="text-sm font-medium text-gray-800">
+              {user?.fullName || "Name"}
+            </p>
+            <p className="text-xs text-gray-500">
+              {user?.position || "Position"}
+            </p>
           </div>
+
+
+
         )}
       </div>
 
@@ -128,7 +160,6 @@ export default function SideBar() {
               <Icon
                 className={`w-6 h-6 ${active ? 'sidebar-icon-active' : 'sidebar-icon-inactive'}`}
               />
-
               {!collapsed && <span className="sidebar-label">{item.name}</span>}
               {active && <span className="sidebar-rail sidebar-rail--pill" />}
             </div>

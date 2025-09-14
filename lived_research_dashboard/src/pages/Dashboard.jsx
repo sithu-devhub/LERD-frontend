@@ -2,7 +2,6 @@ import React, { useState, useCallback, useRef, useLayoutEffect, useEffect } from
 import { useParams, useLocation } from 'react-router-dom';
 import ChartCard from '../components/ChartCard';
 import '../styles/dashboard.css';
-import NpsGauge from "../components/NpsGauge";
 import DashboardFilters from "../components/DashboardFilters";
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
@@ -11,49 +10,11 @@ import {
 
 import ResponseChart from "../components/ResponseChart";
 import CustomerSatisfaction from "../components/CustomerSatisfactionChart";
+import CustomerSatisfactionTrend from "../components/CustomerSatisfactionTrend"; 
+import NpsChart from "../components/NpsChart"; 
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-const satisfactionTrend = [
-  { year: '2023', very: 26, satisfied: 40, somewhat: 32 },
-  { year: '2024', very: 56, satisfied: 20, somewhat: 22 },
-  { year: '2025', very: 36, satisfied: 30, somewhat: 32 },
-];
-
-const TrendTooltip = ({ active, payload, coordinate, viewBox }) => {
-  if (!active || !payload?.length) return null;
-  const byKey = Object.fromEntries(payload.map(p => [p.dataKey, p.value]));
-  const total = (byKey.somewhat || 0) + (byKey.satisfied || 0) + (byKey.very || 0);
-  const midX = (viewBox?.x ?? 0) + ((viewBox?.width ?? 0) / 2);
-  const side = (coordinate?.x != null && midX) ? (coordinate.x < midX ? 'right' : 'left') : 'left';
-
-  const rows = [
-    { key: 'very', label: 'Very Satisfied', cls: 'trend-dot trend-dot--very', val: byKey.very },
-    { key: 'satisfied', label: 'Satisfied', cls: 'trend-dot trend-dot--satisfied', val: byKey.satisfied },
-    { key: 'somewhat', label: 'Somewhat Satisfied', cls: 'trend-dot trend-dot--somewhat', val: byKey.somewhat },
-  ];
-
-  return (
-    <div className={`trend-tooltip trend-tooltip--${side}`}>
-      <div className="trend-tooltip__total">{total}%</div>
-      {rows.map(r => (
-        <div key={r.key} className="trend-tooltip__row">
-          <span className={r.cls} />
-          <span className="trend-tooltip__value">{r.val}%</span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-
-const TrendLegendBelow = () => (
-  <div className="trend-legend--below">
-    <div className="trend-legend__item"><span className="trend-dot trend-dot--very" /> Very Satisfied</div>
-    <div className="trend-legend__item"><span className="trend-dot trend-dot--satisfied" /> Satisfied</div>
-    <div className="trend-legend__item"><span className="trend-dot trend-dot--somewhat" /> Somewhat Satisfied</div>
-  </div>
-);
 
 const ServiceTooltip = ({ active, payload, coordinate, viewBox }) => {
   if (!active || !payload?.length) return null;
@@ -414,31 +375,13 @@ export default function Dashboard() {
         <CustomerSatisfaction />
 
         {/* Customer Satisfaction Trend */}
-        <ChartCard
-          title="Customer Satisfaction Trend"
-          content={
-            <div className="trend-chart relative">
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={satisfactionTrend} barCategoryGap="35%">
-                  <XAxis dataKey="year" axisLine={false} tickLine={false} tick={{ fill: '#A3AED0', fontSize: 14 }} />
-                  <YAxis hide />
-                  <Tooltip cursor={{ fill: 'transparent' }} content={<TrendTooltip />} offset={0}
-                    allowEscapeViewBox={{ x: true, y: true }} wrapperStyle={{ zIndex: 9999, overflow: 'visible' }}
-                    contentStyle={{ background: 'transparent', border: 'none', boxShadow: 'none' }} />
-                  <Bar dataKey="somewhat" stackId="a" fill="#E0E6F5" />
-                  <Bar dataKey="satisfied" stackId="a" fill="#40CFFF" />
-                  <Bar dataKey="very" stackId="a" fill="#3F11FF" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-              <TrendLegendBelow />
-            </div>
-          }
-        />
+        <CustomerSatisfactionTrend />
+
       </div>
 
       <div className="grid gap-6 mb-6 grid-cols-[1fr_1fr_2fr]">
-        {/* Net Promoter Score */}
-        <ChartCard title="Net Promoter Score" content={<NpsGauge value={72} />} />
+        {/* Net Promoter Score */}  
+        <NpsChart score={72} />
 
         {/* NPS Distribution */}
         <ChartCard
