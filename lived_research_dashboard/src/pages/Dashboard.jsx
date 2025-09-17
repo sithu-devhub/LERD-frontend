@@ -1,3 +1,5 @@
+// src/pages/Dashboard.jsx
+
 import React, { useState, useCallback, useRef, useLayoutEffect, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
 import ChartCard from '../components/ChartCard';
@@ -12,6 +14,7 @@ import ResponseChart from "../components/ResponseChart";
 import CustomerSatisfaction from "../components/CustomerSatisfactionChart";
 import CustomerSatisfactionTrend from "../components/CustomerSatisfactionTrend"; 
 import NpsChart from "../components/NpsChart"; 
+import NpsDistribution from "../components/NpsDistribution"; 
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -405,32 +408,29 @@ export default function Dashboard() {
         />
 
         {/* Customer Satisfaction Trend */}
-        <CustomerSatisfactionTrend />
+        <CustomerSatisfactionTrend
+          surveyId={"8dff523d-2a46-4ee3-8017-614af3813b32"}
+          gender={filters.gender}
+          participantType={filters.participantType}
+        />
 
       </div>
 
       <div className="grid gap-6 mb-6 grid-cols-[1fr_1fr_2fr]">
         {/* Net Promoter Score */}  
-        <NpsChart score={72} />
+        <NpsChart
+          surveyId={"8dff523d-2a46-4ee3-8017-614af3813b32"}
+          gender={filters.gender}
+          participantType={filters.participantType}
+        />
 
         {/* NPS Distribution */}
-        <ChartCard
-          title="NPS Distribution"
-          content={
-            <div className="space-y-3">
-              {npsDistribution.map((item, i) => (
-                <div key={i}>
-                  <div className="flex justify-between text-sm text-gray-700 mb-1">
-                    <span>{item.name}</span><span>{item.value}</span>
-                  </div>
-                  <div className="w-full h-2 bg-gray-200 rounded-full">
-                    <div className="h-2 rounded-full" style={{ width: `${item.value * 5}%`, backgroundColor: item.color }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          }
+        <NpsDistribution
+          surveyId={"8dff523d-2a46-4ee3-8017-614af3813b32"}
+          gender={filters.gender}
+          participantType={filters.participantType}
         />
+
 
         {/* Service Attribute */}
         <ChartCard

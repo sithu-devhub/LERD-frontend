@@ -1,4 +1,4 @@
-// src/pages/CustomerSatisfaction.jsx
+// src/components/CustomerSatisfaction.jsx
 import React, { useState, useEffect } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import ChartCard from "../components/ChartCard";

@@ -49,7 +49,7 @@ const TrendLegendBelow = () => (
   </div>
 );
 
-export default function CustomerSatisfactionTrend() {
+export default function CustomerSatisfactionTrend({ surveyId, gender, participantType }) {
   const [satisfactionTrend, setSatisfactionTrend] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -61,7 +61,13 @@ export default function CustomerSatisfactionTrend() {
         setLoading(true);
         setError("");
 
-        const url = `${import.meta.env.VITE_API_BASE_URL}/charts/customer-satisfaction-trend?surveyId=8dff523d-2a46-4ee3-8017-614af3813b32&participantType=1`;
+        const baseUrl = `${import.meta.env.VITE_API_BASE_URL}/charts/customer-satisfaction-trend`;
+        const params = new URLSearchParams({ surveyId });
+
+        if (gender != null) params.append("gender", gender);
+        if (participantType != null) params.append("participantType", participantType);
+
+        const url = `${baseUrl}?${params.toString()}`;
         const res = await fetch(url, { headers: { Accept: "application/json" } });
         if (!res.ok) throw new Error(`Failed to fetch trend: ${res.status}`);
         const json = await res.json();
@@ -83,7 +89,7 @@ export default function CustomerSatisfactionTrend() {
     }
     fetchTrend();
     return () => { cancelled = true; };
-  }, []);
+  }, [surveyId, gender, participantType]);
 
   return (
     <ChartCard
