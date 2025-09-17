@@ -15,40 +15,10 @@ import CustomerSatisfaction from "../components/CustomerSatisfactionChart";
 import CustomerSatisfactionTrend from "../components/CustomerSatisfactionTrend"; 
 import NpsChart from "../components/NpsChart"; 
 import NpsDistribution from "../components/NpsDistribution"; 
+import ServiceAttributeChart from "../components/ServiceAttributeChart.jsx"; 
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-
-const ServiceTooltip = ({ active, payload, coordinate, viewBox }) => {
-  if (!active || !payload?.length) return null;
-  const byKey = Object.fromEntries(payload.map(p => [p.dataKey, p.value]));
-  const total = (byKey.always || 0) + (byKey.most || 0);
-  const midX = (viewBox?.x ?? 0) + ((viewBox?.width ?? 0) / 2);
-  const side = (coordinate?.x != null && midX) ? (coordinate.x < midX ? 'right' : 'left') : 'left';
-
-  const rows = [
-    { key: 'always', label: 'Always', cls: 'trend-dot trend-dot--very', val: byKey.always },
-    { key: 'most', label: 'Most of the time', cls: 'trend-dot trend-dot--satisfied', val: byKey.most },
-  ];
-
-  return (
-    <div className={`trend-tooltip trend-tooltip--${side}`}>
-      <div className="trend-tooltip__total">{total}%</div>
-      {rows.map(r => (
-        <div key={r.key} className="trend-tooltip__row">
-          <span className={r.cls} />
-          <span className="trend-tooltip__value">{r.val}%</span>
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const npsDistribution = [
-  { name: 'Promoter', value: 15, color: '#7FDBFF' },
-  { name: 'Passive', value: 10, color: '#7FDBFF' },
-  { name: 'Detractor', value: 11, color: '#7FDBFF' },
-];
 
 const serviceData = [
   { name: 'Activity Availability', always: 36, most: 59 },
@@ -433,90 +403,13 @@ export default function Dashboard() {
 
 
         {/* Service Attribute */}
-        <ChartCard
-          title="Service Attribute"
-          content={
-            <div className="relative" ref={serviceCardRef}>
-              {/* DROPDOWN ABOVE CHART */}
-              <div className="absolute right-0 -mt-2 z-50 pointer-events-auto">
-                <SelectedAttributesDropdown
-                  allItems={allServiceNames}
-                  selectedSet={selectedAttrs}
-                  onChange={setSelectedAttrs}
-                />
-              </div>
-
-              {/* CHART */}
-              <div className="relative z-0">
-                {(() => {
-                  const dataForChart = filteredServiceData;
-                  const slots = dataForChart.length || 1;
-                  const perSlot = serviceCardWidth ? serviceCardWidth / slots : 90;
-                  const labelMaxWidth = Math.min(120, Math.max(60, perSlot * 0.85));
-                  const { linesMap, maxLines } = computeWrappedMapAndMaxLines(dataForChart, "name", labelMaxWidth);
-                  const xAxisHeight = maxLines * LABEL_LINE_HEIGHT + AXIS_BOTTOM_PADDING;
-
-                  return (
-                    <>
-                      <ResponsiveContainer width="100%" height={260}>
-                        <BarChart
-                          data={dataForChart}
-                          barCategoryGap="35%"
-                          margin={{ top: 30, right: GUIDE_MARGIN_RIGHT, left: 0, bottom: xAxisHeight }}
-                        >
-                          <YAxis domain={[0, 100]} hide />
-
-                          <ReferenceLine
-                            y={80}
-                            isFront
-                            stroke="#A3AED0"
-                            strokeDasharray="6 6"
-                            ifOverflow="extendDomain"
-                            label={<PercentLabel value={80} color="#3F11FF" />}
-                          />
-                          <ReferenceLine
-                            y={60}
-                            isFront
-                            stroke="#A3AED0"
-                            strokeDasharray="6 6"
-                            ifOverflow="extendDomain"
-                            label={<PercentLabel value={60} color="#6AD2FF" />}
-                          />
-
-                          <XAxis
-                            dataKey="name"
-                            axisLine={false}
-                            tickLine={false}
-                            interval={0}
-                            height={xAxisHeight}
-                            tick={(props) => <WrappedTick {...props} linesMap={linesMap} maxLines={maxLines} />}
-                          />
-
-                          <Tooltip
-                            cursor={{ fill: 'transparent' }}
-                            content={<ServiceTooltip />}
-                            offset={0}
-                            allowEscapeViewBox={{ x: true, y: true }}
-                            wrapperStyle={{ zIndex: 9999, overflow: 'visible' }}
-                            contentStyle={{ background: 'transparent', border: 'none', boxShadow: 'none' }}
-                          />
-
-                          <Bar dataKey="most" stackId="a" fill="#6AD2FF" stroke="none" barSize={32} radius={[0, 0, 0, 0]} />
-                          <Bar dataKey="always" stackId="a" fill="#3F11FF" stroke="none" barSize={32} radius={[8, 8, 0, 0]} minPointSize={6} />
-                        </BarChart>
-                      </ResponsiveContainer>
-
-                      <div className="trend-legend--below mt-2">
-                        <div className="trend-legend__item"><span className="trend-dot trend-dot--very" /> Always</div>
-                        <div className="trend-legend__item"><span className="trend-dot trend-dot--satisfied" /> Most of the time</div>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-          }
+        <ServiceAttributeChart
+          surveyId={"8dff523d-2a46-4ee3-8017-614af3813b32"}
+          gender={filters.gender}
+          participantType={filters.participantType}
+          selectedAttrs={selectedAttrs}
         />
+
       </div>
 
       {/* Filter bar */}
