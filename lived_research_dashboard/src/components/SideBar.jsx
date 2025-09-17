@@ -5,7 +5,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles/sidebar.css';
 import { MdHome, MdShoppingCart, MdBarChart } from "react-icons/md";
 import { FaUsers } from "react-icons/fa";
-import AuthorisationIcon from "../icons/AuthorisationIcon";
+// import AuthorisationIcon from "../icons/AuthorisationIcon";
 import LogoutIcon from "../icons/LogoutIcon";
 import http from '../api/http';               // axios instance with interceptor
 import { logout as logoutApi } from '../api/authService'; // logout service
@@ -68,7 +68,7 @@ export default function SideBar() {
     { name: 'Dashboard', path: '/dashboard', Icon: MdHome },
     { name: 'Service Type', path: '/service', Icon: MdShoppingCart },
     { name: 'Region', path: '/region', Icon: MdBarChart },
-    { name: 'Authorisation Management', path: '/auth', Icon: AuthorisationIcon },
+    // { name: 'Authorisation Management', path: '/auth', Icon: AuthorisationIcon },
     { name: 'Log out', action: 'logout', Icon: LogoutIcon },
   ];
 

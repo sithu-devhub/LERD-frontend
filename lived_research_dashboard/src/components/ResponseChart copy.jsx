@@ -34,43 +34,6 @@ const TwoLineTick = ({ x, y, payload }) => {
 };
 /* === /tick === */
 
-/* === Scrollable Modal Component for showing all villages === */
-const VillageListModal = ({ visible, onClose, villages }) => {
-  if (!visible) return null;
-
-  return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-[350px] max-h-[70vh] flex flex-col">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">
-            Selected Villages
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-800 text-xl"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Scrollable list */}
-        <ul className="overflow-y-auto pr-2 flex-1">
-          {villages.map((v) => (
-            <li
-              key={v}
-              className="px-3 py-2 rounded-lg bg-gray-50 text-gray-700 hover:bg-indigo-50 mb-2"
-            >
-              {v}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-};
-/* === /modal === */
-
 export default function ResponseChart({ surveyId, gender, participantType }) {
   const [responseData, setResponseData] = useState([]);
   const [responseTotals, setResponseTotals] = useState({
@@ -80,7 +43,6 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showAll, setShowAll] = useState(false);
-  const [showVillageModal, setShowVillageModal] = useState(false);
 
   const chartRef = useRef(null);
 
@@ -101,10 +63,10 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
 
         const baseUrl = `${import.meta.env.VITE_API_BASE_URL}/charts/response`;
         const params = new URLSearchParams({
-          surveyId:
-            surveyId || "8dff523d-2a46-4ee3-8017-614af3813b32", // fallback
+          surveyId: surveyId || "8dff523d-2a46-4ee3-8017-614af3813b32", // fallback for now
         });
 
+        // only add filters if user selected them
         if (gender) params.append("gender", gender);
         if (participantType) params.append("participantType", participantType);
 
@@ -121,14 +83,12 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
           });
 
           if (Array.isArray(json.data.regions)) {
-            // ✅ Sort villages ascending by name
-            const sorted = json.data.regions
-              .map((r) => ({
+            setResponseData(
+              json.data.regions.map((r) => ({
                 name: r.villageName || "Unknown",
                 value: r.participantCount || 0,
               }))
-              .sort((a, b) => a.name.localeCompare(b.name));
-            setResponseData(sorted);
+            );
           }
         }
       } catch (e) {
@@ -142,6 +102,7 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
       aborted = true;
     };
   }, [gender, participantType]);
+
 
   let displayData;
   if (showAll) {
@@ -159,14 +120,18 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
         <>
           {loading && (
             <div className="animate-pulse" ref={chartRef}>
-              {/* Skeleton */}
+              {/* Big numbers placeholder */}
               <div className="flex items-start justify-between mb-6">
                 <div className="flex flex-col gap-4">
                   <div className="h-6 w-28 bg-gray-300 rounded"></div>
                   <div className="h-6 w-20 bg-gray-300 rounded"></div>
                 </div>
+
+                {/* Arrow button placeholder */}
                 <div className="w-8 h-8 rounded-full bg-gray-300"></div>
               </div>
+
+              {/* Fake chart skeleton */}
               <div className="w-full h-[200px] flex items-end justify-around gap-4">
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="flex flex-col items-center gap-2">
@@ -183,10 +148,9 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
           )}
 
           {error && <div className="text-red-500">{error}</div>}
-
           {!loading && !error && (
             <div ref={chartRef}>
-              {/* Metrics */}
+              {/* Big numbers + Arrow button row */}
               <div className="flex items-start justify-between mb-6">
                 <div className="flex flex-col gap-2">
                   <div className="metric-aligned-row">
@@ -203,58 +167,57 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
                   </div>
                 </div>
 
-                {/* Arrow toggle */}
+                {/* Arrow toggle placed after chart, aligned right */}
                 {responseData.length > 5 && (
-                  <div className="flex justify-end mt-3">
+                <div className="flex justify-end mt-3">
                     <button
-                      onClick={() => setShowAll((prev) => !prev)}
-                      className="p-1 transition-transform duration-300 hover:scale-110"
+                    onClick={() => setShowAll((prev) => !prev)}
+                    className="p-1 transition-transform duration-300 hover:scale-110"
                     >
-                      <svg
+                    <svg
                         width="32"
                         height="32"
                         viewBox="0 0 24 24"
                         className={`transition-transform duration-300 ${
-                          showAll ? "rotate-180" : "rotate-0"
+                        showAll ? "rotate-180" : "rotate-0"
                         }`}
-                      >
+                    >
                         <defs>
-                          <linearGradient
-                            id="arrowGradient"
-                            x1="0%"
-                            y1="0%"
-                            x2="0%"
-                            y2="100%"
-                          >
-                            <stop offset="0%" stopColor="#6366F1" />
-                            <stop
-                              offset="50%"
-                              stopColor="#FFFFFF"
-                              stopOpacity="0.9"
-                            />
-                            <stop offset="100%" stopColor="#6366F1" />
-                            <animateTransform
-                              attributeName="gradientTransform"
-                              type="translate"
-                              dur="2s"
-                              repeatCount="indefinite"
-                              values="0 -1; 0 1; 0 1"
-                              keyTimes="0;0.8;1"
-                            />
-                          </linearGradient>
-                        </defs>
-                        <path
-                          d="M10 7l5 5-5 5"
-                          fill="none"
-                          stroke="url(#arrowGradient)"
-                          strokeWidth="4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
+                        {/* Vertical animated gradient */}
+                        <linearGradient id="arrowGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stopColor="#6366F1" />
+                        <stop offset="50%" stopColor="#FFFFFF" stopOpacity="0.9" />
+                        <stop offset="100%" stopColor="#6366F1" />
+
+                        <animateTransform
+                            attributeName="gradientTransform"
+                            type="translate"
+                            dur="2s"               
+                            repeatCount="indefinite"
+                            values="0 -1; 0 1; 0 1" 
+                            keyTimes="0;0.8;1"      
                         />
-                      </svg>
+                        </linearGradient>
+
+
+
+                        </defs>
+
+                        {/* Right-pointing arrow */}
+                        <path
+                        d="M10 7l5 5-5 5"
+                        fill="none"
+                        stroke="url(#arrowGradient)"
+                        strokeWidth="4"   //thicker arrow
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        />
+                    </svg>
                     </button>
-                  </div>
+                </div>
                 )}
+
+
               </div>
 
               {/* Chart */}
@@ -265,13 +228,7 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
                     margin={{ top: 10, bottom: 50, left: 0, right: 10 }}
                   >
                     <defs>
-                      <linearGradient
-                        id="brightGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
+                      <linearGradient id="brightGradient" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="0%" stopColor="#3406FF" />
                         <stop offset="100%" stopColor="#C6BBFF" />
                       </linearGradient>
@@ -300,25 +257,6 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
                   </BarChart>
                 </ResponsiveContainer>
               )}
-
-              {/* +N more chip */}
-              {responseData.length > 5 && (
-                <div className="flex justify-end mt-3">
-                  <button
-                    onClick={() => setShowVillageModal(true)}
-                    className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm hover:bg-indigo-200"
-                  >
-                    +{responseData.length - 5} more
-                  </button>
-                </div>
-              )}
-
-              {/* Modal with scrollable sorted villages */}
-              <VillageListModal
-                visible={showVillageModal}
-                onClose={() => setShowVillageModal(false)}
-                villages={responseData.map((r) => r.name)}
-              />
             </div>
           )}
         </>
@@ -326,3 +264,4 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
     />
   );
 }
+
