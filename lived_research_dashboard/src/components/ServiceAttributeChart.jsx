@@ -6,6 +6,108 @@ import {
 } from "recharts";
 import ChartCard from "./ChartCard";
 
+// === small helper for click-away ===
+function useClickAway(ref, onAway) {
+  useEffect(() => {
+    function handler(e) {
+      if (!ref.current) return;
+      if (!ref.current.contains(e.target)) onAway?.();
+    }
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [ref, onAway]);
+}
+
+const CheckBoxIcon = ({ checked }) => (
+  <span
+    className={`flex h-4 w-4 items-center justify-center rounded-[4px] border ${
+      checked ? "bg-[#3F11FF] border-[#3F11FF]" : "bg-white border-[#DCE1ED]"
+    }`}
+  >
+    <svg width="10" height="10" viewBox="0 0 24 24">
+      <path
+        d="M20 6L9 17l-5-5"
+        fill="none"
+        stroke={checked ? "#FFFFFF" : "transparent"}
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  </span>
+);
+
+const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const boxRef = useRef(null);
+  useClickAway(boxRef, () => setOpen(false));
+
+  const toggle = (name) => {
+    const next = new Set(selectedSet);
+    if (next.has(name)) next.delete(name);
+    else next.add(name);
+    onChange(next);
+  };
+
+  const allChecked = selectedSet.size === allItems.length;
+  const clearAll = () => onChange(new Set());
+  const selectAll = () => onChange(new Set(allItems));
+
+  return (
+    <div ref={boxRef} className="relative inline-block">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-2 text-sm text-[#A3AED0] hover:text-[#3F11FF]"
+      >
+        <span className="select-none">Selected Attributes</span>
+        <svg
+          width="14" height="14" viewBox="0 0 24 24"
+          className="transition-transform"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
+        >
+          <path d="M7 10l5 5 5-5" fill="none" stroke="currentColor" strokeWidth="2" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-2 w-[320px] rounded-2xl bg-white shadow-lg ring-1 ring-black/5 z-50">
+          <div className="px-4 py-3 border-b border-[#E7ECF6] flex items-center justify-between">
+            <span className="text-[15px] font-semibold text-[#2B3674]">Attributes</span>
+            <button
+              onClick={allChecked ? clearAll : selectAll}
+              className="text-[13px] font-medium text-[#3F11FF] hover:underline"
+            >
+              {allChecked ? "Clear all" : "Select all"}
+            </button>
+          </div>
+          <div className="max-h-64 overflow-y-auto">
+            {allItems.map((name, idx) => {
+              const checked = selectedSet.has(name);
+              return (
+                <button
+                  key={name}
+                  onClick={() => toggle(name)}
+                  className={`w-full px-4 py-3 text-left flex items-center gap-3 text-[15px] text-[#2B3674] hover:bg-[#F6F8FF] ${
+                    idx !== allItems.length - 1 ? "border-b border-[#EEF2FB]" : ""
+                  }`}
+                >
+                  <CheckBoxIcon checked={checked} />
+                  <span>{name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // === Tooltip inline (to avoid missing file imports) ===
 const ServiceAttributeTooltip = ({ active, payload, coordinate, viewBox }) => {
   if (!active || !payload?.length) return null;
@@ -122,7 +224,7 @@ const PercentLabel = ({ viewBox, value, color = '#A3AED0' }) => {
 };
 
 // === Component ===
-export default function ServiceAttributeChart({ surveyId, gender, participantType, selectedAttrs, onAvailableAttrs }) {
+export default function ServiceAttributeChart({ surveyId, gender, participantType, selectedAttrs, onAvailableAttrs, onSelectedChange }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState([]);
@@ -140,6 +242,7 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
     return () => ro.disconnect();
   }, []);
 
+  // fetch attributes
   useEffect(() => {
     let cancelled = false;
 
@@ -159,12 +262,6 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
         const json = await res.json();
 
         if (!cancelled && json.success) {
-          // available for dropdown
-          const avail = json.data?.availableAttributes || [];
-          setAvailableAttrs(avail);
-          onAvailableAttrs?.(avail);
-
-          // data for chart
           if (Array.isArray(json.data?.attributes)) {
             const mapped = json.data.attributes.map((a) => ({
               name: a.attributeName,
@@ -172,6 +269,10 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
               most: a.mostPercentage ?? 0,
             }));
             setData(mapped);
+
+            const avail = mapped.map(a => a.name);
+            setAvailableAttrs(avail);
+            onAvailableAttrs?.(avail);
           }
         }
       } catch (err) {
@@ -186,7 +287,7 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
   }, [surveyId, gender, participantType]);
 
   const dataForChart = useMemo(() => {
-    if (!selectedAttrs?.size) return [];
+    if (!selectedAttrs || selectedAttrs.size === 0) return data;
     return data.filter((d) => selectedAttrs.has(d.name));
   }, [data, selectedAttrs]);
 
@@ -198,7 +299,16 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
 
   return (
     <ChartCard
-      title="Service Attribute"
+      title={
+        <div className="flex justify-between items-center">
+          <span>Service Attribute</span>
+          <SelectedAttributesDropdown
+            allItems={availableAttrs}
+            selectedSet={selectedAttrs}
+            onChange={onSelectedChange}
+          />
+        </div>
+      }
       content={
         <div className="relative" ref={chartRef}>
           {loading ? (
