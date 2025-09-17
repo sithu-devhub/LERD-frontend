@@ -232,6 +232,25 @@ const PercentLabel = ({ viewBox, value, color = '#A3AED0' }) => {
   );
 };
 
+
+// === Loader skeleton for chart ===
+const ChartSkeleton = () => {
+  return (
+    <div className="animate-pulse p-6">
+      <div className="h-6 w-40 bg-gray-200 rounded mb-6"></div>
+      <div className="flex items-end space-x-4 h-48">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="flex-1 flex flex-col items-center">
+            <div className="w-8 bg-gray-300 rounded-t" style={{ height: `${40 + i * 20}px` }}></div>
+            <div className="h-4 w-12 bg-gray-200 rounded mt-2"></div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+
 // === Component ===
 export default function ServiceAttributeChart({ surveyId, gender, participantType, selectedAttrs, onAvailableAttrs, onSelectedChange }) {
   const [loading, setLoading] = useState(false);
@@ -283,7 +302,7 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
             setAvailableAttrs(avail);
             onAvailableAttrs?.(avail);
 
-            // ✅ Default to first 5 if nothing selected
+            // Default to first 5 if nothing selected
             if (!selectedAttrs || selectedAttrs.size === 0) {
               onSelectedChange?.(new Set(avail.slice(0, 5)));
             }
@@ -326,7 +345,7 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
       content={
         <div className="relative" ref={chartRef}>
           {loading ? (
-            <div className="text-gray-400 p-4">Loading...</div>
+            <ChartSkeleton />
           ) : error ? (
             <div className="p-4 text-red-500">{error}</div>
           ) : (
