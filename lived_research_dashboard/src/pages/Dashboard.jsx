@@ -398,7 +398,11 @@ export default function Dashboard() {
         />
 
         {/* Customer Satisfaction */}
-        <CustomerSatisfaction />
+        <CustomerSatisfaction
+          surveyId={"8dff523d-2a46-4ee3-8017-614af3813b32"}
+          gender={filters.gender}
+          participantType={filters.participantType}
+        />
 
         {/* Customer Satisfaction Trend */}
         <CustomerSatisfactionTrend />
