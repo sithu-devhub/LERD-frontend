@@ -48,21 +48,14 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange }) => {
 
   const toggle = (name) => {
     const next = new Set(selectedSet);
-
-    if (next.has(name)) {
-      next.delete(name);
-    } else {
-      // ✅ Enforce max 5
-      if (next.size >= 5) {
-        return; // block more than 5
-      }
-      next.add(name);
-    }
+    if (next.has(name)) next.delete(name);
+    else next.add(name);
     onChange(next);
   };
 
+  const allChecked = selectedSet.size === allItems.length;
   const clearAll = () => onChange(new Set());
-  const selectFive = () => onChange(new Set(allItems.slice(0, 5))); // ✅ only first 5
+  const selectAll = () => onChange(new Set(allItems));
 
   return (
     <div ref={boxRef} className="relative inline-block">
@@ -86,24 +79,22 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange }) => {
           <div className="px-4 py-3 border-b border-[#E7ECF6] flex items-center justify-between">
             <span className="text-[15px] font-semibold text-[#2B3674]">Attributes</span>
             <button
-              onClick={selectedSet.size > 0 ? clearAll : selectFive}
+              onClick={allChecked ? clearAll : selectAll}
               className="text-[13px] font-medium text-[#3F11FF] hover:underline"
             >
-              {selectedSet.size > 0 ? "Clear all" : "Select 5"}
+              {allChecked ? "Clear all" : "Select all"}
             </button>
           </div>
           <div className="max-h-64 overflow-y-auto">
             {allItems.map((name, idx) => {
               const checked = selectedSet.has(name);
-              const disabled = !checked && selectedSet.size >= 5; // ✅ disable after 5
               return (
                 <button
                   key={name}
                   onClick={() => toggle(name)}
-                  disabled={disabled}
                   className={`w-full px-4 py-3 text-left flex items-center gap-3 text-[15px] text-[#2B3674] hover:bg-[#F6F8FF] ${
                     idx !== allItems.length - 1 ? "border-b border-[#EEF2FB]" : ""
-                  } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                  }`}
                 >
                   <CheckBoxIcon checked={checked} />
                   <span>{name}</span>
@@ -282,11 +273,6 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
             const avail = mapped.map(a => a.name);
             setAvailableAttrs(avail);
             onAvailableAttrs?.(avail);
-
-            // ✅ Default to first 5 if nothing selected
-            if (!selectedAttrs || selectedAttrs.size === 0) {
-              onSelectedChange?.(new Set(avail.slice(0, 5)));
-            }
           }
         }
       } catch (err) {
