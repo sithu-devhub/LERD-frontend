@@ -263,6 +263,9 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange, className
 /* ======= /dropdown ======= */
 
 export default function Dashboard() {
+  // ===== Reverse maps for UI =====
+  const genderReverseMap = { null: "All", 1: "Male", 2: "Female", 3: "Other" };
+  const clientReverseMap = { null: "All", 1: "Residents", 2: "Next of Kin" };
 
   // ===== DYNAMIC SERVICE NAME (ADDED) =====
   const { serviceId } = useParams();
@@ -318,12 +321,29 @@ export default function Dashboard() {
 
   // =======================================
 
+
+  
   // Filter bar state
-  const [filters, setFilters] = useState({
-    gender: 'All',
-    clientTypes: ['Residents'],
-    period: { month: 'Jan', year: new Date().getFullYear() }
+  const [filters, setFilters] = useState(() => {
+    const saved = localStorage.getItem("dashboardFilters");
+    return saved
+      ? JSON.parse(saved)
+      : {
+          gender: null,
+          participantType: null,
+          year: new Date().getFullYear(),
+          start: null,
+          end: null,
+        };
   });
+
+  // Persist filters
+  useEffect(() => {
+    localStorage.setItem("dashboardFilters", JSON.stringify(filters));
+  }, [filters]);
+
+
+
 
   // Measure card width
   const serviceCardRef = useRef(null);
@@ -338,14 +358,16 @@ export default function Dashboard() {
     return () => ro.disconnect();
   }, []);
 
-  const handleFilterChange = useCallback(({ gender, clientType, year, startMonth }) => {
-    setFilters(prev => ({
-      ...prev,
-      gender,
-      clientTypes: clientType === 'All' ? [] : [clientType],
-      period: { year, month: MONTHS[startMonth] }
-    }));
+  const handleFilterChange = useCallback(({ gender, participantType, year, start, end }) => {
+    setFilters({
+      gender,           
+      participantType,  
+      year,
+      start,
+      end,
+    });
   }, []);
+
 
   // Dropdown selections for Service Attribute
   const allServiceNames = serviceData.map(d => d.name);
@@ -369,7 +391,11 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-3 gap-6 mb-6">
         {/* Response */}
-        <ResponseChart />
+        <ResponseChart
+          surveyId={"8dff523d-2a46-4ee3-8017-614af3813b32"}
+          gender={filters.gender}
+          participantType={filters.participantType}
+        />
 
         {/* Customer Satisfaction */}
         <CustomerSatisfaction />
@@ -491,15 +517,16 @@ export default function Dashboard() {
 
       {/* Filter bar */}
       <div className="mb-6">
-        <DashboardFilters
-          value={{
-            gender: filters.gender,
-            clientType: filters.clientTypes[0] || 'All',
-            year: filters.period.year,
-            startMonth: MONTHS.indexOf(filters.period.month),
-          }}
-          onChange={handleFilterChange}
-        />
+      <DashboardFilters
+        value={{
+          gender: genderReverseMap[filters.gender],
+          clientType: clientReverseMap[filters.participantType],
+          year: filters.year,
+          startMonth: filters.start,
+          endMonth: filters.end,
+        }}
+        onChange={handleFilterChange}
+      />
       </div>
     </div>
   );

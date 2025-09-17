@@ -1,9 +1,14 @@
 // authService.js
-
 import http, { loginHttp } from './http';
 
-// Use the loginHttp instance for login
+// Login
 export const login = (username, password) =>
-  loginHttp.post('/auth/login', { username, password });
+  loginHttp.post('/Auth/login', { username, password });  
 
-// Use default http for other APIs
+// Refresh Access Token
+export const refreshToken = (refreshToken) =>
+  http.post('/Auth/refresh', { refreshToken }); 
+
+// Logout
+export const logout = () =>
+  http.post('/Auth/logout');

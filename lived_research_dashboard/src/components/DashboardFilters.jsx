@@ -217,9 +217,18 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
   // notify parent
   useEffect(() => {
     if (typeof onChange === "function") {
-      onChange({ gender, clientType, year, ...range });
+      const genderMap = { All: null, Male: 1, Female: 2, Other: 3 };
+      const clientTypeMap = { All: null, Residents: 1, "Next of Kin": 2 };
+
+      onChange({
+        gender: genderMap[gender],
+        participantType: clientTypeMap[clientType],
+        year,
+        ...range,
+      });
     }
   }, [gender, clientType, year, range, onChange]);
+
 
   const periodLabel = useMemo(() => {
     const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { login } from '../api/authService'; // ✅ use the login service
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -25,18 +26,9 @@ const Login = () => {
     setError('');
 
     try {
-      // === REAL API LOGIN ===
-      const res = await fetch('/api/Auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      if (!res.ok) {
-        throw new Error('Invalid username or password');
-      }
-
-      const data = await res.json();
+      // === REAL API LOGIN via authService ===
+      const res = await login(formData.username, formData.password);
+      const data = res.data;
 
       if (data.accessToken) {
         // Save tokens + user (with dummy position if not provided)
@@ -56,7 +48,7 @@ const Login = () => {
         throw new Error('Login failed. No token returned.');
       }
     } catch (err) {
-      setError(err.message || 'Login failed.');
+      setError(err.response?.data?.message || err.message || 'Login failed.');
     } finally {
       setIsLoading(false);
     }
@@ -123,12 +115,6 @@ const Login = () => {
               {isLoading ? 'Logging in...' : 'Login'}
             </button>
           </form>
-
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-sm text-gray-600 font-semibold mb-2">Demo Credentials:</p>
-            <p className="text-sm text-gray-500">Username: <span className="font-mono font-semibold">admin</span></p>
-            <p className="text-sm text-gray-500">Password: <span className="font-mono font-semibold">1234</span></p>
-          </div>
         </div>
       </div>
     </div>

@@ -34,7 +34,7 @@ const TwoLineTick = ({ x, y, payload }) => {
 };
 /* === /tick === */
 
-export default function ResponseChart() {
+export default function ResponseChart({ surveyId, gender, participantType }) {
   const [responseData, setResponseData] = useState([]);
   const [responseTotals, setResponseTotals] = useState({
     totalParticipants: 0,
@@ -60,7 +60,18 @@ export default function ResponseChart() {
       try {
         setLoading(true);
         setError("");
-        const url = `${import.meta.env.VITE_API_BASE_URL}/charts/response?surveyId=8dff523d-2a46-4ee3-8017-614af3813b32&gender=1&participantType=2`;
+
+        const baseUrl = `${import.meta.env.VITE_API_BASE_URL}/charts/response`;
+        const params = new URLSearchParams({
+          surveyId: surveyId || "8dff523d-2a46-4ee3-8017-614af3813b32", // fallback for now
+        });
+
+        // only add filters if user selected them
+        if (gender) params.append("gender", gender);
+        if (participantType) params.append("participantType", participantType);
+
+        const url = `${baseUrl}?${params.toString()}`;
+
         const res = await fetch(url, { headers: { Accept: "application/json" } });
         if (!res.ok) throw new Error(`API error ${res.status}`);
         const json = await res.json();
@@ -90,7 +101,8 @@ export default function ResponseChart() {
     return () => {
       aborted = true;
     };
-  }, []);
+  }, [gender, participantType]);
+
 
   let displayData;
   if (showAll) {
