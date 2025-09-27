@@ -133,7 +133,7 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
   const currentMonth = now.getMonth(); // 0-based
 
   const handleMonthClick = (idx) => {
-    if (year === currentYear && idx > currentMonth) return; // 🚫 block future months
+    if (year === currentYear && idx > currentMonth) return; // block future months
 
     if (start === null || (start !== null && end !== null)) {
       onSetRange({ start: idx, end: null });
