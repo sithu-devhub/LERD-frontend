@@ -1,10 +1,14 @@
+// components/SideBar.jsx
+
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import '../styles/sidebar.css';
 import { MdHome, MdShoppingCart, MdBarChart } from "react-icons/md";
 import { FaUsers } from "react-icons/fa";
-import AuthorisationIcon from "../icons/AuthorisationIcon";
+// import AuthorisationIcon from "../icons/AuthorisationIcon";
 import LogoutIcon from "../icons/LogoutIcon";
+import http from '../api/http';               // axios instance with interceptor
+import { logout as logoutApi } from '../api/authService'; // logout service
 
 export default function SideBar() {
   const navigate = useNavigate();
@@ -30,38 +34,47 @@ export default function SideBar() {
       setUser(JSON.parse(savedUser));
     }
 
-    // Optionally validate token with /me
+    // Validate token and fetch current user info
     async function validateToken() {
       try {
-        const token = localStorage.getItem("accessToken");
-        if (!token) return;
-        const res = await fetch("/api/Auth/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) {
-          // invalid token → logout
+        const res = await http.get("/Auth/me"); // axios with auto-refresh
+        console.log("🔎 /Auth/me response:", res.data); // Debug log
+
+        if (res?.data?.userId) {
+          // Merge with local user data
+          const localUser = JSON.parse(localStorage.getItem("user")) || {};
+          const updatedUser = {
+            ...localUser,
+            userId: res.data.userId,
+            username: res.data.username,
+          };
+
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+          setUser(updatedUser);
+
+          console.log("✅ Updated user stored in localStorage:", updatedUser); // Debug log
+        } else {
           handleLogout();
         }
       } catch (e) {
-        console.warn("Token validation failed:", e);
+        console.warn("❌ Token validation failed:", e);
+        handleLogout();
       }
     }
-
     validateToken();
   }, []);
-
 
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', Icon: MdHome },
     { name: 'Service Type', path: '/service', Icon: MdShoppingCart },
     { name: 'Region', path: '/region', Icon: MdBarChart },
-    { name: 'Authorisation Management', path: '/auth', Icon: AuthorisationIcon },
+    // { name: 'Authorisation Management', path: '/auth', Icon: AuthorisationIcon },
     { name: 'Log out', action: 'logout', Icon: LogoutIcon },
   ];
 
   const handleLogout = async () => {
     try {
-      await fetch("/api/Auth/logout", { method: "POST" });
+      await logoutApi(); // call /api/Auth/logout
     } catch (e) {
       console.warn("Logout request failed:", e);
     } finally {
@@ -134,10 +147,11 @@ export default function SideBar() {
             <p className="text-xs text-gray-500">
               {user?.position || "Position"}
             </p>
+            {/* Optionally show username for debug */}
+            <p className="text-xs text-gray-400">
+              {user?.username ? `@${user.username}` : ""}
+            </p>
           </div>
-
-
-
         )}
       </div>
 

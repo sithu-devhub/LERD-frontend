@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { login } from '../api/authService'; // ✅ use the login service
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -25,18 +26,9 @@ const Login = () => {
     setError('');
 
     try {
-      // === REAL API LOGIN ===
-      const res = await fetch('/api/Auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      });
-
-      if (!res.ok) {
-        throw new Error('Invalid username or password');
-      }
-
-      const data = await res.json();
+      // === REAL API LOGIN via authService ===
+      const res = await login(formData.username, formData.password);
+      const data = res.data;
 
       if (data.accessToken) {
         // Save tokens + user (with dummy position if not provided)
@@ -56,7 +48,7 @@ const Login = () => {
         throw new Error('Login failed. No token returned.');
       }
     } catch (err) {
-      setError(err.message || 'Login failed.');
+      setError(err.response?.data?.message || err.message || 'Login failed.');
     } finally {
       setIsLoading(false);
     }
@@ -74,12 +66,7 @@ const Login = () => {
           </p>
         </div>
         <div className="flex items-center">
-          <div className="bg-yellow-400 px-4 py-2 rounded flex items-center">
-            <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center mr-3">
-              <span className="text-yellow-600 font-bold text-sm">CU</span>
-            </div>
-            <span className="text-black font-bold text-lg">Curtin University</span>
-          </div>
+          <img src="/curtin_icon.png" alt="Curtin University" className="h-50 md:h-60 opacity-100 object-contain" />
         </div>
       </div>
 
@@ -123,11 +110,9 @@ const Login = () => {
               {isLoading ? 'Logging in...' : 'Login'}
             </button>
           </form>
-
-          <div className="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-sm text-gray-600 font-semibold mb-2">Demo Credentials:</p>
-            <p className="text-sm text-gray-500">Username: <span className="font-mono font-semibold">admin</span></p>
-            <p className="text-sm text-gray-500">Password: <span className="font-mono font-semibold">1234</span></p>
+          {/* Team logo under the form */}
+          <div className="flex justify-center mt-8 select-none pointer-events-none">
+            <img src="/team_icon.PNG" alt="Lived Experience Team" className="h-20 md:h-24 opacity-90 object-contain" />
           </div>
         </div>
       </div>

@@ -5,7 +5,8 @@ import ChartCard from "../components/ChartCard";
 
 export default function NpsChart({
   surveyId = "8dff523d-2a46-4ee3-8017-614af3813b32",
-  gender = 1,
+  gender = null,
+  participantType = null,
   min = -100,
   max = 100,
   size = 220,
@@ -23,9 +24,12 @@ export default function NpsChart({
         setLoading(true);
         setError("");
 
-        const url = `${
-          import.meta.env.VITE_API_BASE_URL
-        }/charts/nps?surveyId=${surveyId}&gender=${gender}`;
+        const baseUrl = `${import.meta.env.VITE_API_BASE_URL}/charts/nps`;
+        const params = new URLSearchParams({ surveyId });
+        if (gender != null) params.append("gender", gender);
+        if (participantType != null) params.append("participantType", participantType);
+
+        const url = `${baseUrl}?${params.toString()}`;
         const res = await fetch(url, { headers: { Accept: "application/json" } });
 
         if (!res.ok) throw new Error(`API error ${res.status}`);
@@ -45,7 +49,7 @@ export default function NpsChart({
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender]);
+  }, [surveyId, gender, participantType]);
 
   // normalize score
   const t = useMemo(() => {
