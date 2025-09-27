@@ -11,7 +11,7 @@ import RegionPage from "./pages/RegionPage";
 import AuthorizationManagementPage from "./pages/AuthorizationManagementPage.jsx";
 
 function ProtectedRoute({ children }) {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('accessToken');
   return token ? children : <Navigate to="/login" replace />;
 }
 
