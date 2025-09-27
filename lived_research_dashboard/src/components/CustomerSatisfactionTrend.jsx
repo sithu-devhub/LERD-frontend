@@ -69,8 +69,20 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
         if (participantType != null) params.append("participantType", participantType);
 
         const url = `${baseUrl}?${params.toString()}`;
+
+        // ---- CONST TO SIMULATE ERROR -----
+        const SIMULATE_ERROR = null; // "500", "401", null for no error
+        // ---- CONST TO SIMULATE ERROR -----
+
         const res = await fetch(url, { headers: { Accept: "application/json" } });
-        if (!res.ok) throw new Error(`Failed to fetch trend: ${res.status}`);
+        
+        // ---- SIMULATE ERROR -----
+        if (SIMULATE_ERROR) {
+          throw new Error(`Error ${SIMULATE_ERROR}`);
+        }
+        // ---- SIMULATE ERROR -----
+
+        if (!res.ok) throw new Error(`API error ${res.status}`);
         const json = await res.json();
 
         if (!cancelled && json.success && Array.isArray(json.data?.years)) {
