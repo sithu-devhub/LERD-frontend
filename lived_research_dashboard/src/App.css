@@ -33,11 +33,16 @@
   color: #61dafb;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+@keyframes bounce-slow {
+  0%, 100% {
+    transform: translateY(0);
   }
-  to {
-    transform: rotate(360deg);
+  50% {
+    transform: translateY(-4px);
   }
 }
+
+.animate-bounce-slow {
+  animation: bounce-slow 2s infinite;
+}
+
