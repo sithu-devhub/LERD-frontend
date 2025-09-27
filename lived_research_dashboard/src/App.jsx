@@ -11,8 +11,8 @@ import RegionPage from "./pages/RegionPage";
 import AuthorizationManagementPage from "./pages/AuthorizationManagementPage.jsx";
 
 function ProtectedRoute({ children }) {
-  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  const token = localStorage.getItem('token');
+  return token ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {
@@ -31,7 +31,22 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          <Route path="/dashboard" element={<Dashboard />} />
+          {/* dynamic dashboard */}
+          <Route path="/dashboard/:serviceId" element={<Dashboard />} />
+
+          {/* fallback: plain /dashboard redirects to last or default */}
+          <Route
+            path="/dashboard"
+            element={
+              <Navigate
+                to={`/dashboard/${encodeURIComponent(
+                  localStorage.getItem("lastServiceId") || "retirement_village"
+                )}`}
+                replace
+              />
+            }
+          />
+
           <Route path="/service" element={<ServiceTypePage />} />
           <Route path="/region" element={<RegionPage />} /> 
           <Route path="/auth" element={<AuthorizationManagementPage />} />

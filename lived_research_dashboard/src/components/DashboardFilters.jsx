@@ -1,3 +1,4 @@
+// src/components/DashboardFilters.jsx
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { MdBarChart } from "react-icons/md";
@@ -72,7 +73,6 @@ function MenuItem({ checked, children, onClick }) {
   );
 }
 
-// Menus accept a ref from parent so we can measure/scroll into view
 function GenderMenu({ value, onChange, onClose, menuRef }) {
   useClickOutside(menuRef, onClose);
   const options = ["All", "Male", "Female", "Other"];
@@ -105,13 +105,18 @@ function ClientTypeMenu({ value, onChange, onClose, menuRef }) {
   );
 }
 
-function MonthButton({ label, active, onClick }) {
+function MonthButton({ label, active, onClick, disabled }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       className={[
         "rounded-xl px-3 py-2 text-sm transition",
-        active ? "bg-[#bfc8dd] text-white" : "bg-slate-100 text-black hover:bg-slate-200",
+        active
+          ? "bg-[#bfc8dd] text-white"
+          : disabled
+          ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+          : "bg-slate-100 text-black hover:bg-slate-200",
       ].join(" ")}
     >
       {label}
@@ -123,8 +128,13 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
   useClickOutside(menuRef, onClose);
 
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth(); // 0-based
 
   const handleMonthClick = (idx) => {
+    if (year === currentYear && idx > currentMonth) return; // 🚫 block future months
+
     if (start === null || (start !== null && end !== null)) {
       onSetRange({ start: idx, end: null });
     } else if (start !== null && end === null) {
@@ -144,7 +154,12 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
         </button>
         <div className="text-sm font-semibold text-black">{year}</div>
         <button
-          className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-sm text-black hover:bg-slate-50"
+          disabled={year >= currentYear}
+          className={`inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-sm ${
+            year >= currentYear
+              ? "text-slate-300 cursor-not-allowed"
+              : "text-black hover:bg-slate-50"
+          }`}
           onClick={() => onChangeYear(year + 1)}
         >
           {year + 1} <ChevronRight className="h-4 w-4" />
@@ -153,6 +168,7 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
 
       <div className="grid grid-cols-3 gap-2 p-1">
         {months.map((m, idx) => {
+          const disabled = year === currentYear && idx > currentMonth;
           const isActive =
             (start !== null && idx === start) ||
             (end !== null && idx === end) ||
@@ -163,6 +179,7 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
               label={m}
               active={isActive}
               onClick={() => handleMonthClick(idx)}
+              disabled={disabled}
             />
           );
         })}
@@ -197,27 +214,30 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
     end: value?.endMonth ?? null,
   });
 
-  // which menu is open: 'gender' | 'client' | 'period' | null
   const [open, setOpen] = useState(null);
 
-  // chip refs (optional)
   const genderChipRef = useRef(null);
   const clientChipRef = useRef(null);
   const periodChipRef = useRef(null);
 
-  // menu card refs (used to auto-scroll the dropdown into view)
   const genderMenuRef = useRef(null);
   const clientMenuRef = useRef(null);
   const periodMenuRef = useRef(null);
 
-  // close when clicking outside the whole filter area
   const rootRef = useRef(null);
   useClickOutside(rootRef, () => setOpen(null));
 
-  // notify parent
   useEffect(() => {
     if (typeof onChange === "function") {
-      onChange({ gender, clientType, year, ...range });
+      const genderMap = { All: null, Male: 1, Female: 2, Other: 3 };
+      const clientTypeMap = { All: null, Residents: 1, "Next of Kin": 2 };
+
+      onChange({
+        gender: genderMap[gender],
+        participantType: clientTypeMap[clientType],
+        year,
+        ...range,
+      });
     }
   }, [gender, clientType, year, range, onChange]);
 
@@ -231,15 +251,12 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
     return "Select period";
   }, [range, year]);
 
-  // Toggle/switch menus + (optionally) scroll chip into view
   const handleOpen = (key) => {
     setOpen((prev) => (prev === key ? null : key));
   };
 
-  // When a menu is open, make sure the dropdown itself is fully visible
   useEffect(() => {
     if (!open) return;
-
     const map = {
       gender: genderMenuRef.current,
       client: clientMenuRef.current,
@@ -247,25 +264,18 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
     };
     const el = map[open];
     if (!el) return;
-
-    // Wait a frame so layout is ready
     const id = requestAnimationFrame(() => {
       const rect = el.getBoundingClientRect();
       const bottomPad = 16;
       const topPad = 16;
-
-      // How much the bottom overflows past viewport?
       const overflowBottom = rect.bottom - (window.innerHeight - bottomPad);
-      // If the top is above the viewport by more than topPad
       const overflowTop = topPad - rect.top;
-
       if (overflowBottom > 0) {
         window.scrollBy({ top: overflowBottom, behavior: "smooth" });
       } else if (overflowTop > 0) {
         window.scrollBy({ top: -overflowTop, behavior: "smooth" });
       }
     });
-
     return () => cancelAnimationFrame(id);
   }, [open]);
 

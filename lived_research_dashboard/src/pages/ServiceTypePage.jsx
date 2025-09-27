@@ -1,6 +1,7 @@
 // ServiceTypePage.jsx
 
 import React from "react";
+import { useNavigate } from "react-router-dom"; // ADDED
 
 /**
  * Reusable tile that behaves like a radio option
@@ -91,6 +92,8 @@ function ServiceTile({
 }
 
 export default function ServiceType() {
+  const navigate = useNavigate(); // ADDED
+
   const options = [
     { value: "retirement_village", label: "Retirement Village" },
     {
@@ -219,9 +222,13 @@ export default function ServiceType() {
           type="button"
           className="px-5 py-2 rounded-xl text-sm font-semibold text-white bg-[#3F11FF] hover:opacity-90 shadow"
           onClick={() => {
-            // handle confirm / navigation
-            // e.g., navigate(`/dashboard?service=${selected}`)
             console.log("Selected:", selected);
+            if (selected) {
+              // Save last choice for redirect fallback
+              localStorage.setItem("lastServiceId", selected);
+              // Navigate to dashboard with ID
+              navigate(`/dashboard/${encodeURIComponent(selected)}`);
+            }
           }}
         >
           Continue
