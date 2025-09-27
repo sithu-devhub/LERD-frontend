@@ -46,7 +46,19 @@ export default function CustomerSatisfaction({ surveyId, gender, participantType
         if (participantType != null) params.append("participantType", participantType);
 
         const url = `${baseUrl}?${params.toString()}`;
+
+        // ---- CONST TO SIMULATE ERROR -----
+        const SIMULATE_ERROR = null; // "500", "401", null for no error
+        // ---- CONST TO SIMULATE ERROR -----
+
         const res = await fetch(url, { headers: { Accept: "application/json" } });
+        
+        // ---- SIMULATE ERROR -----
+        if (SIMULATE_ERROR) {
+          throw new Error(`Error ${SIMULATE_ERROR}`);
+        }
+        // ---- SIMULATE ERROR -----
+
         if (!res.ok) throw new Error(`API error ${res.status}`);
         const json = await res.json();
 
