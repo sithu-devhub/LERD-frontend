@@ -60,7 +60,7 @@ const VillageListModal = ({ visible, onClose, villages }) => {
           {villages.map((v) => (
             <li
               key={v}
-              className="px-3 py-2 rounded-lg bg-gray-50 text-gray-700 hover:bg-indigo-50 mb-2"
+              className="px-3 py-2 rounded-lg bg-gray-50 text-gray-700 mb-2"
             >
               {v}
             </li>
