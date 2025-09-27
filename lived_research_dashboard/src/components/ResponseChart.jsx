@@ -9,6 +9,7 @@ import {
   LabelList,
   ResponsiveContainer,
 } from "recharts";
+import ErrorPlaceholder from "./ErrorPlaceholder";
 
 /* === Custom Tick for two-line names === */
 const TwoLineTick = ({ x, y, payload }) => {
@@ -104,6 +105,10 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
           surveyId:
             surveyId || "8dff523d-2a46-4ee3-8017-614af3813b32", // fallback
         });
+        // const params = new URLSearchParams({
+        //   surveyId: "invalid-id-123" // test code to check 400 error
+        // });
+
 
         if (gender) params.append("gender", gender);
         if (participantType) params.append("participantType", participantType);
@@ -121,7 +126,7 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
           });
 
           if (Array.isArray(json.data.regions)) {
-            // ✅ Sort villages ascending by name
+            // Sort villages ascending by name
             const sorted = json.data.regions
               .map((r) => ({
                 name: r.villageName || "Unknown",
@@ -182,7 +187,12 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
             </div>
           )}
 
-          {error && <div className="text-red-500">{error}</div>}
+          {error && (
+            <ErrorPlaceholder
+              status={error}
+              onRetry={() => window.location.reload()}
+            />
+          )}
 
           {!loading && !error && (
             <div ref={chartRef}>

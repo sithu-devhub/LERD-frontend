@@ -5,6 +5,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine
 } from "recharts";
 import ChartCard from "./ChartCard";
+import ErrorPlaceholder from "./ErrorPlaceholder";
 
 // === small helper for click-away ===
 function useClickAway(ref, onAway) {
@@ -347,7 +348,10 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
           {loading ? (
             <ChartSkeleton />
           ) : error ? (
-            <div className="p-4 text-red-500">{error}</div>
+            <ErrorPlaceholder
+              status={error}
+              onRetry={() => window.location.reload()}
+            />
           ) : (
             <>
               <ResponsiveContainer width="100%" height={260}>

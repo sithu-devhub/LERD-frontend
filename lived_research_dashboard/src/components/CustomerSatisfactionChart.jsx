@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import ChartCard from "../components/ChartCard";
+import ErrorPlaceholder from "./ErrorPlaceholder";
 
 const pieColors = ["#3F11FF", "#6AD2FF", "#E0E0E0"];
 
@@ -79,9 +80,13 @@ export default function CustomerSatisfaction({ surveyId, gender, participantType
       title="Customer Satisfaction"
       content={
         <div className="flex flex-col items-center">
-          {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
-          {loading ? (
-            /* ... your loader JSX unchanged ... */
+          {error ? (
+            <ErrorPlaceholder
+              status={error}
+              onRetry={() => window.location.reload()}
+            />
+          ) : loading ? (
+            /* Loader */
             <div className="flex flex-col items-center justify-center w-full py-8">
               <div className="relative w-32 h-32">
                 <div className="absolute inset-0 rounded-full border-4 border-[#E5E7EB]"></div>

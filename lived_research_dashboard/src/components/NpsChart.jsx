@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { PieChart, Pie, Cell, Customized } from "recharts";
 import ChartCard from "../components/ChartCard";
+import ErrorPlaceholder from "./ErrorPlaceholder";
 
 export default function NpsChart({
   surveyId = "8dff523d-2a46-4ee3-8017-614af3813b32",
@@ -106,9 +107,11 @@ export default function NpsChart({
         <div className="w-[180px] h-[100px] rounded-t-full bg-gradient-to-t from-gray-300 to-gray-100 animate-pulse"></div>
     </div>
     ) : error ? (
-
-        <div className="p-4 text-red-500">{error}</div>
-      ) : (
+      <ErrorPlaceholder
+        status={error}
+        onRetry={() => window.location.reload()}
+      />
+    ) : (
         <div className="flex flex-col items-center">
           <div className="text-3xl font-bold text-[#2B3674] leading-none mt-6 mb-2">
             {displayed}
