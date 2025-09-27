@@ -1,5 +1,4 @@
 // App.jsx
-
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
@@ -9,10 +8,28 @@ import ServiceTypePage from "./pages/ServiceTypePage";
 import AppLayout from "./pages/AppLayout";
 import RegionPage from "./pages/RegionPage";
 import AuthorizationManagementPage from "./pages/AuthorizationManagementPage.jsx";
+import { initAuth } from "./api/authUtils";   // import
 
 function ProtectedRoute({ children }) {
-  const token = localStorage.getItem('accessToken');
-  return token ? children : <Navigate to="/login" replace />;
+  const [isReady, setIsReady] = React.useState(false);
+  const [isAuthed, setIsAuthed] = React.useState(false);
+
+  React.useEffect(() => {
+    let mounted = true;
+    initAuth().then(ok => {
+      if (mounted) {
+        setIsAuthed(ok);
+        setIsReady(true);
+      }
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  if (!isReady) {
+    return <div>Loading...</div>; // spinner/loader if you want
+  }
+
+  return isAuthed ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {
@@ -31,10 +48,8 @@ export default function App() {
             </ProtectedRoute>
           }
         >
-          {/* dynamic dashboard */}
           <Route path="/dashboard/:serviceId" element={<Dashboard />} />
 
-          {/* fallback: plain /dashboard redirects to last or default */}
           <Route
             path="/dashboard"
             element={
@@ -48,7 +63,7 @@ export default function App() {
           />
 
           <Route path="/service" element={<ServiceTypePage />} />
-          <Route path="/region" element={<RegionPage />} /> 
+          <Route path="/region" element={<RegionPage />} />
           <Route path="/auth" element={<AuthorizationManagementPage />} />
         </Route>
       </Routes>
