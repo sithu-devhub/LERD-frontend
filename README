@@ -1,0 +1,8 @@
+Steps to run the UI in local env;
+
+npm install react-router-dom
+npm install recharts
+
+cd dashboard
+npm start
+Open this link in browser >>  http://localhost:3000/dashboard
