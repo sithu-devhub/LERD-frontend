@@ -65,9 +65,25 @@ export default function Dashboard() {
 
   return (
     <div className="p-0">
-      <h1 className="text-2xl font-semibold text-gray-800 mb-6">
-        Dashboard – {serviceLoading ? 'Loading…' : serviceName}
-      </h1>
+      {/* Header section with centered title + right image */}
+      <div className="relative mb-6 flex items-center">
+        {/* Centered heading */}
+        <h1 className="absolute left-1/2 transform -translate-x-1/2 text-2xl font-semibold text-gray-800">
+          Dashboard – {serviceLoading ? 'Loading…' : serviceName}
+        </h1>
+
+        {/* Right image */}
+        <div className="ml-auto">
+          <img
+            src="/team_icon.PNG"
+            alt="Logo"
+            className="w-32 h-16 object-contain"
+          />
+        </div>
+      </div>
+
+
+
       {serviceError && <div className="text-sm text-red-600 mb-4">{serviceError}</div>}
 
       <div className="grid grid-cols-3 gap-6 mb-6">
