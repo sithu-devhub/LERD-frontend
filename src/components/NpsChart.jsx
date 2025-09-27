@@ -1,6 +1,6 @@
 // src/components/NpsChart.jsx
 import React, { useState, useEffect, useMemo } from "react";
-import { PieChart, Pie, Cell, Customized } from "recharts";
+import { PieChart, Pie, Cell } from "recharts";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
 
@@ -32,21 +32,13 @@ export default function NpsChart({
 
         const url = `${baseUrl}?${params.toString()}`;
 
-        // ---- CONST TO SIMULATE ERROR -----
-        const SIMULATE_ERROR = null; // "500", "401", null for no error
-        // ---- CONST TO SIMULATE ERROR -----
-
+        const SIMULATE_ERROR = null;
         const res = await fetch(url, { headers: { Accept: "application/json" } });
-        
-        // ---- SIMULATE ERROR -----
-        if (SIMULATE_ERROR) {
-          throw new Error(`Error ${SIMULATE_ERROR}`);
-        }
-        // ---- SIMULATE ERROR -----
 
+        if (SIMULATE_ERROR) throw new Error(`Error ${SIMULATE_ERROR}`);
         if (!res.ok) throw new Error(`API error ${res.status}`);
-        const json = await res.json();
 
+        const json = await res.json();
         if (!cancelled && json.success) {
           setScore(json.data?.npsScore ?? 0);
         }
@@ -63,7 +55,6 @@ export default function NpsChart({
     };
   }, [surveyId, gender, participantType]);
 
-  // normalize score
   const t = useMemo(() => {
     const v = Math.max(min, Math.min(max, score));
     return (v - min) / (max - min);
@@ -72,10 +63,10 @@ export default function NpsChart({
   const progressPct = t * 100;
   const displayed = Math.round(score);
 
-  const width = size;
-  const height = Math.round(size * 0.6);
+  const width = size + 100;
+  const height = Math.round(size * 0.75);
   const cx = width / 2;
-  const cy = Math.round(height * 0.97);
+  const cy = Math.round(height * 0.75);
   const outer = Math.min(cx, cy) - 4;
   const inner = outer - thickness;
 
@@ -87,49 +78,49 @@ export default function NpsChart({
   const EndLabels = () => (
     <>
       <text
-        x={cx - (inner + outer) / 2}
-        y={cy + 18}
+        x={cx - outer + 15}  // shift right
+        y={height - 1}
         textAnchor="middle"
-        fill="#A3AED0"
-        fontSize="12"
+        fill="#A3AED0"  
+        fontSize="14"
+        fontWeight="600"
       >
         -100
       </text>
+
       <text
-        x={cx + (inner + outer) / 2}
-        y={cy + 18}
+        x={cx + outer - 12}  // shift left
+        y={height - 1}
         textAnchor="middle"
-        fill="#A3AED0"
-        fontSize="12"
+        fill="#A3AED0"  
+        fontSize="14"
+        fontWeight="600"
       >
         +100
       </text>
     </>
   );
 
+
   return (
     <ChartCard title="Net Promoter Score">
-    {loading ? (
-    // ==== Skeleton Loader ====
-    <div className="flex flex-col items-center justify-center gap-6 h-[200px]">
-        {/* fake score number */}
-        <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
-        {/* fake semi-circle (upside down) */}
-        <div className="w-[180px] h-[100px] rounded-t-full bg-gradient-to-t from-gray-300 to-gray-100 animate-pulse"></div>
-    </div>
-    ) : error ? (
-      <ErrorPlaceholder
-        status={error}
-        onRetry={() => window.location.reload()}
-      />
-    ) : (
+      {loading ? (
+        <div className="flex flex-col items-center justify-center gap-6 h-[200px]">
+          <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+          <div className="w-[180px] h-[100px] rounded-t-full bg-gradient-to-t from-gray-300 to-gray-100 animate-pulse"></div>
+        </div>
+      ) : error ? (
+        <ErrorPlaceholder
+          status={error}
+          onRetry={() => window.location.reload()}
+        />
+      ) : (
         <div className="flex flex-col items-center">
           <div className="text-3xl font-bold text-[#2B3674] leading-none mt-6 mb-2">
             {displayed}
           </div>
 
           <PieChart width={width} height={height}>
-            {/* Background track */}
             <Pie
               data={[{ name: "track", value: 100 }]}
               dataKey="value"
@@ -142,10 +133,7 @@ export default function NpsChart({
               stroke="none"
               fill="#EEF2FF"
               isAnimationActive={false}
-              paddingAngle={0}
             />
-
-            {/* Progress arc */}
             <Pie
               data={[
                 { name: "progress", value: progressPct, fill: "#3F11FF" },
@@ -159,13 +147,10 @@ export default function NpsChart({
               innerRadius={inner}
               outerRadius={outer}
               isAnimationActive={false}
-              paddingAngle={0}
             >
               <Cell fill="#3F11FF" />
               <Cell fill="transparent" />
             </Pie>
-
-            {/* Tick */}
             <Pie
               data={[
                 { name: "done", value: doneWithoutTick, fill: "transparent" },
@@ -180,10 +165,9 @@ export default function NpsChart({
               innerRadius={inner - 8}
               outerRadius={outer + 8}
               isAnimationActive={false}
-              paddingAngle={0}
             />
-
-            <Customized component={<EndLabels />} />
+            {/* Render labels directly instead of Customized */}
+            <EndLabels />
           </PieChart>
         </div>
       )}
