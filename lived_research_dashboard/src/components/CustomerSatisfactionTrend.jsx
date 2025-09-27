@@ -9,6 +9,7 @@ import {
   Tooltip,
 } from "recharts";
 import ChartCard from "../components/ChartCard";
+import ErrorPlaceholder from "./ErrorPlaceholder";
 
 const TrendTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
@@ -124,8 +125,10 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
             </div>
           </div>
         ) : error ? (
-
-          <div className="p-4 text-red-500">{error}</div>
+          <ErrorPlaceholder
+            status={error}
+            onRetry={() => window.location.reload()}
+          />
         ) : (
           <div className="trend-chart relative">
             <ResponsiveContainer width="100%" height={250}>

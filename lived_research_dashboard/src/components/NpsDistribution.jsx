@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import ChartCard from "../components/ChartCard";
+import ErrorPlaceholder from "./ErrorPlaceholder";
 
 export default function NpsDistribution({ surveyId, gender, participantType }) {
   const [loading, setLoading] = useState(false);
@@ -65,7 +66,10 @@ export default function NpsDistribution({ surveyId, gender, participantType }) {
             ))}
           </div>
         ) : error ? (
-          <div className="p-4 text-red-500">{error}</div>
+          <ErrorPlaceholder
+            status={error}
+            onRetry={() => window.location.reload()}
+          />
         ) : (
           <div className="space-y-3">
             {distribution.map((item, i) => (
