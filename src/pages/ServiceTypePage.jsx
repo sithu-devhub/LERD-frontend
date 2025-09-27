@@ -121,9 +121,12 @@ export default function ServiceType() {
 
   return (
     <div className="p-0">
-      <h1 className="text-xl md:text-2xl font-semibold text-[#2B3674] mb-2">
-        Service
-      </h1>
+      <div className="flex justify-center items-center mb-6">
+        <h1 className="text-2xl font-semibold text-gray-800">
+          Service
+        </h1>
+      </div>
+
 
       <div className="text-sm text-[#8FA0C6] mb-5">
         Select one service type:
