@@ -50,7 +50,7 @@ const TrendLegendBelow = () => (
   </div>
 );
 
-export default function CustomerSatisfactionTrend({ surveyId, gender, participantType, period }) { // ✅ added period
+export default function CustomerSatisfactionTrend({ surveyId, gender, participantType, period }) {
   const [satisfactionTrend, setSatisfactionTrend] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -67,22 +67,13 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
 
         if (gender != null) params.append("gender", gender);
         if (participantType != null) params.append("participantType", participantType);
-        if (period != null) params.append("period", period); // ✅ added period
+        if (period != null) params.append("period", period);
 
         const url = `${baseUrl}?${params.toString()}`;
-
-        // ---- CONST TO SIMULATE ERROR -----
-        const SIMULATE_ERROR = null; // "500", "401", null for no error
-        // ---- CONST TO SIMULATE ERROR -----
+        const SIMULATE_ERROR = null;
 
         const res = await fetch(url, { headers: { Accept: "application/json" } });
-        
-        // ---- SIMULATE ERROR -----
-        if (SIMULATE_ERROR) {
-          throw new Error(`Error ${SIMULATE_ERROR}`);
-        }
-        // ---- SIMULATE ERROR -----
-
+        if (SIMULATE_ERROR) throw new Error(`Error ${SIMULATE_ERROR}`);
         if (!res.ok) throw new Error(`API error ${res.status}`);
         const json = await res.json();
 
@@ -103,7 +94,9 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
     }
     fetchTrend();
     return () => { cancelled = true; };
-  }, [surveyId, gender, participantType, period]); // ✅ added period to deps
+  }, [surveyId, gender, participantType, period]);
+
+  const noData = !loading && !error && (!satisfactionTrend || satisfactionTrend.length === 0);
 
   return (
     <ChartCard
@@ -115,19 +108,15 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
             <div className="flex items-end justify-around h-[220px] gap-10">
               {[2023, 2024, 2025].map((year) => (
                 <div key={year} className="flex flex-col items-center gap-3">
-                  {/* stacked placeholder bar */}
                   <div className="flex flex-col w-12 overflow-hidden rounded-md">
                     <div className="h-16 bg-gradient-to-b from-gray-300 to-gray-200 animate-pulse rounded-t-md mb-1"></div>
                     <div className="h-10 bg-gradient-to-b from-gray-200 to-gray-100 animate-pulse mb-1"></div>
                     <div className="h-8 bg-gradient-to-b from-gray-100 to-gray-50 animate-pulse rounded-b-md"></div>
                   </div>
-                  {/* year label */}
                   <div className="h-3 w-12 bg-gray-200 rounded animate-pulse"></div>
                 </div>
               ))}
             </div>
-
-            {/* legend placeholder */}
             <div className="trend-legend--below mt-4 flex justify-center gap-6">
               {["Very Satisfied", "Satisfied", "Somewhat"].map((label, idx) => (
                 <div key={idx} className="flex items-center gap-2">
@@ -142,6 +131,23 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
             status={error}
             onRetry={() => window.location.reload()}
           />
+        ) : noData ? (
+          // ✅ Modern no data state with more spread bars
+          <div className="flex flex-col items-center justify-center w-full h-[250px] text-[#A3AED0]">
+            <div className="flex items-end justify-center gap-12 h-[150px]">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex flex-col items-center gap-3">
+                  <div className="flex flex-col w-12 overflow-hidden rounded-md">
+                    <div className="h-14 bg-gray-200/60 rounded-t-md mb-1"></div>
+                    <div className="h-9 bg-gray-200/40 mb-1"></div>
+                    <div className="h-7 bg-gray-200/20 rounded-b-md"></div>
+                  </div>
+                  <div className="h-3 w-12 bg-gray-100 rounded"></div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-5 text-sm font-medium">No data for selected filters</div>
+          </div>
         ) : (
           <div className="trend-chart relative">
             <ResponsiveContainer width="100%" height={250}>

@@ -108,22 +108,14 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
 
         if (gender) params.append("gender", gender);
         if (participantType) params.append("participantType", participantType);
-        if (period) params.append("period", period); 
+        if (period) params.append("period", period);
 
         const url = `${baseUrl}?${params.toString()}`;
 
-        // ---- CONST TO SIMULATE ERROR -----
-        const SIMULATE_ERROR = null; // "500", "401", null for no error
-        // ---- CONST TO SIMULATE ERROR -----
-
+        const SIMULATE_ERROR = null;
         const res = await fetch(url, { headers: { Accept: "application/json" } });
-        
-        // ---- SIMULATE ERROR -----
-        if (SIMULATE_ERROR) {
-          throw new Error(`Error ${SIMULATE_ERROR}`);
-        }
-        // ---- SIMULATE ERROR -----
 
+        if (SIMULATE_ERROR) throw new Error(`Error ${SIMULATE_ERROR}`);
         if (!res.ok) throw new Error(`API error ${res.status}`);
 
         const json = await res.json();
@@ -135,7 +127,6 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
           });
 
           if (Array.isArray(json.data.regions)) {
-            // Sort villages ascending by name
             const sorted = json.data.regions
               .map((r) => ({
                 name: r.villageName || "Unknown",
@@ -165,6 +156,11 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
   } else {
     displayData = responseData.slice(0, 5);
   }
+
+  // ✅ NEW: detect no-data
+  const noData =
+    (responseTotals.totalParticipants || 0) === 0 ||
+    responseData.length === 0;
 
   return (
     <ChartCard
@@ -276,68 +272,83 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                 )}
               </div>
 
-              {/* Chart */}
-              {displayData.length > 0 && (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart
-                    data={displayData}
-                    margin={{ top: 10, bottom: 50, left: 0, right: 10 }}
-                  >
-                    <defs>
-                      <linearGradient
-                        id="brightGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop offset="0%" stopColor="#3406FF" />
-                        <stop offset="100%" stopColor="#C6BBFF" />
-                      </linearGradient>
-                    </defs>
-                    <XAxis
-                      dataKey="name"
-                      axisLine={false}
-                      tickLine={false}
-                      interval={0}
-                      height={50}
-                      tick={<TwoLineTick />}
-                    />
-                    <YAxis hide />
-                    <Bar
-                      dataKey="value"
-                      fill="url(#brightGradient)"
-                      radius={[10, 10, 0, 0]}
-                      barSize={20}
-                    >
-                      <LabelList
-                        dataKey="value"
-                        position="top"
-                        className="bar-label"
-                      />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-
-              {/* +N more chip */}
-              {responseData.length > 5 && (
-                <div className="flex justify-end mt-3">
-                  <button
-                    onClick={() => setShowVillageModal(true)}
-                    className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm hover:bg-indigo-200"
-                  >
-                    +{responseData.length - 5} more
-                  </button>
+              {/* ✅ NEW: No data state */}
+              {noData ? (
+                <div className="flex flex-col items-center justify-center w-full h-[200px] text-[#A3AED0]">
+                  <svg width="200" height="120" viewBox="0 0 200 120">
+                    <rect x="20" y="80" width="20" height="20" fill="#E5E7EB" rx="4" />
+                    <rect x="60" y="60" width="20" height="40" fill="#E5E7EB" rx="4" />
+                    <rect x="100" y="40" width="20" height="60" fill="#E5E7EB" rx="4" />
+                    <rect x="140" y="20" width="20" height="80" fill="#E5E7EB" rx="4" />
+                  </svg>
+                  <div className="mt-2 text-sm font-medium">No data for selected filters</div>
                 </div>
-              )}
+              ) : (
+                <>
+                  {/* Chart */}
+                  {displayData.length > 0 && (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart
+                        data={displayData}
+                        margin={{ top: 10, bottom: 50, left: 0, right: 10 }}
+                      >
+                        <defs>
+                          <linearGradient
+                            id="brightGradient"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop offset="0%" stopColor="#3406FF" />
+                            <stop offset="100%" stopColor="#C6BBFF" />
+                          </linearGradient>
+                        </defs>
+                        <XAxis
+                          dataKey="name"
+                          axisLine={false}
+                          tickLine={false}
+                          interval={0}
+                          height={50}
+                          tick={<TwoLineTick />}
+                        />
+                        <YAxis hide />
+                        <Bar
+                          dataKey="value"
+                          fill="url(#brightGradient)"
+                          radius={[10, 10, 0, 0]}
+                          barSize={20}
+                        >
+                          <LabelList
+                            dataKey="value"
+                            position="top"
+                            className="bar-label"
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
 
-              {/* Modal with scrollable sorted villages */}
-              <VillageListModal
-                visible={showVillageModal}
-                onClose={() => setShowVillageModal(false)}
-                villages={responseData.map((r) => r.name)}
-              />
+                  {/* +N more chip */}
+                  {responseData.length > 5 && (
+                    <div className="flex justify-end mt-3">
+                      <button
+                        onClick={() => setShowVillageModal(true)}
+                        className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm hover:bg-indigo-200"
+                      >
+                        +{responseData.length - 5} more
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Modal with scrollable sorted villages */}
+                  <VillageListModal
+                    visible={showVillageModal}
+                    onClose={() => setShowVillageModal(false)}
+                    villages={responseData.map((r) => r.name)}
+                  />
+                </>
+              )}
             </div>
           )}
         </>

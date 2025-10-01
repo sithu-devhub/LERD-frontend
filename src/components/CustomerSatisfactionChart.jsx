@@ -23,6 +23,7 @@ const PieTooltip = ({ active, payload, coordinate, viewBox }) => {
   );
 };
 
+
 export default function CustomerSatisfaction({ surveyId, gender, participantType, period }) {
   const [data, setData] = useState({
     verySatisfiedPercentage: 0,
@@ -47,18 +48,7 @@ export default function CustomerSatisfaction({ surveyId, gender, participantType
         if (period != null) params.append("period", period);
 
         const url = `${baseUrl}?${params.toString()}`;
-
-        // ---- CONST TO SIMULATE ERROR -----
-        const SIMULATE_ERROR = null; // "500", "401", null for no error
-        // ---- CONST TO SIMULATE ERROR -----
-
         const res = await fetch(url, { headers: { Accept: "application/json" } });
-        
-        // ---- SIMULATE ERROR -----
-        if (SIMULATE_ERROR) {
-          throw new Error(`Error ${SIMULATE_ERROR}`);
-        }
-        // ---- SIMULATE ERROR -----
 
         if (!res.ok) throw new Error(`API error ${res.status}`);
         const json = await res.json();
@@ -80,13 +70,21 @@ export default function CustomerSatisfaction({ surveyId, gender, participantType
     return () => {
       aborted = true;
     };
-  }, [surveyId, gender, participantType, period]); // ✅ added period to deps
+  }, [surveyId, gender, participantType, period]);
 
   const pieData = [
     { name: "Very Satisfied", value: data.verySatisfiedPercentage },
     { name: "Satisfied", value: data.satisfiedPercentage },
     { name: "Somewhat Satisfied", value: data.somewhatSatisfiedPercentage },
   ];
+
+  // Detect no data
+  const noData =
+    !loading &&
+    !error &&
+    data.verySatisfiedPercentage === 0 &&
+    data.satisfiedPercentage === 0 &&
+    data.somewhatSatisfiedPercentage === 0;
 
   return (
     <ChartCard
@@ -105,11 +103,57 @@ export default function CustomerSatisfaction({ surveyId, gender, participantType
                 <div className="absolute inset-0 rounded-full border-4 border-[#E5E7EB]"></div>
                 <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#3F11FF] animate-spin"></div>
               </div>
-              {/* shimmer legend placeholders */}
               <div className="grid grid-cols-3 gap-4 w-full mt-6 text-center animate-pulse">
-                {/* ... placeholder blocks ... */}
+                <div className="space-y-2">
+                  <div className="h-3 w-16 mx-auto bg-gray-200 rounded"></div>
+                  <div className="h-4 w-10 mx-auto bg-gray-200 rounded"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 w-16 mx-auto bg-gray-200 rounded"></div>
+                  <div className="h-4 w-10 mx-auto bg-gray-200 rounded"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 w-20 mx-auto bg-gray-200 rounded"></div>
+                  <div className="h-4 w-10 mx-auto bg-gray-200 rounded"></div>
+                </div>
               </div>
             </div>
+          ) : noData ? (
+            /* No data: styled same as loader */
+            <div className="flex flex-col items-center justify-center w-full py-8 opacity-80">
+              <div className="relative w-32 h-32">
+                {/* Base circle */}
+                <div className="absolute inset-0 rounded-full border-4 border-[#E5E7EB]" />
+                
+                {/* Modern gradient ring */}
+                <div className="absolute inset-0 rounded-full border-4 border-transparent bg-conic-to-r from-[#D1D5DB] via-[#E5E7EB] to-[#D1D5DB]" />
+
+                {/* Inner subtle glow */}
+                <div className="absolute inset-3 rounded-full bg-gradient-to-tr from-gray-50 to-white shadow-inner" />
+              </div>
+
+              {/* Legend placeholders */}
+              <div className="grid grid-cols-3 gap-4 w-full mt-6 text-center">
+                <div className="space-y-2">
+                  <div className="h-3 w-16 mx-auto bg-gray-100 rounded"></div>
+                  <div className="h-4 w-10 mx-auto bg-gray-100 rounded"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 w-16 mx-auto bg-gray-100 rounded"></div>
+                  <div className="h-4 w-10 mx-auto bg-gray-100 rounded"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 w-20 mx-auto bg-gray-100 rounded"></div>
+                  <div className="h-4 w-10 mx-auto bg-gray-100 rounded"></div>
+                </div>
+              </div>
+
+              {/* Caption */}
+              <div className="mt-4 text-sm font-medium text-gray-400">
+                No data for selected filters
+              </div>
+            </div>
+
           ) : (
             <>
               <ResponsiveContainer width={180} height={180}>
@@ -133,7 +177,11 @@ export default function CustomerSatisfaction({ surveyId, gender, participantType
                     offset={0}
                     allowEscapeViewBox={{ x: true, y: true }}
                     wrapperStyle={{ zIndex: 9999 }}
-                    contentStyle={{ background: "transparent", border: "none", boxShadow: "none" }}
+                    contentStyle={{
+                      background: "transparent",
+                      border: "none",
+                      boxShadow: "none",
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -142,7 +190,10 @@ export default function CustomerSatisfaction({ surveyId, gender, participantType
               <div className="grid grid-cols-3 gap-4 w-full mt-4 text-center">
                 <div>
                   <div className="flex items-center justify-center gap-2 text-xs text-[#A3AED0]">
-                    <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: pieColors[0] }} />
+                    <span
+                      className="inline-block w-3 h-3 rounded-full"
+                      style={{ backgroundColor: pieColors[0] }}
+                    />
                     <span>Very Satisfied</span>
                   </div>
                   <div className="text-xl font-bold text-[#2B3674] mt-1">
@@ -151,7 +202,10 @@ export default function CustomerSatisfaction({ surveyId, gender, participantType
                 </div>
                 <div>
                   <div className="flex items-center justify-center gap-2 text-xs text-[#A3AED0]">
-                    <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: pieColors[1] }} />
+                    <span
+                      className="inline-block w-3 h-3 rounded-full"
+                      style={{ backgroundColor: pieColors[1] }}
+                    />
                     <span>Satisfied</span>
                   </div>
                   <div className="text-xl font-bold text-[#2B3674] mt-1">
@@ -160,7 +214,10 @@ export default function CustomerSatisfaction({ surveyId, gender, participantType
                 </div>
                 <div>
                   <div className="flex items-center justify-center gap-2 text-xs text-[#A3AED0]">
-                    <span className="inline-block w-3 h-3 rounded-full" style={{ backgroundColor: pieColors[2] }} />
+                    <span
+                      className="inline-block w-3 h-3 rounded-full"
+                      style={{ backgroundColor: pieColors[2] }}
+                    />
                     <span>Somewhat Satisfied</span>
                   </div>
                   <div className="text-xl font-bold text-[#2B3674] mt-1">
