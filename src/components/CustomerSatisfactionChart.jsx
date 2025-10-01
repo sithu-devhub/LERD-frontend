@@ -23,7 +23,7 @@ const PieTooltip = ({ active, payload, coordinate, viewBox }) => {
   );
 };
 
-export default function CustomerSatisfaction({ surveyId, gender, participantType }) {
+export default function CustomerSatisfaction({ surveyId, gender, participantType, period }) {
   const [data, setData] = useState({
     verySatisfiedPercentage: 0,
     satisfiedPercentage: 0,
@@ -44,6 +44,7 @@ export default function CustomerSatisfaction({ surveyId, gender, participantType
 
         if (gender != null) params.append("gender", gender);
         if (participantType != null) params.append("participantType", participantType);
+        if (period != null) params.append("period", period);
 
         const url = `${baseUrl}?${params.toString()}`;
 
@@ -79,7 +80,7 @@ export default function CustomerSatisfaction({ surveyId, gender, participantType
     return () => {
       aborted = true;
     };
-  }, [surveyId, gender, participantType]);
+  }, [surveyId, gender, participantType, period]); // ✅ added period to deps
 
   const pieData = [
     { name: "Very Satisfied", value: data.verySatisfiedPercentage },
