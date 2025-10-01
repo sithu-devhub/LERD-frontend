@@ -133,6 +133,7 @@ export default function Dashboard() {
       <div className="mb-6">
         <DashboardFilters
           value={{
+            surveyId: "8dff523d-2a46-4ee3-8017-614af3813b32",
             gender: genderReverseMap[filters.gender],
             clientType: clientReverseMap[filters.participantType],
           }}
