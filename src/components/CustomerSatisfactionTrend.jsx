@@ -132,21 +132,36 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
             onRetry={() => window.location.reload()}
           />
         ) : noData ? (
-          // ✅ Modern no data state with more spread bars
-          <div className="flex flex-col items-center justify-center w-full h-[250px] text-[#A3AED0]">
-            <div className="flex items-end justify-center gap-12 h-[150px]">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex flex-col items-center gap-3">
+          // No data placeholder
+          <div className="w-full flex flex-col items-center justify-start h-[250px] opacity-75 mt-6">
+            <div className="flex items-end justify-around h-[200px] gap-10">
+              {[2023, 2024, 2025].map((year) => (
+                <div key={year} className="flex flex-col items-center gap-2">
+                  {/* stacked faded bars */}
                   <div className="flex flex-col w-12 overflow-hidden rounded-md">
-                    <div className="h-14 bg-gray-200/60 rounded-t-md mb-1"></div>
-                    <div className="h-9 bg-gray-200/40 mb-1"></div>
-                    <div className="h-7 bg-gray-200/20 rounded-b-md"></div>
+                    <div className="h-14 bg-gray-200 rounded-t-md mb-1"></div>
+                    <div className="h-9 bg-gray-100 mb-1"></div>
+                    <div className="h-7 bg-gray-50 rounded-b-md"></div>
                   </div>
+                  {/* year label placeholder */}
                   <div className="h-3 w-12 bg-gray-100 rounded"></div>
                 </div>
               ))}
             </div>
-            <div className="mt-5 text-sm font-medium">No data for selected filters</div>
+
+            {/* legend faded */}
+            <div className="trend-legend--below mt-3 flex justify-center gap-6 text-gray-400">
+              {["Very Satisfied", "Satisfied", "Somewhat"].map((label, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-gray-200"></div>
+                  <div className="h-3 w-20 bg-gray-100 rounded"></div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 text-sm font-medium text-gray-400">
+              No data for selected filters
+            </div>
           </div>
         ) : (
           <div className="trend-chart relative">

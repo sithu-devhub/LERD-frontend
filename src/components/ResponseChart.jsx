@@ -272,18 +272,31 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                 )}
               </div>
 
-              {/* ✅ NEW: No data state */}
+              {/* No data state */}
               {noData ? (
-                <div className="flex flex-col items-center justify-center w-full h-[200px] text-[#A3AED0]">
-                  <svg width="200" height="120" viewBox="0 0 200 120">
-                    <rect x="20" y="80" width="20" height="20" fill="#E5E7EB" rx="4" />
-                    <rect x="60" y="60" width="20" height="40" fill="#E5E7EB" rx="4" />
-                    <rect x="100" y="40" width="20" height="60" fill="#E5E7EB" rx="4" />
-                    <rect x="140" y="20" width="20" height="80" fill="#E5E7EB" rx="4" />
-                  </svg>
-                  <div className="mt-2 text-sm font-medium">No data for selected filters</div>
+                <div className="w-full" ref={chartRef}>
+                  {/* static placeholder bars */}
+                  <div className="w-full flex items-end justify-around gap-1 opacity-70 mt-2">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="flex flex-col items-center gap-2">
+                        <div
+                          className={`w-6 bg-gray-200 rounded-t ${
+                            i % 2 === 0 ? "h-24" : "h-16"
+                          }`}
+                        ></div>
+                        <div className="h-3 w-12 bg-gray-100 rounded"></div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* subtle message */}
+                  <div className="mt-3 text-sm text-gray-400 text-center">
+                    No data for selected filters
+                  </div>
                 </div>
               ) : (
+
+
                 <>
                   {/* Chart */}
                   {displayData.length > 0 && (
