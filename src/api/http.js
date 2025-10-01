@@ -20,7 +20,7 @@ export const loginHttp = axios.create({
 http.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) {
-    console.log("🔑 Using access token:", token); // ✅ log current token
+    console.log("🔑 Using access token:", token); // log current token
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
