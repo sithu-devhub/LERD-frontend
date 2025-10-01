@@ -124,7 +124,7 @@ function MonthButton({ label, active, onClick, disabled }) {
   );
 }
 
-function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuRef }) {
+function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuRef, startYear, endYear }) {
   useClickOutside(menuRef, onClose);
 
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -135,11 +135,19 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
   const handleMonthClick = (idx) => {
     if (year === currentYear && idx > currentMonth) return; // block future months
 
+    // If starting fresh OR resetting range
     if (start === null || (start !== null && end !== null)) {
-      onSetRange({ start: idx, end: null });
-    } else if (start !== null && end === null) {
-      if (idx < start) onSetRange({ start: idx, end: start });
-      else onSetRange({ start, end: idx });
+      onSetRange({ start: idx, startYear: year, end: null, endYear: null });
+    } 
+    // If already have start, set end
+    else if (start !== null && end === null) {
+      if (year < startYear || (year === startYear && idx < start)) {
+        // selected before start → swap
+        onSetRange({ start: idx, startYear: year, end: start, endYear: startYear });
+      } else {
+        // selected after start
+        onSetRange({ start, startYear, end: idx, endYear: year });
+      }
     }
   };
 
@@ -170,12 +178,15 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
         {months.map((m, idx) => {
           const disabled = year === currentYear && idx > currentMonth;
           const isActive =
-            (start !== null && idx === start) ||
-            (end !== null && idx === end) ||
-            (start !== null && end !== null && idx > start && idx < end);
+            (start !== null && idx === start && startYear === year) ||
+            (end !== null && idx === end && endYear === year) ||
+            (start !== null && end !== null &&
+              ((year > startYear && year < endYear) ||
+               (year === startYear && idx > start && (year < endYear || idx < end)) ||
+               (year === endYear && idx < end && (year > startYear || idx > start))));
           return (
             <MonthButton
-              key={m}
+              key={`${m}-${year}`}
               label={m}
               active={isActive}
               onClick={() => handleMonthClick(idx)}
@@ -189,14 +200,20 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
         <span>
           Period:{" "}
           <span className="font-semibold text-black">
-            {start !== null ? `${months[start]} ${year}` : "—"}
+            {start !== null ? `${months[start]} ${startYear}` : "—"}
           </span>{" "}
           –{" "}
           <span className="ml-1 font-semibold text-black">
-            {end !== null ? `${months[end]} ${year}` : "Current"}
+            {end !== null ? `${months[end]} ${endYear}` : "Current"}
           </span>
         </span>
-        <button onClick={onClose} className="rounded-lg px-2 py-1 text-black hover:bg-white">
+        <button 
+          onClick={() => {
+            onSetRange({ start, startYear, end, endYear }); // trigger state update for refresh
+            onClose();                  // close menu
+          }} 
+          className="rounded-lg px-2 py-1 text-black hover:bg-white"
+        >
           Done
         </button>
       </div>
@@ -204,17 +221,37 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
   );
 }
 
+// === helper for API period string ===
+function buildPeriodParam(range) {
+  if (range.start !== null && range.end !== null) {
+    const start = `${range.startYear}-${String(range.start + 1).padStart(2, "0")}`;
+    const end = `${range.endYear}-${String(range.end + 1).padStart(2, "0")}`;
+    return `${start}:${end}`;
+  } else if (range.start !== null) {
+    return `${range.startYear}-${String(range.start + 1).padStart(2, "0")}`;
+  }
+  return `${new Date().getFullYear()}`;
+}
+
 export default function DashboardFilters({ value, onChange, className = "" }) {
+  // committed filters (actually used in API calls)
   const [gender, setGender] = useState(value?.gender || "All");
   const [clientType, setClientType] = useState(value?.clientType || "All");
-  const [year, setYear] = useState(value?.year || new Date().getFullYear());
 
   const [range, setRange] = useState({
     start: value?.startMonth ?? null,
+    startYear: value?.startYear ?? new Date().getFullYear(),
     end: value?.endMonth ?? null,
+    endYear: value?.endYear ?? null,
   });
 
+  // pending filters (edited inside menus until Done is clicked)
+  const [pendingGender, setPendingGender] = useState(gender);
+  const [pendingClientType, setPendingClientType] = useState(clientType);
+  const [pendingRange, setPendingRange] = useState(range);
+
   const [open, setOpen] = useState(null);
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear()); // calendar navigation
 
   const genderChipRef = useRef(null);
   const clientChipRef = useRef(null);
@@ -227,32 +264,37 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
   const rootRef = useRef(null);
   useClickOutside(rootRef, () => setOpen(null));
 
+  // Only fire API when committed state changes (after Done)
   useEffect(() => {
     if (typeof onChange === "function") {
       const genderMap = { All: null, Male: 1, Female: 2, Other: 3 };
       const clientTypeMap = { All: null, Residents: 1, "Next of Kin": 2 };
 
+      const period = buildPeriodParam(range);
+
       onChange({
         gender: genderMap[gender],
         participantType: clientTypeMap[clientType],
-        year,
-        ...range,
+        period,
       });
     }
-  }, [gender, clientType, year, range, onChange]);
+  }, [gender, clientType, range, onChange]);
 
   const periodLabel = useMemo(() => {
     const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    if (range.start !== null && range.end !== null) {
-      return `${months[range.start]} ${year} – ${months[range.end]} ${year}`;
-    } else if (range.start !== null) {
-      return `${months[range.start]} ${year} – Current`;
+    if (pendingRange.start !== null && pendingRange.end !== null) {
+      return `${months[pendingRange.start]} ${pendingRange.startYear} – ${months[pendingRange.end]} ${pendingRange.endYear}`;
+    } else if (pendingRange.start !== null) {
+      return `${months[pendingRange.start]} ${pendingRange.startYear} – Current`;
     }
     return "Select period";
-  }, [range, year]);
+  }, [pendingRange]);
 
   const handleOpen = (key) => {
     setOpen((prev) => (prev === key ? null : key));
+    if (key === "period") {
+      setCurrentYear(pendingRange.startYear || new Date().getFullYear());
+    }
   };
 
   useEffect(() => {
@@ -294,14 +336,18 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
           <Chip
             chipRef={genderChipRef}
             label="Gender"
-            value={gender}
+            value={pendingGender}
             active={open === "gender"}
             onClick={() => handleOpen("gender")}
           />
           {open === "gender" && (
             <GenderMenu
-              value={gender}
-              onChange={(v) => { setGender(v); setOpen(null); }}
+              value={pendingGender}
+              onChange={(v) => {
+                setPendingGender(v);
+                setGender(v); // commit immediately or move to Done if needed
+                setOpen(null);
+              }}
               onClose={() => setOpen(null)}
               menuRef={genderMenuRef}
             />
@@ -313,14 +359,18 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
           <Chip
             chipRef={clientChipRef}
             label="Client type"
-            value={clientType}
+            value={pendingClientType}
             active={open === "client"}
             onClick={() => handleOpen("client")}
           />
           {open === "client" && (
             <ClientTypeMenu
-              value={clientType}
-              onChange={(v) => { setClientType(v); setOpen(null); }}
+              value={pendingClientType}
+              onChange={(v) => {
+                setPendingClientType(v);
+                setClientType(v);
+                setOpen(null);
+              }}
               onClose={() => setOpen(null)}
               menuRef={clientMenuRef}
             />
@@ -338,12 +388,17 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
           />
           {open === "period" && (
             <PeriodMenu
-              start={range.start}
-              end={range.end}
-              year={year}
-              onSetRange={setRange}
-              onChangeYear={setYear}
-              onClose={() => setOpen(null)}
+              start={pendingRange.start}
+              end={pendingRange.end}
+              startYear={pendingRange.startYear}
+              endYear={pendingRange.endYear}
+              year={currentYear}
+              onSetRange={setPendingRange}
+              onChangeYear={setCurrentYear}
+              onClose={() => {
+                setRange(pendingRange); // ✅ commit full range (with years)
+                setOpen(null);
+              }}
               menuRef={periodMenuRef}
             />
           )}
@@ -359,3 +414,4 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
     </div>
   );
 }
+

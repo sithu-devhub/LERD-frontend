@@ -53,7 +53,7 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange }) => {
     if (next.has(name)) {
       next.delete(name);
     } else {
-      // ✅ Enforce max 5
+      // Enforce max 5
       if (next.size >= 5) {
         return; // block more than 5
       }
@@ -63,7 +63,7 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange }) => {
   };
 
   const clearAll = () => onChange(new Set());
-  const selectFive = () => onChange(new Set(allItems.slice(0, 5))); // ✅ only first 5
+  const selectFive = () => onChange(new Set(allItems.slice(0, 5))); // only first 5
 
   return (
     <div ref={boxRef} className="relative inline-block">
@@ -96,7 +96,7 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange }) => {
           <div className="max-h-64 overflow-y-auto">
             {allItems.map((name, idx) => {
               const checked = selectedSet.has(name);
-              const disabled = !checked && selectedSet.size >= 5; // ✅ disable after 5
+              const disabled = !checked && selectedSet.size >= 5; // disable after 5
               return (
                 <button
                   key={name}
@@ -253,7 +253,19 @@ const ChartSkeleton = () => {
 
 
 // === Component ===
-export default function ServiceAttributeChart({ surveyId, gender, participantType, selectedAttrs, onAvailableAttrs, onSelectedChange }) {
+// src/components/ServiceAttributeChart.jsx
+
+// ... keep all your imports and helpers exactly the same ...
+
+export default function ServiceAttributeChart({
+  surveyId,
+  gender,
+  participantType,
+  period,
+  selectedAttrs,
+  onAvailableAttrs,
+  onSelectedChange,
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState([]);
@@ -271,7 +283,6 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
     return () => ro.disconnect();
   }, []);
 
-  // fetch attributes
   useEffect(() => {
     let cancelled = false;
 
@@ -284,20 +295,10 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
         const params = new URLSearchParams({ surveyId });
         if (gender != null) params.append("gender", gender);
         if (participantType != null) params.append("participantType", participantType);
+        if (period != null) params.append("period", period);
 
         const url = `${baseUrl}?${params.toString()}`;
-
-        // ---- CONST TO SIMULATE ERROR -----
-        const SIMULATE_ERROR = null; // "500", "401", null for no error
-        // ---- CONST TO SIMULATE ERROR -----
-
         const res = await fetch(url, { headers: { Accept: "application/json" } });
-        
-        // ---- SIMULATE ERROR -----
-        if (SIMULATE_ERROR) {
-          throw new Error(`Error ${SIMULATE_ERROR}`);
-        }
-        // ---- SIMULATE ERROR -----
 
         if (!res.ok) throw new Error(`API error ${res.status}`);
         const json = await res.json();
@@ -311,11 +312,10 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
             }));
             setData(mapped);
 
-            const avail = mapped.map(a => a.name);
+            const avail = mapped.map((a) => a.name);
             setAvailableAttrs(avail);
             onAvailableAttrs?.(avail);
 
-            // Default to first 5 if nothing selected
             if (!selectedAttrs || selectedAttrs.size === 0) {
               onSelectedChange?.(new Set(avail.slice(0, 5)));
             }
@@ -329,8 +329,10 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
     }
 
     fetchServiceAttributes();
-    return () => { cancelled = true; };
-  }, [surveyId, gender, participantType]);
+    return () => {
+      cancelled = true;
+    };
+  }, [surveyId, gender, participantType, period]);
 
   const dataForChart = useMemo(() => {
     if (!selectedAttrs || selectedAttrs.size === 0) return data;
@@ -340,8 +342,16 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
   const slots = dataForChart.length || 1;
   const perSlot = cardWidth ? cardWidth / slots : 90;
   const labelMaxWidth = Math.min(120, Math.max(60, perSlot * 0.85));
-  const { linesMap, maxLines } = computeWrappedMapAndMaxLines(dataForChart, "name", labelMaxWidth);
+  const { linesMap, maxLines } = computeWrappedMapAndMaxLines(
+    dataForChart,
+    "name",
+    labelMaxWidth
+  );
   const xAxisHeight = maxLines * LABEL_LINE_HEIGHT + AXIS_BOTTOM_PADDING;
+
+  // ✅ detect no data safely
+  const noData =
+    !loading && !error && (!dataForChart || dataForChart.length === 0);
 
   return (
     <ChartCard
@@ -364,16 +374,39 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
               status={error}
               onRetry={() => window.location.reload()}
             />
+          ) : noData ? (
+            // ✅ Safe no-data placeholder
+            <div className="flex flex-col items-center justify-center w-full py-10 text-gray-400">
+              <div className="flex items-end justify-around w-full max-w-lg h-40 opacity-70">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex flex-col items-center gap-2">
+                    <div
+                      className={`w-8 rounded-md ${
+                        i % 2 === 0
+                          ? "h-20 bg-gray-200"
+                          : "h-12 bg-gray-100"
+                      }`}
+                    ></div>
+                    <div className="h-3 w-12 bg-gray-100 rounded"></div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 text-sm">No data for selected filters</div>
+            </div>
           ) : (
             <>
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart
                   data={dataForChart}
                   barCategoryGap="35%"
-                  margin={{ top: 30, right: GUIDE_MARGIN_RIGHT, left: 0, bottom: xAxisHeight }}
+                  margin={{
+                    top: 30,
+                    right: GUIDE_MARGIN_RIGHT,
+                    left: 0,
+                    bottom: xAxisHeight,
+                  }}
                 >
                   <YAxis domain={[0, 100]} hide />
-
                   <ReferenceLine
                     y={80}
                     isFront
@@ -390,33 +423,52 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
                     ifOverflow="extendDomain"
                     label={<PercentLabel value={60} color="#6AD2FF" />}
                   />
-
                   <XAxis
                     dataKey="name"
                     axisLine={false}
                     tickLine={false}
                     interval={0}
                     height={xAxisHeight}
-                    tick={(props) => <WrappedTick {...props} linesMap={linesMap} maxLines={maxLines} />}
+                    tick={(props) => (
+                      <WrappedTick
+                        {...props}
+                        linesMap={linesMap}
+                        maxLines={maxLines}
+                      />
+                    )}
                   />
-
                   <Tooltip
                     cursor={{ fill: "transparent" }}
                     content={<ServiceAttributeTooltip />}
                     offset={0}
                     allowEscapeViewBox={{ x: true, y: true }}
                     wrapperStyle={{ zIndex: 9999, overflow: "visible" }}
-                    contentStyle={{ background: "transparent", border: "none", boxShadow: "none" }}
+                    contentStyle={{
+                      background: "transparent",
+                      border: "none",
+                      boxShadow: "none",
+                    }}
                   />
-
                   <Bar dataKey="most" stackId="a" fill="#6AD2FF" barSize={32} />
-                  <Bar dataKey="always" stackId="a" fill="#3F11FF" barSize={32} radius={[8, 8, 0, 0]} minPointSize={6} />
+                  <Bar
+                    dataKey="always"
+                    stackId="a"
+                    fill="#3F11FF"
+                    barSize={32}
+                    radius={[8, 8, 0, 0]}
+                    minPointSize={6}
+                  />
                 </BarChart>
               </ResponsiveContainer>
 
               <div className="trend-legend--below mt-2">
-                <div className="trend-legend__item"><span className="trend-dot trend-dot--very" /> Always</div>
-                <div className="trend-legend__item"><span className="trend-dot trend-dot--satisfied" /> Most of the time</div>
+                <div className="trend-legend__item">
+                  <span className="trend-dot trend-dot--very" /> Always
+                </div>
+                <div className="trend-legend__item">
+                  <span className="trend-dot trend-dot--satisfied" /> Most of the
+                  time
+                </div>
               </div>
             </>
           )}

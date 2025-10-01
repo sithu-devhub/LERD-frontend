@@ -48,19 +48,18 @@ export default function Dashboard() {
     }
   }, [availableAttrs]);
 
-
-
   // filters
   const [filters, setFilters] = useState(() => {
     const saved = localStorage.getItem("dashboardFilters");
     return saved
       ? JSON.parse(saved)
-      : { gender: null, participantType: null, year: new Date().getFullYear(), start: null, end: null };
+      : { gender: null, participantType: null, period: new Date().getFullYear().toString() };
   });
   useEffect(() => { localStorage.setItem("dashboardFilters", JSON.stringify(filters)); }, [filters]);
 
-  const handleFilterChange = useCallback(({ gender, participantType, year, start, end }) => {
-    setFilters({ gender, participantType, year, start, end });
+  // handleFilterChange expects { gender, participantType, period }
+  const handleFilterChange = useCallback(({ gender, participantType, period }) => {
+    setFilters({ gender, participantType, period });
   }, []);
 
   return (
@@ -82,31 +81,53 @@ export default function Dashboard() {
         </div>
       </div>
 
-
-
       {serviceError && <div className="text-sm text-red-600 mb-4">{serviceError}</div>}
 
       <div className="grid grid-cols-3 gap-6 mb-6">
-        <ResponseChart surveyId="8dff523d-2a46-4ee3-8017-614af3813b32" gender={filters.gender} participantType={filters.participantType} />
-        <CustomerSatisfaction surveyId="8dff523d-2a46-4ee3-8017-614af3813b32" gender={filters.gender} participantType={filters.participantType} />
-        <CustomerSatisfactionTrend surveyId="8dff523d-2a46-4ee3-8017-614af3813b32" gender={filters.gender} participantType={filters.participantType} />
+        <ResponseChart 
+          surveyId="8dff523d-2a46-4ee3-8017-614af3813b32" 
+          gender={filters.gender} 
+          participantType={filters.participantType} 
+          period={filters.period}
+        />
+        <CustomerSatisfaction 
+          surveyId="8dff523d-2a46-4ee3-8017-614af3813b32" 
+          gender={filters.gender} 
+          participantType={filters.participantType} 
+          period={filters.period}
+        />
+        <CustomerSatisfactionTrend 
+          surveyId="8dff523d-2a46-4ee3-8017-614af3813b32" 
+          gender={filters.gender} 
+          participantType={filters.participantType} 
+          period={filters.period}
+        />
       </div>
 
       <div className="grid gap-6 mb-6 grid-cols-[1fr_1fr_2fr]">
-        <NpsChart surveyId="8dff523d-2a46-4ee3-8017-614af3813b32" gender={filters.gender} participantType={filters.participantType} />
-        <NpsDistribution surveyId="8dff523d-2a46-4ee3-8017-614af3813b32" gender={filters.gender} participantType={filters.participantType} />
+        <NpsChart 
+          surveyId="8dff523d-2a46-4ee3-8017-614af3813b32" 
+          gender={filters.gender} 
+          participantType={filters.participantType} 
+          period={filters.period}
+        />
+        <NpsDistribution 
+          surveyId="8dff523d-2a46-4ee3-8017-614af3813b32" 
+          gender={filters.gender} 
+          participantType={filters.participantType} 
+          period={filters.period}
+        />
 
         {/* Service Attribute */}
         <ServiceAttributeChart
           surveyId="8dff523d-2a46-4ee3-8017-614af3813b32"
           gender={filters.gender}
           participantType={filters.participantType}
+          period={filters.period}
           selectedAttrs={selectedAttrs}
           onAvailableAttrs={setAvailableAttrs}
           onSelectedChange={setSelectedAttrs}
         />
-
-
       </div>
 
       <div className="mb-6">
@@ -114,9 +135,6 @@ export default function Dashboard() {
           value={{
             gender: genderReverseMap[filters.gender],
             clientType: clientReverseMap[filters.participantType],
-            year: filters.year,
-            startMonth: filters.start,
-            endMonth: filters.end,
           }}
           onChange={handleFilterChange}
         />

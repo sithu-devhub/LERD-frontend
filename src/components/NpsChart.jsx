@@ -8,6 +8,7 @@ export default function NpsChart({
   surveyId = "8dff523d-2a46-4ee3-8017-614af3813b32",
   gender = null,
   participantType = null,
+  period = null,
   min = -100,
   max = 100,
   size = 220,
@@ -29,6 +30,7 @@ export default function NpsChart({
         const params = new URLSearchParams({ surveyId });
         if (gender != null) params.append("gender", gender);
         if (participantType != null) params.append("participantType", participantType);
+        if (period != null) params.append("period", period);
 
         const url = `${baseUrl}?${params.toString()}`;
 
@@ -53,7 +55,7 @@ export default function NpsChart({
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType]);
+  }, [surveyId, gender, participantType, period]);
 
   const t = useMemo(() => {
     const v = Math.max(min, Math.min(max, score));
@@ -100,7 +102,6 @@ export default function NpsChart({
       </text>
     </>
   );
-
 
   return (
     <ChartCard title="Net Promoter Score">
