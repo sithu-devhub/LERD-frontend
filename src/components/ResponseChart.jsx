@@ -94,6 +94,7 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
   }, []);
 
   useEffect(() => {
+    if (!surveyId) return;
     let aborted = false;
     async function loadResponse() {
       try {
@@ -101,10 +102,8 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
         setError("");
 
         const baseUrl = `${import.meta.env.VITE_API_BASE_URL}/charts/response`;
-        const params = new URLSearchParams({
-          surveyId:
-            surveyId || "8dff523d-2a46-4ee3-8017-614af3813b32", // fallback
-        });
+        const params = new URLSearchParams({ surveyId }); 
+
 
         if (gender) params.append("gender", gender);
         if (participantType) params.append("participantType", participantType);
