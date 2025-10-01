@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
 
-export default function NpsDistribution({ surveyId, gender, participantType }) {
+export default function NpsDistribution({ surveyId, gender, participantType, period }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [distribution, setDistribution] = useState([]);
@@ -21,6 +21,7 @@ export default function NpsDistribution({ surveyId, gender, participantType }) {
         const params = new URLSearchParams({ surveyId });
         if (gender != null) params.append("gender", gender);
         if (participantType != null) params.append("participantType", participantType);
+        if (period != null) params.append("period", period);
 
         const url = `${baseUrl}?${params.toString()}`;
 
@@ -40,12 +41,12 @@ export default function NpsDistribution({ surveyId, gender, participantType }) {
         const json = await res.json();
 
         if (!cancelled && json.success) {
-        const dist = json.data?.distribution || {};
-        setDistribution([
+          const dist = json.data?.distribution || {};
+          setDistribution([
             { name: "Promoter", value: dist.promoterPercentage ?? 0, count: dist.promoterCount ?? 0, color: "#3F11FF" },
             { name: "Passive", value: dist.passivePercentage ?? 0, count: dist.passiveCount ?? 0, color: "#6AD2FF" },
             { name: "Detractor", value: dist.detractorPercentage ?? 0, count: dist.detractorCount ?? 0, color: "#9CA3AF" },
-        ]);
+          ]);
         }
 
       } catch (err) {
@@ -59,7 +60,7 @@ export default function NpsDistribution({ surveyId, gender, participantType }) {
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType]);
+  }, [surveyId, gender, participantType, period]);
 
   return (
     <ChartCard

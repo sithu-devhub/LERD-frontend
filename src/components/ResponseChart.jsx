@@ -72,7 +72,7 @@ const VillageListModal = ({ visible, onClose, villages }) => {
 };
 /* === /modal === */
 
-export default function ResponseChart({ surveyId, gender, participantType }) {
+export default function ResponseChart({ surveyId, gender, participantType, period }) {
   const [responseData, setResponseData] = useState([]);
   const [responseTotals, setResponseTotals] = useState({
     totalParticipants: 0,
@@ -108,21 +108,14 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
 
         if (gender) params.append("gender", gender);
         if (participantType) params.append("participantType", participantType);
+        if (period) params.append("period", period);
 
         const url = `${baseUrl}?${params.toString()}`;
 
-        // ---- CONST TO SIMULATE ERROR -----
-        const SIMULATE_ERROR = null; // "500", "401", null for no error
-        // ---- CONST TO SIMULATE ERROR -----
-
+        const SIMULATE_ERROR = null;
         const res = await fetch(url, { headers: { Accept: "application/json" } });
-        
-        // ---- SIMULATE ERROR -----
-        if (SIMULATE_ERROR) {
-          throw new Error(`Error ${SIMULATE_ERROR}`);
-        }
-        // ---- SIMULATE ERROR -----
 
+        if (SIMULATE_ERROR) throw new Error(`Error ${SIMULATE_ERROR}`);
         if (!res.ok) throw new Error(`API error ${res.status}`);
 
         const json = await res.json();
@@ -134,7 +127,6 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
           });
 
           if (Array.isArray(json.data.regions)) {
-            // Sort villages ascending by name
             const sorted = json.data.regions
               .map((r) => ({
                 name: r.villageName || "Unknown",
@@ -154,7 +146,7 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
     return () => {
       aborted = true;
     };
-  }, [gender, participantType]);
+  }, [gender, participantType, period, surveyId]);
 
   let displayData;
   if (showAll) {
@@ -164,6 +156,11 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
   } else {
     displayData = responseData.slice(0, 5);
   }
+
+  // ✅ NEW: detect no-data
+  const noData =
+    (responseTotals.totalParticipants || 0) === 0 ||
+    responseData.length === 0;
 
   return (
     <ChartCard
@@ -275,68 +272,96 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
                 )}
               </div>
 
-              {/* Chart */}
-              {displayData.length > 0 && (
-                <ResponsiveContainer width="100%" height={200}>
-                  <BarChart
-                    data={displayData}
-                    margin={{ top: 10, bottom: 50, left: 0, right: 10 }}
-                  >
-                    <defs>
-                      <linearGradient
-                        id="brightGradient"
-                        x1="0"
-                        y1="0"
-                        x2="0"
-                        y2="1"
-                      >
-                        <stop offset="0%" stopColor="#3406FF" />
-                        <stop offset="100%" stopColor="#C6BBFF" />
-                      </linearGradient>
-                    </defs>
-                    <XAxis
-                      dataKey="name"
-                      axisLine={false}
-                      tickLine={false}
-                      interval={0}
-                      height={50}
-                      tick={<TwoLineTick />}
-                    />
-                    <YAxis hide />
-                    <Bar
-                      dataKey="value"
-                      fill="url(#brightGradient)"
-                      radius={[10, 10, 0, 0]}
-                      barSize={20}
-                    >
-                      <LabelList
-                        dataKey="value"
-                        position="top"
-                        className="bar-label"
-                      />
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+              {/* No data state */}
+              {noData ? (
+                <div className="w-full" ref={chartRef}>
+                  {/* static placeholder bars */}
+                  <div className="w-full flex items-end justify-around gap-1 opacity-70 mt-2">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="flex flex-col items-center gap-2">
+                        <div
+                          className={`w-6 bg-gray-200 rounded-t ${
+                            i % 2 === 0 ? "h-24" : "h-16"
+                          }`}
+                        ></div>
+                        <div className="h-3 w-12 bg-gray-100 rounded"></div>
+                      </div>
+                    ))}
+                  </div>
 
-              {/* +N more chip */}
-              {responseData.length > 5 && (
-                <div className="flex justify-end mt-3">
-                  <button
-                    onClick={() => setShowVillageModal(true)}
-                    className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm hover:bg-indigo-200"
-                  >
-                    +{responseData.length - 5} more
-                  </button>
+                  {/* subtle message */}
+                  <div className="mt-3 text-sm text-gray-400 text-center">
+                    No data for selected filters
+                  </div>
                 </div>
-              )}
+              ) : (
 
-              {/* Modal with scrollable sorted villages */}
-              <VillageListModal
-                visible={showVillageModal}
-                onClose={() => setShowVillageModal(false)}
-                villages={responseData.map((r) => r.name)}
-              />
+
+                <>
+                  {/* Chart */}
+                  {displayData.length > 0 && (
+                    <ResponsiveContainer width="100%" height={200}>
+                      <BarChart
+                        data={displayData}
+                        margin={{ top: 10, bottom: 50, left: 0, right: 10 }}
+                      >
+                        <defs>
+                          <linearGradient
+                            id="brightGradient"
+                            x1="0"
+                            y1="0"
+                            x2="0"
+                            y2="1"
+                          >
+                            <stop offset="0%" stopColor="#3406FF" />
+                            <stop offset="100%" stopColor="#C6BBFF" />
+                          </linearGradient>
+                        </defs>
+                        <XAxis
+                          dataKey="name"
+                          axisLine={false}
+                          tickLine={false}
+                          interval={0}
+                          height={50}
+                          tick={<TwoLineTick />}
+                        />
+                        <YAxis hide />
+                        <Bar
+                          dataKey="value"
+                          fill="url(#brightGradient)"
+                          radius={[10, 10, 0, 0]}
+                          barSize={20}
+                        >
+                          <LabelList
+                            dataKey="value"
+                            position="top"
+                            className="bar-label"
+                          />
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  )}
+
+                  {/* +N more chip */}
+                  {responseData.length > 5 && (
+                    <div className="flex justify-end mt-3">
+                      <button
+                        onClick={() => setShowVillageModal(true)}
+                        className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm hover:bg-indigo-200"
+                      >
+                        +{responseData.length - 5} more
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Modal with scrollable sorted villages */}
+                  <VillageListModal
+                    visible={showVillageModal}
+                    onClose={() => setShowVillageModal(false)}
+                    villages={responseData.map((r) => r.name)}
+                  />
+                </>
+              )}
             </div>
           )}
         </>
