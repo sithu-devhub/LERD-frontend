@@ -53,7 +53,7 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange }) => {
     if (next.has(name)) {
       next.delete(name);
     } else {
-      // ✅ Enforce max 5
+      // Enforce max 5
       if (next.size >= 5) {
         return; // block more than 5
       }
@@ -63,7 +63,7 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange }) => {
   };
 
   const clearAll = () => onChange(new Set());
-  const selectFive = () => onChange(new Set(allItems.slice(0, 5))); // ✅ only first 5
+  const selectFive = () => onChange(new Set(allItems.slice(0, 5))); // only first 5
 
   return (
     <div ref={boxRef} className="relative inline-block">
@@ -253,7 +253,7 @@ const ChartSkeleton = () => {
 
 
 // === Component ===
-export default function ServiceAttributeChart({ surveyId, gender, participantType, selectedAttrs, onAvailableAttrs, onSelectedChange }) {
+export default function ServiceAttributeChart({ surveyId, gender, participantType, period, selectedAttrs, onAvailableAttrs, onSelectedChange }) { // ✅ added period
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState([]);
@@ -284,6 +284,7 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
         const params = new URLSearchParams({ surveyId });
         if (gender != null) params.append("gender", gender);
         if (participantType != null) params.append("participantType", participantType);
+        if (period != null) params.append("period", period);
 
         const url = `${baseUrl}?${params.toString()}`;
 
@@ -330,7 +331,7 @@ export default function ServiceAttributeChart({ surveyId, gender, participantTyp
 
     fetchServiceAttributes();
     return () => { cancelled = true; };
-  }, [surveyId, gender, participantType]);
+  }, [surveyId, gender, participantType, period]);
 
   const dataForChart = useMemo(() => {
     if (!selectedAttrs || selectedAttrs.size === 0) return data;
