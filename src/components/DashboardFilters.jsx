@@ -3,10 +3,7 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { MdBarChart } from "react-icons/md";
 
-const API_BASE =
-  import.meta.env.MODE === "development"
-    ? "/api"
-    : "https://live-dashboard-backend-production.up.railway.app/api";
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 // outside-click helper
 function useClickOutside(ref, handler) {
