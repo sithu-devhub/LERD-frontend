@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../api/authService'; // use the login service
+import http from '../api/http'; // import axios instance for Auth/me
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -31,12 +32,21 @@ const Login = () => {
       const data = res.data;
 
       if (data.accessToken) {
-        // Save tokens + user (with dummy position if not provided)
+        // Save tokens
         localStorage.setItem('accessToken', data.accessToken);
         localStorage.setItem('refreshToken', data.refreshToken);
+
+        // Fetch user info to get userId
+        const meRes = await http.get('/Auth/me', {
+          headers: { Authorization: `Bearer ${data.accessToken}` },
+        });
+        const me = meRes.data;
+
+        // Save user info (with userId)
         localStorage.setItem(
           'user',
           JSON.stringify({
+            userId: me.userId,        // now correctly defined
             username: formData.username,
             fullName: data.fullName,
             position: data.position || "Position"

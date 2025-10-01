@@ -5,7 +5,7 @@ import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
 
 export default function NpsChart({
-  surveyId = "8dff523d-2a46-4ee3-8017-614af3813b32",
+  surveyId,
   gender = null,
   participantType = null,
   period = null,
@@ -19,6 +19,7 @@ export default function NpsChart({
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!surveyId) return; // don’t call API until we have a surveyId
     let cancelled = false;
 
     async function fetchNps() {
