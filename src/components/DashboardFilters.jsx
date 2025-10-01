@@ -3,6 +3,11 @@ import React, { useMemo, useRef, useState, useEffect } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { MdBarChart } from "react-icons/md";
 
+const API_BASE =
+  import.meta.env.MODE === "development"
+    ? "/api"
+    : "https://live-dashboard-backend-production.up.railway.app/api";
+
 // outside-click helper
 function useClickOutside(ref, handler) {
   useEffect(() => {
@@ -264,6 +269,10 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
   const rootRef = useRef(null);
   useClickOutside(rootRef, () => setOpen(null));
 
+  // === NEW: data freshness state
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [isFreshnessLoading, setIsFreshnessLoading] = useState(false);
+
   // Only fire API when committed state changes (after Done)
   useEffect(() => {
     if (typeof onChange === "function") {
@@ -279,6 +288,38 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
       });
     }
   }, [gender, clientType, range, onChange]);
+
+  // === NEW: Fetch Survey Data Freshness when surveyId changes
+  useEffect(() => {
+    const surveyId = value?.surveyId;
+    if (!surveyId) {
+      setLastUpdated(null);
+      return;
+    }
+
+    let aborted = false;
+    async function fetchFreshness() {
+      try {
+        setIsFreshnessLoading(true);
+        const res = await fetch(`${API_BASE}/surveys/${surveyId}/last-updated`);
+        const json = await res.json();
+        if (!aborted) {
+          if (json?.success && json?.data?.formattedTime) {
+            setLastUpdated(json.data.formattedTime);
+          } else {
+            setLastUpdated("No data available");
+          }
+        }
+      } catch (e) {
+        if (!aborted) setLastUpdated("Error fetching");
+      } finally {
+        if (!aborted) setIsFreshnessLoading(false);
+      }
+    }
+
+    fetchFreshness();
+    return () => { aborted = true; };
+  }, [value?.surveyId]);
 
   const periodLabel = useMemo(() => {
     const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -396,7 +437,7 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
               onSetRange={setPendingRange}
               onChangeYear={setCurrentYear}
               onClose={() => {
-                setRange(pendingRange); // ✅ commit full range (with years)
+                setRange(pendingRange); // commit full range (with years)
                 setOpen(null);
               }}
               menuRef={periodMenuRef}
@@ -407,11 +448,12 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
         <div className="ml-auto hidden items-center gap-2 pr-1 sm:flex">
           <span className="text-xs text-slate-400">Data last updated:</span>
           <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700">
-            {new Date().toLocaleString()}
+            {isFreshnessLoading
+              ? "Loading..."
+              : lastUpdated || new Date().toLocaleString()}
           </span>
         </div>
       </div>
     </div>
   );
 }
-
