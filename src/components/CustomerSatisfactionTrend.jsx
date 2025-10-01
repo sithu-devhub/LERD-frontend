@@ -50,7 +50,7 @@ const TrendLegendBelow = () => (
   </div>
 );
 
-export default function CustomerSatisfactionTrend({ surveyId, gender, participantType }) {
+export default function CustomerSatisfactionTrend({ surveyId, gender, participantType, period }) { // ✅ added period
   const [satisfactionTrend, setSatisfactionTrend] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -67,6 +67,7 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
 
         if (gender != null) params.append("gender", gender);
         if (participantType != null) params.append("participantType", participantType);
+        if (period != null) params.append("period", period); // ✅ added period
 
         const url = `${baseUrl}?${params.toString()}`;
 
@@ -102,7 +103,7 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
     }
     fetchTrend();
     return () => { cancelled = true; };
-  }, [surveyId, gender, participantType]);
+  }, [surveyId, gender, participantType, period]); // ✅ added period to deps
 
   return (
     <ChartCard
