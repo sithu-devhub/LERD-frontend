@@ -196,7 +196,13 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
             {end !== null ? `${months[end]} ${year}` : "Current"}
           </span>
         </span>
-        <button onClick={onClose} className="rounded-lg px-2 py-1 text-black hover:bg-white">
+        <button 
+          onClick={() => {
+            onSetRange({ start, end }); // trigger state update for refresh
+            onClose();                  // close menu
+          }} 
+          className="rounded-lg px-2 py-1 text-black hover:bg-white"
+        >
           Done
         </button>
       </div>
@@ -204,15 +210,33 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
   );
 }
 
+
+function buildPeriodParam(year, range) {
+  if (range.start !== null && range.end !== null) {
+    const start = `${year}-${String(range.start + 1).padStart(2, "0")}`;
+    const end = `${year}-${String(range.end + 1).padStart(2, "0")}`;
+    return `${start}:${end}`;
+  } else if (range.start !== null) {
+    return `${year}-${String(range.start + 1).padStart(2, "0")}`;
+  }
+  return `${year}`;
+}
+
 export default function DashboardFilters({ value, onChange, className = "" }) {
+  // committed filters (actually used in API calls)
   const [gender, setGender] = useState(value?.gender || "All");
   const [clientType, setClientType] = useState(value?.clientType || "All");
   const [year, setYear] = useState(value?.year || new Date().getFullYear());
-
   const [range, setRange] = useState({
     start: value?.startMonth ?? null,
     end: value?.endMonth ?? null,
   });
+
+  // pending filters (edited inside menus until Done is clicked)
+  const [pendingGender, setPendingGender] = useState(gender);
+  const [pendingClientType, setPendingClientType] = useState(clientType);
+  const [pendingYear, setPendingYear] = useState(year);
+  const [pendingRange, setPendingRange] = useState(range);
 
   const [open, setOpen] = useState(null);
 
@@ -227,29 +251,31 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
   const rootRef = useRef(null);
   useClickOutside(rootRef, () => setOpen(null));
 
+  // Only fire API when committed state changes (after Done)
   useEffect(() => {
     if (typeof onChange === "function") {
       const genderMap = { All: null, Male: 1, Female: 2, Other: 3 };
       const clientTypeMap = { All: null, Residents: 1, "Next of Kin": 2 };
 
+      const period = buildPeriodParam(year, range);
+
       onChange({
         gender: genderMap[gender],
         participantType: clientTypeMap[clientType],
-        year,
-        ...range,
+        period,
       });
     }
   }, [gender, clientType, year, range, onChange]);
 
   const periodLabel = useMemo(() => {
     const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-    if (range.start !== null && range.end !== null) {
-      return `${months[range.start]} ${year} – ${months[range.end]} ${year}`;
-    } else if (range.start !== null) {
-      return `${months[range.start]} ${year} – Current`;
+    if (pendingRange.start !== null && pendingRange.end !== null) {
+      return `${months[pendingRange.start]} ${pendingYear} – ${months[pendingRange.end]} ${pendingYear}`;
+    } else if (pendingRange.start !== null) {
+      return `${months[pendingRange.start]} ${pendingYear} – Current`;
     }
     return "Select period";
-  }, [range, year]);
+  }, [pendingRange, pendingYear]);
 
   const handleOpen = (key) => {
     setOpen((prev) => (prev === key ? null : key));
@@ -294,14 +320,18 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
           <Chip
             chipRef={genderChipRef}
             label="Gender"
-            value={gender}
+            value={pendingGender}
             active={open === "gender"}
             onClick={() => handleOpen("gender")}
           />
           {open === "gender" && (
             <GenderMenu
-              value={gender}
-              onChange={(v) => { setGender(v); setOpen(null); }}
+              value={pendingGender}
+              onChange={(v) => {
+                setPendingGender(v); // don't commit yet
+                setGender(v);        // ✅ commit here if you want immediate OR move commit into a Done button
+                setOpen(null);
+              }}
               onClose={() => setOpen(null)}
               menuRef={genderMenuRef}
             />
@@ -313,14 +343,18 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
           <Chip
             chipRef={clientChipRef}
             label="Client type"
-            value={clientType}
+            value={pendingClientType}
             active={open === "client"}
             onClick={() => handleOpen("client")}
           />
           {open === "client" && (
             <ClientTypeMenu
-              value={clientType}
-              onChange={(v) => { setClientType(v); setOpen(null); }}
+              value={pendingClientType}
+              onChange={(v) => {
+                setPendingClientType(v); 
+                setClientType(v);  // ✅ same note as above
+                setOpen(null);
+              }}
               onClose={() => setOpen(null)}
               menuRef={clientMenuRef}
             />
@@ -338,12 +372,17 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
           />
           {open === "period" && (
             <PeriodMenu
-              start={range.start}
-              end={range.end}
-              year={year}
-              onSetRange={setRange}
-              onChangeYear={setYear}
-              onClose={() => setOpen(null)}
+              start={pendingRange.start}
+              end={pendingRange.end}
+              year={pendingYear}
+              onSetRange={setPendingRange}
+              onChangeYear={setPendingYear}
+              onClose={() => {
+                // ✅ commit only when Done
+                setRange(pendingRange);
+                setYear(pendingYear);
+                setOpen(null);
+              }}
               menuRef={periodMenuRef}
             />
           )}
@@ -359,3 +398,4 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
     </div>
   );
 }
+

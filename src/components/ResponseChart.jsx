@@ -72,7 +72,7 @@ const VillageListModal = ({ visible, onClose, villages }) => {
 };
 /* === /modal === */
 
-export default function ResponseChart({ surveyId, gender, participantType }) {
+export default function ResponseChart({ surveyId, gender, participantType, period }) {
   const [responseData, setResponseData] = useState([]);
   const [responseTotals, setResponseTotals] = useState({
     totalParticipants: 0,
@@ -108,6 +108,7 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
 
         if (gender) params.append("gender", gender);
         if (participantType) params.append("participantType", participantType);
+        if (period) params.append("period", period); 
 
         const url = `${baseUrl}?${params.toString()}`;
 
@@ -154,7 +155,7 @@ export default function ResponseChart({ surveyId, gender, participantType }) {
     return () => {
       aborted = true;
     };
-  }, [gender, participantType]);
+  }, [gender, participantType, period, surveyId]);
 
   let displayData;
   if (showAll) {
