@@ -21,6 +21,9 @@ import http from '../api/http'; // import axios instance
 
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+// regex to check valid UUID format
+const isUUID = (value) => /^[0-9a-fA-F-]{36}$/.test(value);
+
 export default function Dashboard() {
   const genderReverseMap = { null: "All", 1: "Male", 2: "Female", 3: "Other" };
   const clientReverseMap = { null: "All", 1: "Residents", 2: "Next of Kin" };
@@ -39,35 +42,75 @@ export default function Dashboard() {
   const [availableAttrs, setAvailableAttrs] = useState([]);
   const [selectedAttrs, setSelectedAttrs] = useState(new Set());
 
-  // Load default survey for logged-in user
+  // Enhanced survey loading: checks route → backend filter → default
   useEffect(() => {
     async function loadDefaultSurvey() {
       const user = JSON.parse(localStorage.getItem('user'));
+      const token = localStorage.getItem('accessToken');
       const userId = user?.userId;
-      if (!userId) return;
+      if (!userId || !token) return;
 
       try {
         setServiceLoading(true);
-        const res = await http.get(`/users/${userId}/surveys/default`);
-        const data = res.data;
-        if (data.success) {
-          setSurveyId(data.data.surveyId);
 
-          // ✅ Prefer service name from Services page if provided, else use default survey name
-          if (location.state?.service) {
-            setServiceName(location.state.service);
-          } else {
-            setServiceName(data.data.surveyName);
+        let chosenSurveyId = serviceId || localStorage.getItem("lastServiceId");
+
+        // if serviceId is not a UUID (e.g. "residential_care"), ignore it
+        if (chosenSurveyId && !isUUID(chosenSurveyId)) {
+          console.warn("Invalid surveyId slug detected, ignoring:", chosenSurveyId);
+          chosenSurveyId = null;
+        }
+
+        // Check saved filter from backend first (to restore last selection)
+        if (!chosenSurveyId) {
+          try {
+            const lastServiceId = localStorage.getItem("lastServiceId");
+            if (lastServiceId && isUUID(lastServiceId)) {
+              const filterRes = await http.get(`/users/${userId}/filters`, {
+                params: { surveyId: lastServiceId },
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (filterRes.data?.success && filterRes.data.data?.serviceType?.value) {
+                chosenSurveyId = filterRes.data.data.serviceType.value;
+              }
+            }
+          } catch (e) {
+            console.warn("No saved filter found, falling back to default survey.");
           }
         }
+
+        // Fallback: get default survey from backend if no saved one
+        if (!chosenSurveyId) {
+          const res = await http.get(`/users/${userId}/surveys/default`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (res.data?.success) {
+            chosenSurveyId = res.data.data.surveyId;
+            setServiceName(res.data.data.surveyName);
+          }
+        }
+
+        // Apply surveyId
+        if (chosenSurveyId) {
+          setSurveyId(chosenSurveyId);
+          localStorage.setItem("lastServiceId", chosenSurveyId);
+
+          // Prefer name from route state if exists
+          if (location.state?.service) {
+            setServiceName(location.state.service);
+          }
+        }
+
       } catch (err) {
-        setServiceError("Failed to load default survey");
+        console.error(err);
+        setServiceError("Failed to load survey data");
       } finally {
         setServiceLoading(false);
       }
     }
+
     loadDefaultSurvey();
-  }, [location.state?.service]);
+  }, [location.state?.service, serviceId]);
 
   useEffect(() => {
     if (availableAttrs.length) {
@@ -116,8 +159,8 @@ export default function Dashboard() {
 
       {serviceError && <div className="text-sm text-red-600 mb-4">{serviceError}</div>}
 
-      {/* Only render charts when surveyId is loaded */}
-      {surveyId && (
+      {/* ✅ Only render charts when surveyId is a valid UUID */}
+      {surveyId && isUUID(surveyId) && (
         <>
           <div className="grid grid-cols-3 gap-6 mb-6">
             <ResponseChart 
@@ -180,5 +223,4 @@ export default function Dashboard() {
       )}
     </div>
   );
-
 }

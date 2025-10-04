@@ -46,7 +46,7 @@ const Login = () => {
         localStorage.setItem(
           'user',
           JSON.stringify({
-            userId: me.userId,        // now correctly defined
+            userId: me.userId,       
             username: formData.username,
             fullName: data.fullName,
             position: data.position || "Position"
