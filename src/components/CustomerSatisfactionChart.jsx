@@ -91,10 +91,12 @@ export default function CustomerSatisfaction({
           somewhatSatisfiedPercentage: parseFloat(d.somewhatSatisfiedPercentage ?? 0),
         });
       } catch (err) {
-        if (!cancelled) 
+        if (!cancelled) {
           console.error("[CustomerSatisfaction] ❌ Fetch failed:", err);
           setError(err.message);
-      } finally {
+        }
+      }
+      finally {
         if (!cancelled) setLoading(false);
       }
     }
