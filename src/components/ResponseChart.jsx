@@ -10,6 +10,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import ErrorPlaceholder from "./ErrorPlaceholder";
+import http from "../api/http";
+import { useFilteredRegions } from "../utils/useFilteredRegions";
 
 /* === Custom Tick for two-line names === */
 const TwoLineTick = ({ x, y, payload }) => {
@@ -85,6 +87,13 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
 
   const chartRef = useRef(null);
 
+  // Use custom region filter hook
+  const { filteredRegions, selectedRegionIds, regionNames } = useFilteredRegions(
+    surveyId,
+    responseData
+  );
+
+
   useLayoutEffect(() => {
     const el = chartRef.current;
     if (!el) return;
@@ -96,28 +105,21 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
   useEffect(() => {
     if (!surveyId) return;
     let aborted = false;
+
     async function loadResponse() {
       try {
         setLoading(true);
         setError("");
 
-        const baseUrl = `${import.meta.env.VITE_API_BASE_URL}/charts/response`;
-        const params = new URLSearchParams({ surveyId }); 
+        const token = localStorage.getItem("accessToken");
 
+        // 1️⃣ Load full chart data
+        const res = await http.get(`/charts/response`, {
+          params: { surveyId, gender, participantType, period },
+          headers: { Authorization: `Bearer ${token}` },
+        });
 
-        if (gender) params.append("gender", gender);
-        if (participantType) params.append("participantType", participantType);
-        if (period) params.append("period", period);
-
-        const url = `${baseUrl}?${params.toString()}`;
-
-        const SIMULATE_ERROR = null;
-        const res = await fetch(url, { headers: { Accept: "application/json" } });
-
-        if (SIMULATE_ERROR) throw new Error(`Error ${SIMULATE_ERROR}`);
-        if (!res.ok) throw new Error(`API error ${res.status}`);
-
-        const json = await res.json();
+        const json = res.data;
 
         if (json.data && !aborted) {
           setResponseTotals({
@@ -126,13 +128,28 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
           });
 
           if (Array.isArray(json.data.regions)) {
-            const sorted = json.data.regions
-              .map((r) => ({
-                name: r.villageName || "Unknown",
-                value: r.participantCount || 0,
-              }))
-              .sort((a, b) => a.name.localeCompare(b.name));
-            setResponseData(sorted);
+            // Normalize regions to support both numeric and named villages
+            const regions = json.data.regions
+              .filter((r) => r.villageName)
+              .map((r) => {
+                const name = String(r.villageName || "").trim();
+                const codeLike = /^\d+$/.test(name);
+                return {
+                  // If name looks numeric, treat it as facility code
+                  id: codeLike ? name : String(r.facilityCode || name),
+                  facilityCode: codeLike ? name : String(r.facilityCode || ""),
+                  villageName: name,
+                  name,
+                  value: r.participantCount || 0,
+                };
+              });
+
+
+
+            console.log("🧩 All region IDs from chart API:", regions.map((r) => r.id));
+            console.log("🎯 Selected filters (from hook):", selectedRegionIds);
+
+            setResponseData(regions);
           }
         }
       } catch (e) {
@@ -141,25 +158,27 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
         if (!aborted) setLoading(false);
       }
     }
+
     loadResponse();
     return () => {
       aborted = true;
     };
   }, [gender, participantType, period, surveyId]);
 
+  // ✅ Display filtered data from the hook
   let displayData;
   if (showAll) {
     displayData = [
       { name: "Overall", value: responseTotals.totalParticipants || 0 },
     ];
   } else {
-    displayData = responseData.slice(0, 5);
+    displayData = filteredRegions.slice(0, 5);
   }
 
-  // ✅ NEW: detect no-data
+  // detect no-data
   const noData =
     (responseTotals.totalParticipants || 0) === 0 ||
-    responseData.length === 0;
+    filteredRegions.length === 0;
 
   return (
     <ChartCard
@@ -218,7 +237,7 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                 </div>
 
                 {/* Arrow toggle */}
-                {responseData.length > 5 && (
+                {filteredRegions.length > 5 && (
                   <div className="flex justify-end mt-3">
                     <button
                       onClick={() => setShowAll((prev) => !prev)}
@@ -294,8 +313,6 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                   </div>
                 </div>
               ) : (
-
-
                 <>
                   {/* Chart */}
                   {displayData.length > 0 && (
@@ -342,13 +359,13 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                   )}
 
                   {/* +N more chip */}
-                  {responseData.length > 5 && (
+                  {filteredRegions.length > 5 && (
                     <div className="flex justify-end mt-3">
                       <button
                         onClick={() => setShowVillageModal(true)}
                         className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm hover:bg-indigo-200"
                       >
-                        +{responseData.length - 5} more
+                        +{filteredRegions.length - 5} more
                       </button>
                     </div>
                   )}
@@ -357,7 +374,7 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                   <VillageListModal
                     visible={showVillageModal}
                     onClose={() => setShowVillageModal(false)}
-                    villages={responseData.map((r) => r.name)}
+                    villages={filteredRegions.map((r) => r.name)}
                   />
                 </>
               )}

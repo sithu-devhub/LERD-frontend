@@ -1,6 +1,6 @@
 // ServiceTypePage.jsx
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import http from "../api/http"; // axios instance
 
@@ -114,6 +114,9 @@ export default function ServiceType() {
 
   const [selected, setSelected] = useState("retirement_village");
 
+  // 🧩 NEW — track if user has manually selected to avoid async overwrite
+  const hasUserSelected = useRef(false);
+
   // fetch surveys from API
   useEffect(() => {
     async function fetchUserSurveys() {
@@ -204,7 +207,8 @@ export default function ServiceType() {
             chosenSurveyId = surveys[0].surveyId;
           }
 
-          if (chosenSurveyId) {
+          // ✅ Only setSelected if user hasn't manually changed yet
+          if (chosenSurveyId && !hasUserSelected.current) {
             setSelected(chosenSurveyId);
           }
         }
@@ -229,10 +233,12 @@ export default function ServiceType() {
     const list = surveys.length > 0 ? surveys : options;
     const len = list.length;
     const nextIndex = (currentIndex + dir + len) % len;
+    hasUserSelected.current = true; // user changed via keyboard
     setSelected(list[nextIndex].surveyId || list[nextIndex].value);
   };
 
   async function handleContinue() {
+    hasUserSelected.current = true; // prevent async overwrite
     console.log("Selected:", selected);
     if (!selected) return;
 
@@ -261,7 +267,6 @@ export default function ServiceType() {
         state: { service: selectedSurvey?.surveyName },
       });
     } else {
-      // ❌ instead of navigating with fallback slug, warn user
       alert("No valid surveys found for your account. Please contact admin.");
     }
   }
@@ -292,14 +297,12 @@ export default function ServiceType() {
           }
         }}
       >
-        {/* Loader while fetching */}
         {loading && (
           <div className="col-span-full flex justify-center items-center py-16">
             <div className="w-12 h-12 border-4 border-[#7B61FF] border-t-transparent rounded-full animate-spin"></div>
           </div>
         )}
 
-        {/* API returned surveys */}
         {!loading &&
           surveys.length > 0 &&
           surveys.map((item) => (
@@ -313,12 +316,14 @@ export default function ServiceType() {
                 label={item.surveyName}
                 sublabel={item.sublabel}
                 selected={selected}
-                onChange={setSelected}
+                onChange={(val) => {
+                  hasUserSelected.current = true;
+                  setSelected(val);
+                }}
               />
             </div>
           ))}
 
-        {/* No data (empty state) */}
         {!loading && surveys.length === 0 && (
           <div className="col-span-full flex flex-col items-center justify-center py-16 text-gray-500">
             <p className="text-lg font-medium">No surveys available</p>
@@ -327,18 +332,18 @@ export default function ServiceType() {
         )}
       </div>
 
-      {/* Actions */}
       <div className="mt-8 flex gap-3">
         <button
           type="button"
           className="px-4 py-2 rounded-xl text-sm font-medium text-[#2B3674] bg-white border border-[#E6EBF6] hover:border-[#C8D3EE]"
-          onClick={() =>
+          onClick={() => {
+            hasUserSelected.current = true;
             setSelected(
               surveys.length > 0
-                ? surveys[0].surveyId // real UUID
-                : options[0].value // still fallback, but handled gracefully in handleContinue()
-            )
-          }
+                ? surveys[0].surveyId
+                : options[0].value
+            );
+          }}
         >
           Reset
         </button>
