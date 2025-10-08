@@ -29,7 +29,7 @@ export default function Dashboard() {
 
   const [surveyId, setSurveyId] = useState(null);
   const [serviceName, setServiceName] = useState("Loading…");
-  const [selectedRegions, setSelectedRegions] = useState([]);   
+  const [selectedRegions, setSelectedRegions] = useState([]);   // ✅ NEW
   const [serviceLoading, setServiceLoading] = useState(false);
   const [serviceError, setServiceError] = useState('');
 
@@ -49,7 +49,7 @@ export default function Dashboard() {
         let activeSurveyId = null;
         let activeServiceName = null;
 
-        // Step 1: get services and find isSelected:true
+        // 🔹 Step 1: get services and find isSelected:true
         const servicesRes = await http.get(`/users/${user.userId}/services`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -69,27 +69,21 @@ export default function Dashboard() {
         setSurveyId(activeSurveyId);
         setServiceName(activeServiceName || "Unknown Survey");
 
-        // overwrite only for this surveyId
         localStorage.setItem("lastServiceId", activeSurveyId);
         localStorage.setItem("lastServiceName", activeServiceName || "");
         localStorage.setItem(`surveyName:${activeSurveyId}`, activeServiceName || "");
 
-        // Step 2: get selected regions for this survey only
+        // 🔹 Step 2: get selected regions from filters
         const filtersRes = await http.get(`/users/${user.userId}/filters`, {
-          params: { surveyId: activeSurveyId },   // ✅ ensure it’s tied to THIS surveyId
+          params: { surveyId: activeSurveyId },
           headers: { Authorization: `Bearer ${token}` },
         });
 
         if (filtersRes.data?.success && filtersRes.data.data?.region?.values) {
           const savedIds = filtersRes.data.data.region.values.map(String);
-
-          // cache and state scoped by surveyId
           setSelectedRegions(savedIds);
+
           localStorage.setItem(`selectedRegionIds:${activeSurveyId}`, JSON.stringify(savedIds));
-        } else {
-          // if no filters found, clear region selection for this survey
-          setSelectedRegions([]);
-          localStorage.removeItem(`selectedRegionIds:${activeSurveyId}`);
         }
 
       } catch (err) {
