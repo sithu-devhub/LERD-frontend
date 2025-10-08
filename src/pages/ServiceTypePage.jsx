@@ -215,7 +215,6 @@ export default function ServiceType() {
     <div className="p-0">
       {/* Page heading */}
       <div className="flex justify-center items-center mb-6 mt-6">
-
         <h1 className="text-2xl font-semibold text-gray-800">Service</h1>
       </div>
 

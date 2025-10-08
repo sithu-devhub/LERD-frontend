@@ -154,7 +154,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      {surveyId && isUUID(surveyId) && hasServices && (
+      {surveyId && isUUID(surveyId) && hasServices && selectedRegions.length > 0 && (
         <>
           <div className="grid grid-cols-3 gap-6 mb-6">
             <ResponseChart surveyId={surveyId} regions={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
