@@ -51,112 +51,44 @@ export default function CustomerSatisfaction({
     let cancelled = false;
 
     async function load() {
+      // Don't start loading until we have valid filters
+      if (!surveyId || regionFilterLoading) return;
+
+      setLoading(true);
+      setError("");
+
       try {
-        // lways show spinner as soon as component mounts
-        setLoading(true);
-        setError("");
-
-        // Wait until region IDs are ready before making API calls
-        if (!surveyId || regionFilterLoading) return;
-
-        console.groupCollapsed("[CustomerSatisfaction] Fetch start");
-        console.log("Survey ID:", surveyId);
-        console.log("Gender:", gender);
-        console.log("ParticipantType:", participantType);
-        console.log("Period:", period);
-        console.log("Regions prop:", regions);
-        console.log("Selected Region IDs (from hook):", selectedRegionIds);
-
         const token = localStorage.getItem("accessToken");
-
-        // Build params once; include region IDs if we have them
         const params = { surveyId, gender, participantType, period };
 
-        if (Array.isArray(selectedRegionIds) && selectedRegionIds.length > 0) {
-          const csv = selectedRegionIds.map(String).join(",");
-          Object.assign(params, {
-            region: csv,
-            regions: csv,
-            regionIds: csv,
-            facilityCodes: csv,
-            facilityCode: csv,
-          });
-          console.log("[CustomerSatisfaction] Sending region filter CSV:", csv);
-        } else {
-          console.log("[CustomerSatisfaction] No region filter; requesting overall.");
+        if (selectedRegionIds?.length) {
+          const csv = selectedRegionIds.join(",");
+          Object.assign(params, { region: csv });
         }
 
-        // Main API call
-        const res = await http.get(`/charts/customer-satisfaction`, {
+        const res = await http.get("/charts/customer-satisfaction", {
           params,
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        let computedData = null;
+        if (cancelled) return;
 
-        if (res.data?.success && res.data?.data) {
-          const {
-            verySatisfiedPercentage,
-            satisfiedPercentage,
-            somewhatSatisfiedPercentage,
-          } = res.data.data;
-
-          computedData = {
-            verySatisfiedPercentage: parseFloat(verySatisfiedPercentage ?? 0),
-            satisfiedPercentage: parseFloat(satisfiedPercentage ?? 0),
-            somewhatSatisfiedPercentage: parseFloat(
-              somewhatSatisfiedPercentage ?? 0
-            ),
-          };
-        } else {
-          throw new Error(res.data?.message || "No satisfaction data");
-        }
-
-        // secondary request (diagnostic only)
-        if (Array.isArray(selectedRegionIds) && selectedRegionIds.length > 0) {
-          try {
-            const respRes = await http.get(`/charts/response`, {
-              params: { surveyId, gender, participantType, period },
-              headers: { Authorization: `Bearer ${token}` },
-            });
-
-            const all = respRes.data?.data?.regions || [];
-            const filtered = all.filter((r) => {
-              const fid = String(r.facilityCode || r.regionName || "").trim();
-              return selectedRegionIds.includes(fid);
-            });
-            setRegionResponses(filtered);
-          } catch (innerErr) {
-            console.warn("[CustomerSatisfaction] response fetch failed:", innerErr.message);
-          }
-        }
-
-        if (!cancelled && computedData) {
-          setData(computedData);
-        }
-
-        console.groupEnd();
+        const d = res.data?.data || {};
+        setData({
+          verySatisfiedPercentage: parseFloat(d.verySatisfiedPercentage ?? 0),
+          satisfiedPercentage: parseFloat(d.satisfiedPercentage ?? 0),
+          somewhatSatisfiedPercentage: parseFloat(d.somewhatSatisfiedPercentage ?? 0),
+        });
       } catch (err) {
-        if (!cancelled) {
-          console.error("[CustomerSatisfaction] ❌ Fetch failed:", err);
-          setError(err.message);
-        }
+        if (!cancelled) setError(err.message);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
     load();
-
-    // Run again when regionFilterLoading flips to false
-    if (!regionFilterLoading) {
-      load();
-    }
-
-    return () => {
-      cancelled = true;
-    };
-  }, [surveyId, gender, participantType, period, regions, selectedRegionIds, regionFilterLoading]);
+    return () => { cancelled = true; };
+  }, [surveyId, gender, participantType, period, selectedRegionIds, regionFilterLoading]);
 
 
   const pieData = [
