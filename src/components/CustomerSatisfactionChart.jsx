@@ -57,6 +57,16 @@ export default function CustomerSatisfaction({
       setLoading(true);
       setError("");
 
+      // ✅ ADD HERE
+      console.groupCollapsed("[CustomerSatisfaction] Fetch start");
+      console.log("Survey ID:", surveyId);
+      console.log("Gender:", gender);
+      console.log("ParticipantType:", participantType);
+      console.log("Period:", period);
+      console.log("Regions prop:", regions);
+      console.log("Selected Region IDs (from hook):", selectedRegionIds);
+      console.groupEnd();
+
       try {
         const token = localStorage.getItem("accessToken");
         const params = { surveyId, gender, participantType, period };
@@ -65,7 +75,8 @@ export default function CustomerSatisfaction({
           const csv = selectedRegionIds.join(",");
           Object.assign(params, { region: csv });
         }
-
+        
+        console.log("[CustomerSatisfaction] Sending params:", params);
         const res = await http.get("/charts/customer-satisfaction", {
           params,
           headers: { Authorization: `Bearer ${token}` },
@@ -80,7 +91,9 @@ export default function CustomerSatisfaction({
           somewhatSatisfiedPercentage: parseFloat(d.somewhatSatisfiedPercentage ?? 0),
         });
       } catch (err) {
-        if (!cancelled) setError(err.message);
+        if (!cancelled) 
+          console.error("[CustomerSatisfaction] ❌ Fetch failed:", err);
+          setError(err.message);
       } finally {
         if (!cancelled) setLoading(false);
       }
