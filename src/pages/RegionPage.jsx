@@ -13,6 +13,9 @@ export default function RegionPage() {
   const [apiError, setApiError] = useState("");
   const { serviceId } = useParams();
 
+  // ✅ NEW
+  const [hasServices, setHasServices] = useState(true);
+
   // === Fetch regions & saved selections ===
   useEffect(() => {
     async function fetchRegionsAndFilters() {
@@ -30,7 +33,19 @@ export default function RegionPage() {
             headers: { Authorization: `Bearer ${token}` },
           });
           if (servicesRes.data?.success && Array.isArray(servicesRes.data.data)) {
-            const selectedService = servicesRes.data.data.find(s => s.isSelected);
+            const services = servicesRes.data.data;
+
+            // ✅ If user has no services
+            if (services.length === 0) {
+              setHasServices(false);
+              setApiError("");
+              setLoading(false);
+              return;
+            }
+
+            setHasServices(true);
+
+            const selectedService = services.find(s => s.isSelected);
             if (selectedService?.surveyId) {
               activeSurveyId = selectedService.surveyId;
               localStorage.setItem("lastServiceId", activeSurveyId);
@@ -98,8 +113,7 @@ export default function RegionPage() {
     fetchRegionsAndFilters();
   }, [serviceId]);
 
-
-  // === Filtering (unchanged logic, now works with names) ===
+  // === Filtering (unchanged logic) ===
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return q
@@ -112,39 +126,22 @@ export default function RegionPage() {
   const isAllVisibleChecked =
     filtered.length > 0 && filtered.every((r) => selected.has(String(r.id)));
 
-  // === Handlers (fixed to work per ID) ===
   const toggleOne = (id) => {
     const idStr = String(id);
     const next = new Set(selected);
-    if (next.has(idStr)) {
-      next.delete(idStr);
-      console.log(`❌ Unselected region ID: ${idStr}`);
-    } else {
-      next.add(idStr);
-      console.log(`✅ Selected region ID: ${idStr}`);
-    }
-    console.log("🧠 Current selected set:", Array.from(next));
+    if (next.has(idStr)) next.delete(idStr);
+    else next.add(idStr);
     setSelected(next);
   };
 
   const toggleAllVisible = () => {
     const next = new Set(selected);
     const allIds = filtered.map((r) => String(r.id));
-    console.log("⚙️ Toggle all visible IDs:", allIds);
-
-    if (isAllVisibleChecked) {
-      allIds.forEach((id) => next.delete(id));
-      console.log("🚫 Deselected all visible regions");
-    } else {
-      allIds.forEach((id) => next.add(id));
-      console.log("✅ Selected all visible regions");
-    }
-
-    console.log("🧠 New selected set after toggle all:", Array.from(next));
+    if (isAllVisibleChecked) allIds.forEach((id) => next.delete(id));
+    else allIds.forEach((id) => next.add(id));
     setSelected(next);
   };
 
-  // === Save selected regions ===
   async function handleSave() {
     const user = JSON.parse(localStorage.getItem("user"));
     const token = localStorage.getItem("accessToken");
@@ -152,14 +149,9 @@ export default function RegionPage() {
     if (!user?.userId || !token || !surveyId) return;
 
     try {
-      // Always send only facilityCode IDs (string form)
       const uniqueIds = Array.from(new Set(Array.from(selected).map(String)));
 
-      const payload = {
-        surveyId,
-        regions: uniqueIds, // must be array of IDs, not names
-      };
-
+      const payload = { surveyId, regions: uniqueIds };
       console.log("📤 Sending PATCH payload:", payload);
 
       const res = await http.patch(
@@ -170,7 +162,6 @@ export default function RegionPage() {
 
       console.log("✅ Regions saved successfully:", res.data);
 
-      // Cache locally for dashboard use (IDs + names)
       const combined = regions
         .filter((r) => uniqueIds.includes(String(r.id)))
         .map((r) => ({ id: String(r.id), name: r.name }));
@@ -178,26 +169,21 @@ export default function RegionPage() {
       localStorage.setItem(`selectedRegionIds:${surveyId}`, JSON.stringify(uniqueIds));
       localStorage.setItem(`selectedRegions:${surveyId}`, JSON.stringify(combined));
 
-      // Rebuild name map once for the dashboard
       if (regions.length > 0) {
         const regionNameMap = {};
         for (const r of regions) {
           regionNameMap[String(r.id)] = String(r.name);
         }
         localStorage.setItem("regionNameMap", JSON.stringify(regionNameMap));
-        console.log("🗺️ Updated regionNameMap:", regionNameMap);
       }
 
-      // ✅ NEW: also ensure lastServiceName is cached
       const cachedName = localStorage.getItem(`surveyName:${surveyId}`);
       if (cachedName) {
         localStorage.setItem("lastServiceName", cachedName);
       }
 
       localStorage.setItem("filtersRefresh", "true");
-      navigate(`/dashboard/${surveyId}`, {
-        state: { service: cachedName },
-      });
+      navigate(`/dashboard/${surveyId}`, { state: { service: cachedName } });
     } catch (err) {
       console.error("❌ Failed to save selected regions:", err);
       alert("Failed to save regions");
@@ -215,6 +201,7 @@ export default function RegionPage() {
 
   return (
     <div className="p-0">
+      {/* Page heading */}
       <div className="flex justify-center items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Region</h1>
       </div>
@@ -224,7 +211,9 @@ export default function RegionPage() {
         <div>
           Current service type:&nbsp;
           <span className="text-[#2B3674] font-medium">
-            {localStorage.getItem("lastServiceName") || "Service Type"}
+            {hasServices
+              ? localStorage.getItem("lastServiceName") || "Service Type"
+              : "—"}
           </span>
         </div>
         <div>Select regions:</div>
@@ -232,109 +221,109 @@ export default function RegionPage() {
 
       {apiError && <p className="text-red-500 text-sm mb-3">{apiError}</p>}
 
-      {/* === CANVAS === */}
-      <div
-        className="
-          mx-auto w-full max-w-[1600px]
-          rounded-2xl bg-white border border-[#E6EBF6] shadow-sm
-          px-4 sm:px-6 lg:px-8 py-4 sm:py-6
-          min-h-[75vh]
-        "
-      >
-        <div
-          className="
-            relative rounded-xl bg-white border border-[#E6EBF6]
-            focus-within:border-[#2491ff] focus-within:ring-1 focus-within:ring-[#2491ff]
-          "
-        >
-          {/* Header row */}
-          <div className="flex items-center justify-between px-4 sm:px-6 h-12 border-b border-[#EEF2FA]">
-            <div className="flex items-center gap-3">
-              <input
-                type="checkbox"
-                checked={isAllVisibleChecked}
-                onChange={toggleAllVisible}
-                className="h-4 w-4 rounded border-[#C9D3EA] text-[#3F11FF] focus:ring-0"
-                aria-label="Select all"
-              />
-              <span className="text-sm text-[#8FA0C6]">Region Name</span>
-            </div>
-
-            {/* Search */}
-            <div className="relative w-60">
-              <svg
-                viewBox="0 0 24 24"
-                className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A3AED0]"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M21 21l-4.35-4.35" />
-                <circle cx="11" cy="11" r="7" />
-              </svg>
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search for village, suburb..."
-                className="
-                  w-full pl-8 pr-3 h-8 rounded-md border border-[#E6EBF6]
-                  text-sm text-[#2B3674] placeholder-[#C2CBE0]
-                  focus:outline-none focus:border-[#2491ff]
-                "
-              />
-            </div>
-          </div>
-
-          {/* Rows */}
-          <div className="max-h-[48vh] overflow-auto">
-            {filtered.map((r, idx) => {
-              const checked = selected.has(String(r.id));
-              const rowHighlight =
-                r.name === "Naimur Rahman" ? "bg-[#F7FAFF]" : "";
-
-              return (
-                <div
-                  key={r.id || idx}
-                  className={`flex items-center gap-3 px-4 sm:px-6 h-12 border-b border-[#F2F5FC] hover:bg-[#FAFBFE] ${rowHighlight}`}
-                >
+      {/* Placeholder appears here, under the heading */}
+      {!hasServices ? (
+        <div className="flex flex-col justify-center items-center py-20 text-gray-500 border border-[#E6EBF6] rounded-2xl bg-white shadow-sm">
+          <h2 className="text-xl font-semibold">No Services Available</h2>
+          <p className="text-sm mt-2">It looks like your account has no active surveys or services.</p>
+          <p className="text-sm">Please contact your administrator to assign one.</p>
+        </div>
+      ) : (
+        <>
+          {/* === CANVAS === */}
+          <div
+            className="
+              mx-auto w-full max-w-[1600px]
+              rounded-2xl bg-white border border-[#E6EBF6] shadow-sm
+              px-4 sm:px-6 lg:px-8 py-4 sm:py-6
+              min-h-[75vh]
+            "
+          >
+            <div
+              className="
+                relative rounded-xl bg-white border border-[#E6EBF6]
+                focus-within:border-[#2491ff] focus-within:ring-1 focus-within:ring-[#2491ff]
+              "
+            >
+              {/* Header row */}
+              <div className="flex items-center justify-between px-4 sm:px-6 h-12 border-b border-[#EEF2FA]">
+                <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
-                    checked={checked}
-                    onChange={() => {
-                      console.log(
-                        `🖱️ Clicked on checkbox for region:`,
-                        r.name,
-                        "| ID:",
-                        r.id
-                      );
-                      toggleOne(r.id);
-                    }}
+                    checked={isAllVisibleChecked}
+                    onChange={toggleAllVisible}
                     className="h-4 w-4 rounded border-[#C9D3EA] text-[#3F11FF] focus:ring-0"
-                    aria-label={`Select ${r.name}`}
+                    aria-label="Select all"
                   />
-                  <span className="text-sm text-[#2B3674]">{r.name}</span>
+                  <span className="text-sm text-[#8FA0C6]">Region Name</span>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
 
-      {/* Footer */}
-      <div className="mt-3 flex items-center justify-between text-xs text-[#8FA0C6]">
-        <div>
-          Selected:{" "}
-          <span className="text-[#2B3674]">{selectedCount}</span> of{" "}
-          {totalCount}
-        </div>
-        <button
-          onClick={handleSave}
-          className="px-5 py-2 rounded-xl text-sm font-semibold text-white bg-[#3F11FF] hover:opacity-90 shadow"
-        >
-          Continue
-        </button>
-      </div>
+                {/* Search */}
+                <div className="relative w-60">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A3AED0]"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                  >
+                    <path d="M21 21l-4.35-4.35" />
+                    <circle cx="11" cy="11" r="7" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search for village, suburb..."
+                    className="
+                      w-full pl-8 pr-3 h-8 rounded-md border border-[#E6EBF6]
+                      text-sm text-[#2B3674] placeholder-[#C2CBE0]
+                      focus:outline-none focus:border-[#2491ff]
+                    "
+                  />
+                </div>
+              </div>
+
+              {/* Rows */}
+              <div className="max-h-[48vh] overflow-auto">
+                {filtered.map((r, idx) => {
+                  const checked = selected.has(String(r.id));
+                  return (
+                    <div
+                      key={r.id || idx}
+                      className="flex items-center gap-3 px-4 sm:px-6 h-12 border-b border-[#F2F5FC] hover:bg-[#FAFBFE]"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => toggleOne(r.id)}
+                        className="h-4 w-4 rounded border-[#C9D3EA] text-[#3F11FF] focus:ring-0"
+                        aria-label={`Select ${r.name}`}
+                      />
+                      <span className="text-sm text-[#2B3674]">{r.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="mt-3 flex items-center justify-between text-xs text-[#8FA0C6]">
+            <div>
+              Selected:{" "}
+              <span className="text-[#2B3674]">{selectedCount}</span> of{" "}
+              {totalCount}
+            </div>
+            <button
+              onClick={handleSave}
+              className="px-5 py-2 rounded-xl text-sm font-semibold text-white bg-[#3F11FF] hover:opacity-90 shadow"
+            >
+              Continue
+            </button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

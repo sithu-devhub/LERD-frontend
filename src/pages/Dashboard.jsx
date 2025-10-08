@@ -35,6 +35,7 @@ export default function Dashboard() {
 
   const [availableAttrs, setAvailableAttrs] = useState([]);
   const [selectedAttrs, setSelectedAttrs] = useState(new Set());
+  const [hasServices, setHasServices] = useState(true); // ✅ NEW STATE
 
   // Load survey + selected regions
   useEffect(() => {
@@ -45,6 +46,7 @@ export default function Dashboard() {
 
       try {
         setServiceLoading(true);
+        setServiceError('');
 
         let activeSurveyId = null;
         let activeServiceName = null;
@@ -53,8 +55,19 @@ export default function Dashboard() {
         const servicesRes = await http.get(`/users/${user.userId}/services`, {
           headers: { Authorization: `Bearer ${token}` },
         });
+
         if (servicesRes.data?.success && Array.isArray(servicesRes.data.data)) {
-          const selectedService = servicesRes.data.data.find(s => s.isSelected);
+          const services = servicesRes.data.data;
+
+          if (services.length === 0) {
+            // No services available
+            setHasServices(false);
+            setServiceError("");
+            return;
+          }
+
+          setHasServices(true);
+          const selectedService = services.find(s => s.isSelected);
           if (selectedService) {
             activeSurveyId = selectedService.surveyId;
             activeServiceName = selectedService.serviceName;
@@ -132,7 +145,16 @@ export default function Dashboard() {
 
       {serviceError && <div className="text-sm text-red-600 mb-4">{serviceError}</div>}
 
-      {surveyId && isUUID(surveyId) && (
+      {/* No Services Placeholder */}
+      {!serviceLoading && !hasServices && (
+        <div className="flex flex-col justify-center items-center py-20 text-gray-500">
+          <h2 className="text-xl font-semibold">No Services Available</h2>
+          <p className="text-sm mt-2">It looks like your account has no active surveys or services.</p>
+          <p className="text-sm">Please contact your administrator to assign one.</p>
+        </div>
+      )}
+
+      {surveyId && isUUID(surveyId) && hasServices && (
         <>
           <div className="grid grid-cols-3 gap-6 mb-6">
             <ResponseChart surveyId={surveyId} regions={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
