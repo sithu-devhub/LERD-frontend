@@ -53,57 +53,22 @@ export default function Dashboard() {
       try {
         setServiceLoading(true);
 
-        let chosenSurveyId = serviceId || localStorage.getItem("lastServiceId");
+      let chosenSurveyId = serviceId;
 
-        // if serviceId is not a UUID (e.g. "residential_care"), ignore it
-        if (chosenSurveyId && !isUUID(chosenSurveyId)) {
-          console.warn("Invalid surveyId slug detected, ignoring:", chosenSurveyId);
-          chosenSurveyId = null;
-        }
+      // 1.If not coming from route param, fall back to stored ID
+      if (!chosenSurveyId) {
+        chosenSurveyId = localStorage.getItem("lastServiceId");
+      }
 
-        // ✅ NEW: if coming from RegionPage, refresh filters
-        const shouldRefreshFilters = localStorage.getItem("filtersRefresh") === "true";
-        if (shouldRefreshFilters && chosenSurveyId) {
-          try {
-            console.log("🔄 Refreshing region filters from backend...");
-            const filterRes = await http.get(`/users/${userId}/filters`, {
-              params: { surveyId: chosenSurveyId },
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (filterRes.data?.success) {
-              const regions = filterRes.data.data.region?.values || [];
-              console.log("🧩 Active region filters loaded:", regions);
-              // (Optional) store or show active regions if needed
-            } else {
-              console.warn("⚠️ No region filters found or request failed:", filterRes.data);
-            }
-          } catch (e) {
-            console.error("❌ Failed to refresh region filters:", e);
-          } finally {
-            localStorage.removeItem("filtersRefresh");
-          }
-        }
+      // 2.Validate it's a real UUID (ignore slugs like 'residential_care')
+      if (chosenSurveyId && !isUUID(chosenSurveyId)) {
+        console.warn("Invalid surveyId slug detected, ignoring:", chosenSurveyId);
+        chosenSurveyId = null;
+      }
 
-        // Check saved filter from backend first (to restore last selection)
-        if (!chosenSurveyId) {
-          try {
-            const lastServiceId = localStorage.getItem("lastServiceId");
-            if (lastServiceId && isUUID(lastServiceId)) {
-              const filterRes = await http.get(`/users/${userId}/filters`, {
-                params: { surveyId: lastServiceId },
-                headers: { Authorization: `Bearer ${token}` },
-              });
-              if (filterRes.data?.success && filterRes.data.data?.serviceType?.value) {
-                chosenSurveyId = filterRes.data.data.serviceType.value;
-              }
-            }
-          } catch (e) {
-            console.warn("No saved filter found, falling back to default survey.");
-          }
-        }
-
-        // Fallback: get default survey from backend if no saved one
-        if (!chosenSurveyId) {
+      // 3.If still no survey, get user's default survey from backend
+      if (!chosenSurveyId) {
+        try {
           const res = await http.get(`/users/${userId}/surveys/default`, {
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -111,56 +76,49 @@ export default function Dashboard() {
             chosenSurveyId = res.data.data.surveyId;
             setServiceName(res.data.data.surveyName);
           }
+        } catch (e) {
+          console.warn("Could not load default survey:", e);
         }
+      }
 
-        // Apply surveyId
-        if (chosenSurveyId) {
-          setSurveyId(chosenSurveyId);
-          localStorage.setItem("lastServiceId", chosenSurveyId);
+      // 4.If we finally have one, apply and store it
+      if (chosenSurveyId) {
+        setSurveyId(chosenSurveyId);
+        localStorage.setItem("lastServiceId", chosenSurveyId);
 
-          // Clear outdated region filters if switching surveys
-          const prevSurveyId = localStorage.getItem("prevServiceId");
-          if (prevSurveyId && prevSurveyId !== chosenSurveyId) {
-            console.log("🧹 Clearing region filters for previous survey:", prevSurveyId);
-            try {
-              await http.patch(`/users/${userId}/filters/regions`, {
-                surveyId: chosenSurveyId,
-                regions: [], // reset
-              });
-            } catch (e) {
-              console.warn("Failed to clear old region filters:", e.message);
-            }
-          }
-          localStorage.setItem("prevServiceId", chosenSurveyId);
+        // Keep each survey’s filters independent
+        const prevSurveyId = localStorage.getItem("prevServiceId");
+        if (prevSurveyId && prevSurveyId !== chosenSurveyId) {
+          console.log(`🔄 Switched survey: ${prevSurveyId} → ${chosenSurveyId}`);
+        }
+        localStorage.setItem("prevServiceId", chosenSurveyId);
 
-
-          if (location.state?.service) {
-            // Use name passed in navigation state
-            setServiceName(location.state.service);
+        // Update the service name from navigation, cache, or backend
+        if (location.state?.service) {
+          setServiceName(location.state.service);
+          localStorage.setItem(`surveyName:${chosenSurveyId}`, location.state.service);
+        } else {
+          const cachedName = localStorage.getItem(`surveyName:${chosenSurveyId}`);
+          if (cachedName) {
+            setServiceName(cachedName);
           } else {
-            // Try to reuse cached surveyName
-            const cachedName = localStorage.getItem(`surveyName:${chosenSurveyId}`);
-            if (cachedName) {
-              setServiceName(cachedName);
-            } else {
-              // Fetch default survey details to get the name
-              try {
-                const res = await http.get(`/users/${userId}/surveys/default`, {
-                  headers: { Authorization: `Bearer ${token}` },
-                });
-                if (res.data?.success) {
-                  setServiceName(res.data.data.surveyName);
-                  localStorage.setItem(`surveyName:${res.data.data.surveyId}`, res.data.data.surveyName);
-                } else {
-                  setServiceName(humanize(chosenSurveyId)); // fallback
-                }
-              } catch (e) {
-                console.warn("Could not fetch survey name, fallback to humanize.");
+            try {
+              const res = await http.get(`/users/${userId}/surveys/default`, {
+                headers: { Authorization: `Bearer ${token}` },
+              });
+              if (res.data?.success) {
+                setServiceName(res.data.data.surveyName);
+                localStorage.setItem(`surveyName:${res.data.data.surveyId}`, res.data.data.surveyName);
+              } else {
                 setServiceName(humanize(chosenSurveyId));
               }
+            } catch {
+              setServiceName(humanize(chosenSurveyId));
             }
           }
         }
+      }
+
 
       } catch (err) {
         console.error(err);

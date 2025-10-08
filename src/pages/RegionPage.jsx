@@ -72,6 +72,16 @@ export default function RegionPage() {
           savedRegionIds = filtersRes.data.data.region.values.map(String); // ensure string IDs
         }
 
+        // 🧹 Filter invalid values (legacy name-based ones)
+        const validIds = new Set(allRegions.map((r) => String(r.id)));
+        savedRegionIds = savedRegionIds.filter((id) => validIds.has(id));
+        if (savedRegionIds.length < filtersRes.data.data.region.values.length) {
+          console.warn(
+            "⚠️ Some invalid region values skipped:",
+            filtersRes.data.data.region.values
+          );
+        }
+
         // 3️⃣ Default to select all if no saved filters
         const initialSelected =
           savedRegionIds.length > 0
@@ -81,6 +91,14 @@ export default function RegionPage() {
         console.log("✅ Initial selected IDs:", initialSelected);
 
         setSelected(new Set(initialSelected));
+
+        // 💾 Save combined list (IDs + names) in localStorage for future
+        const selectedCombined = allRegions
+          .filter((r) => initialSelected.includes(String(r.id)))
+          .map((r) => ({ id: String(r.id), name: r.name }));
+
+        localStorage.setItem("selectedRegions", JSON.stringify(selectedCombined));
+        console.log("💾 Cached selectedRegions (id + name):", selectedCombined);
       } catch (err) {
         console.error("Failed to load regions:", err);
         setApiError("Failed to load regions");
@@ -145,25 +163,33 @@ export default function RegionPage() {
     if (!user?.userId || !token || !surveyId) return;
 
     try {
-      // Convert selected IDs into their matching names
+      // ✅ Always send only facilityCode IDs (string form)
+      const uniqueIds = Array.from(new Set(Array.from(selected).map(String)));
+
       const payload = {
         surveyId,
-        regions: Array.from(selected).map((id) => {
-          const region = regions.find((r) => String(r.id) === String(id));
-          return region?.name || id; // fallback if region not found
-        }),
+        regions: uniqueIds, // must be array of IDs, not names
       };
 
       console.log("📤 Sending PATCH payload:", payload);
 
-      await http.patch(`/users/${user.userId}/filters/regions`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await http.patch(
+        `/users/${user.userId}/filters/regions`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
-      console.log("✅ Regions saved successfully:", payload);
+      console.log("✅ Regions saved successfully:", res.data);
 
-      // 💾 Save locally for dashboard sync
-      localStorage.setItem("selectedRegionIds", JSON.stringify(Array.from(selected)));
+      // 💾 Cache locally for dashboard use (IDs + names)
+      const combined = regions
+        .filter((r) => uniqueIds.includes(String(r.id)))
+        .map((r) => ({ id: String(r.id), name: r.name }));
+
+      localStorage.setItem("selectedRegionIds", JSON.stringify(uniqueIds));
+      localStorage.setItem("selectedRegions", JSON.stringify(combined));
+
+      // Rebuild name map once for the dashboard
       if (regions.length > 0) {
         const regionNameMap = {};
         for (const r of regions) {
@@ -176,7 +202,7 @@ export default function RegionPage() {
       localStorage.setItem("filtersRefresh", "true");
       navigate("/dashboard");
     } catch (err) {
-      console.error("Failed to save selected regions:", err);
+      console.error("❌ Failed to save selected regions:", err);
       alert("Failed to save regions");
     }
   }
