@@ -1,43 +1,87 @@
 // src/pages/RegionPage.jsx
-import React from "react";
-
-const INITIAL_REGIONS = [
-  "Region Name",
-  "Musharof Chowdhury",
-  "Naimur Rahman",
-  "Shafiq Hammad",
-  "Alex Semuyel",
-  "Jhon Smith",
-];
+import React, { useEffect, useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import http from "../api/http"; // axios instance
 
 export default function RegionPage() {
-  const [query, setQuery] = React.useState("");
-  const [regions] = React.useState(INITIAL_REGIONS);
-  const [selected, setSelected] = React.useState(
-    () => new Set(["Naimur Rahman", "Shafiq Hammad", "Alex Semuyel"])
-  );
+  const navigate = useNavigate();
 
-  const filtered = React.useMemo(() => {
+  // --- State (same as before) ---
+  const [query, setQuery] = useState("");
+  const [regions, setRegions] = useState([]); // from API
+  const [selected, setSelected] = useState(new Set());
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState("");
+
+  // === Fetch regions & saved selections ===
+  useEffect(() => {
+    async function fetchRegionsAndFilters() {
+      try {
+        setLoading(true);
+        const user = JSON.parse(localStorage.getItem("user"));
+        const token = localStorage.getItem("accessToken");
+        const surveyId = localStorage.getItem("lastServiceId");
+        if (!user?.userId || !token || !surveyId) return;
+
+        // 1️⃣ Fetch regions for this survey
+        const regionsRes = await http.get(`/surveys/${surveyId}/regions`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        let allRegions = [];
+        if (regionsRes.data?.success && Array.isArray(regionsRes.data.data)) {
+          // Map API fields to names used in UI
+          allRegions = regionsRes.data.data.map((r) => r.regionName);
+          setRegions(allRegions);
+        }
+
+        // 2️⃣ Fetch user filters to restore saved regions
+        const filtersRes = await http.get(`/users/${user.userId}/filters`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        let savedRegionNames = [];
+        if (filtersRes.data?.success && filtersRes.data.data?.regions?.length) {
+          savedRegionNames = filtersRes.data.data.regions.map(
+            (r) => r.regionName
+          );
+        }
+
+        // 3️⃣ Default to select all if no saved filters
+        const initialSelected =
+          savedRegionNames.length > 0 ? savedRegionNames : allRegions;
+
+        setSelected(new Set(initialSelected));
+      } catch (err) {
+        console.error("Failed to load regions:", err);
+        setApiError("Failed to load regions");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchRegionsAndFilters();
+  }, []);
+
+  // === Filtering (unchanged) ===
+  const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return q ? regions.filter((r) => r.toLowerCase().includes(q)) : regions;
   }, [regions, query]);
 
-  const totalCount = regions.length - 1; // exclude header “Region Name”
-  const selectedCount = [...selected].filter((r) => r !== "Region Name").length;
+  const totalCount = regions.length;
+  const selectedCount = [...selected].length;
+  const isAllVisibleChecked = filtered.every((r) => selected.has(r));
 
-  const isAllVisibleChecked = filtered
-    .filter((r) => r !== "Region Name")
-    .every((r) => selected.has(r));
-
+  // === Handlers (unchanged) ===
   const toggleOne = (name) => {
-    if (name === "Region Name") return;
     const next = new Set(selected);
     next.has(name) ? next.delete(name) : next.add(name);
     setSelected(next);
   };
 
   const toggleAllVisible = () => {
-    const names = filtered.filter((r) => r !== "Region Name");
+    const names = filtered;
     const next = new Set(selected);
     if (isAllVisibleChecked) {
       names.forEach((n) => next.delete(n));
@@ -47,25 +91,64 @@ export default function RegionPage() {
     setSelected(next);
   };
 
+  // === Save selected regions ===
+  async function handleSave() {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const token = localStorage.getItem("accessToken");
+    if (!user?.userId || !token) return;
+
+    try {
+      // Backend expects an array of strings, not objects
+      const payload = {
+        regions: Array.from(selected), // ["regionId1", "regionId2", ...]
+      };
+
+      await http.patch(
+        `/users/${user.userId}/filters/regions`,
+        payload,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      console.log("✅ Regions saved:", payload);
+      navigate("/dashboard");
+    } catch (err) {
+      console.error("Failed to save selected regions:", err);
+      alert("Failed to save regions");
+    }
+  }
+
+
+
+  // === Loader ===
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#3F11FF]"></div>
+      </div>
+    );
+  }
+
+  // === Original UI below (unchanged) ===
   return (
     <div className="p-0">
       <div className="flex justify-center items-center mb-6">
-        <h1 className="text-2xl font-semibold text-gray-800">
-          Region
-        </h1>
+        <h1 className="text-2xl font-semibold text-gray-800">Region</h1>
       </div>
-
 
       {/* Subheader */}
       <div className="text-sm text-[#8FA0C6] mb-4">
         <div>
           Current service type:&nbsp;
-          <span className="text-[#2B3674] font-medium">Retirement Village</span>
+          <span className="text-[#2B3674] font-medium">
+            {localStorage.getItem("lastServiceName") || "Service Type"}
+          </span>
         </div>
         <div>Select regions:</div>
       </div>
 
-      {/* === BIG WHITE CANVAS (like your Figma) === */}
+      {apiError && <p className="text-red-500 text-sm mb-3">{apiError}</p>}
+
+      {/* === BIG WHITE CANVAS === */}
       <div
         className="
           mx-auto w-full max-w-[1600px]
@@ -74,7 +157,6 @@ export default function RegionPage() {
           min-h-[75vh]
         "
       >
-        {/* Inner card with blue focus ring on inputs */}
         <div
           className="
             relative rounded-xl bg-white border border-[#E6EBF6]
@@ -123,9 +205,6 @@ export default function RegionPage() {
           {/* Rows */}
           <div className="max-h-[48vh] overflow-auto">
             {filtered.map((name, idx) => {
-              const isHeader = name === "Region Name";
-              if (isHeader) return null;
-
               const checked = selected.has(name);
               const rowHighlight =
                 name === "Naimur Rahman" ? "bg-[#F7FAFF]" : "";
@@ -148,13 +227,21 @@ export default function RegionPage() {
             })}
           </div>
         </div>
-
-
       </div>
-      {/* Footer count inside the canvas */}
-      <div className="mt-3 text-xs text-[#8FA0C6]">
-        Selected: <span className="text-[#2B3674]">{selectedCount}</span> of{" "}
-        {totalCount}
+
+      {/* Footer */}
+      <div className="mt-3 flex items-center justify-between text-xs text-[#8FA0C6]">
+        <div>
+          Selected:{" "}
+          <span className="text-[#2B3674]">{selectedCount}</span> of{" "}
+          {totalCount}
+        </div>
+        <button
+          onClick={handleSave}
+          className="px-5 py-2 rounded-xl text-sm font-semibold text-white bg-[#3F11FF] hover:opacity-90 shadow"
+        >
+          Continue
+        </button>
       </div>
     </div>
   );

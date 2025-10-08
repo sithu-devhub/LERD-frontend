@@ -95,11 +95,34 @@ export default function Dashboard() {
           setSurveyId(chosenSurveyId);
           localStorage.setItem("lastServiceId", chosenSurveyId);
 
-          // Prefer name from route state if exists
           if (location.state?.service) {
+            // Use name passed in navigation state
             setServiceName(location.state.service);
+          } else {
+            // Try to reuse cached surveyName
+            const cachedName = localStorage.getItem(`surveyName:${chosenSurveyId}`);
+            if (cachedName) {
+              setServiceName(cachedName);
+            } else {
+              // Fetch default survey details to get the name
+              try {
+                const res = await http.get(`/users/${userId}/surveys/default`, {
+                  headers: { Authorization: `Bearer ${token}` },
+                });
+                if (res.data?.success) {
+                  setServiceName(res.data.data.surveyName);
+                  localStorage.setItem(`surveyName:${res.data.data.surveyId}`, res.data.data.surveyName);
+                } else {
+                  setServiceName(humanize(chosenSurveyId)); // fallback
+                }
+              } catch (e) {
+                console.warn("Could not fetch survey name, fallback to humanize.");
+                setServiceName(humanize(chosenSurveyId));
+              }
+            }
           }
         }
+
 
       } catch (err) {
         console.error(err);
