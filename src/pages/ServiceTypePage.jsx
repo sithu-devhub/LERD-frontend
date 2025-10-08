@@ -29,7 +29,7 @@ function ServiceTile({
       aria-checked={isSelected}
       role="radio"
       className={[
-        "relative w-full h-full text-left rounded-2xl transition shadow-sm",
+        "relative w-full h-full text-left rounded-xl transition shadow-sm",
         "px-6 py-6 flex flex-col justify-center focus:outline-none",
         disabled
           ? "bg-[#BFC7DC] text-white opacity-70 cursor-not-allowed"
@@ -60,23 +60,13 @@ function ServiceTile({
       <div className="flex flex-col items-center justify-center h-full space-y-3 pr-8">
         <div
           className={[
-            "font-black text-2xl tracking-wide text-center",
+            "font-black text-xl tracking-wide text-center",
             isSelected ? "text-white" : "text-gray-500",
           ].join(" ")}
         >
           {label}
         </div>
 
-        {sublabel && (
-          <div
-            className={[
-              "text-xl text-center",
-              isSelected ? "text-white/90 font-semibold" : "text-gray-400 font-medium",
-            ].join(" ")}
-          >
-            {sublabel}
-          </div>
-        )}
       </div>
     </button>
   );
@@ -220,11 +210,12 @@ export default function ServiceType() {
     );
   }
 
-  // ✅ NEW: placeholder integrated below heading
+  // placeholder integrated below heading
   return (
     <div className="p-0">
       {/* Page heading */}
-      <div className="flex justify-center items-center mb-6">
+      <div className="flex justify-center items-center mb-6 mt-6">
+
         <h1 className="text-2xl font-semibold text-gray-800">Service</h1>
       </div>
 
@@ -234,7 +225,7 @@ export default function ServiceType() {
 
       {!hasServices ? (
         <div className="flex flex-col justify-center items-center py-20 text-gray-500 border border-[#E6EBF6] rounded-2xl bg-white shadow-sm">
-          <h2 className="text-xl font-semibold">No Services Available</h2>
+          <h2 className="text-xl font-medium">No Services Available</h2>
           <p className="text-sm mt-2">
             It looks like your account has no active surveys or services.
           </p>
@@ -270,7 +261,6 @@ export default function ServiceType() {
                   <ServiceTile
                     value={item.surveyId}
                     label={item.serviceName}
-                    sublabel={item.serviceType || item.description || ""}
                     selected={selected}
                     onChange={(val) => {
                       hasUserSelected.current = true;
