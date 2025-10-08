@@ -8,7 +8,7 @@ export default function RegionPage() {
 
   // --- State (same as before) ---
   const [query, setQuery] = useState("");
-  const [regions, setRegions] = useState([]); // from API
+  const [regions, setRegions] = useState([]); // from API [{id, name}]
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState("");
@@ -29,27 +29,56 @@ export default function RegionPage() {
         });
 
         let allRegions = [];
+        console.log("🔍 Raw regions response:", regionsRes.data.data[0]);
         if (regionsRes.data?.success && Array.isArray(regionsRes.data.data)) {
-          // Map API fields to names used in UI
-          allRegions = regionsRes.data.data.map((r) => r.regionName);
+          console.log("🔍 Raw regions response sample:", regionsRes.data.data[0]);
+
+          // Correct mapping: use facilityCode as ID, regionName as name
+          allRegions = regionsRes.data.data
+            .filter((r) => r.facilityCode) // ensure valid ID
+            .map((r) => ({
+              id: r.facilityCode, // key
+              name: r.regionName, // name
+            }));
+
+          console.log("📦 Loaded regions (fixed mapping):", allRegions);
           setRegions(allRegions);
+
+          // 🗺️ Save region name↔ID mapping for dashboard filters
+          if (Array.isArray(allRegions) && allRegions.length > 0) {
+            const regionNameMap = {};
+            for (const r of allRegions) {
+              regionNameMap[String(r.id)] = String(r.name);
+            }
+            localStorage.setItem("regionNameMap", JSON.stringify(regionNameMap));
+            console.log("🗺️ Saved regionNameMap:", regionNameMap);
+          }
         }
 
         // 2️⃣ Fetch user filters to restore saved regions
         const filtersRes = await http.get(`/users/${user.userId}/filters`, {
+          params: { surveyId },
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        let savedRegionNames = [];
-        if (filtersRes.data?.success && filtersRes.data.data?.regions?.length) {
-          savedRegionNames = filtersRes.data.data.regions.map(
-            (r) => r.regionName
-          );
+        console.log("🧩 Full /filters?surveyId response:", filtersRes.data);
+
+        let savedRegionIds = [];
+        if (
+          filtersRes.data?.success &&
+          filtersRes.data.data?.region?.values &&
+          Array.isArray(filtersRes.data.data.region.values)
+        ) {
+          savedRegionIds = filtersRes.data.data.region.values.map(String); // ensure string IDs
         }
 
         // 3️⃣ Default to select all if no saved filters
         const initialSelected =
-          savedRegionNames.length > 0 ? savedRegionNames : allRegions;
+          savedRegionIds.length > 0
+            ? savedRegionIds
+            : allRegions.map((r) => String(r.id));
+
+        console.log("✅ Initial selected IDs:", initialSelected);
 
         setSelected(new Set(initialSelected));
       } catch (err) {
@@ -63,31 +92,48 @@ export default function RegionPage() {
     fetchRegionsAndFilters();
   }, []);
 
-  // === Filtering (unchanged) ===
+  // === Filtering (unchanged logic, now works with names) ===
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return q ? regions.filter((r) => r.toLowerCase().includes(q)) : regions;
+    return q
+      ? regions.filter((r) => r.name.toLowerCase().includes(q))
+      : regions;
   }, [regions, query]);
 
   const totalCount = regions.length;
   const selectedCount = [...selected].length;
-  const isAllVisibleChecked = filtered.every((r) => selected.has(r));
+  const isAllVisibleChecked =
+    filtered.length > 0 && filtered.every((r) => selected.has(String(r.id)));
 
-  // === Handlers (unchanged) ===
-  const toggleOne = (name) => {
+  // === Handlers (fixed to work per ID) ===
+  const toggleOne = (id) => {
+    const idStr = String(id);
     const next = new Set(selected);
-    next.has(name) ? next.delete(name) : next.add(name);
+    if (next.has(idStr)) {
+      next.delete(idStr);
+      console.log(`❌ Unselected region ID: ${idStr}`);
+    } else {
+      next.add(idStr);
+      console.log(`✅ Selected region ID: ${idStr}`);
+    }
+    console.log("🧠 Current selected set:", Array.from(next));
     setSelected(next);
   };
 
   const toggleAllVisible = () => {
-    const names = filtered;
     const next = new Set(selected);
+    const allIds = filtered.map((r) => String(r.id));
+    console.log("⚙️ Toggle all visible IDs:", allIds);
+
     if (isAllVisibleChecked) {
-      names.forEach((n) => next.delete(n));
+      allIds.forEach((id) => next.delete(id));
+      console.log("🚫 Deselected all visible regions");
     } else {
-      names.forEach((n) => next.add(n));
+      allIds.forEach((id) => next.add(id));
+      console.log("✅ Selected all visible regions");
     }
+
+    console.log("🧠 New selected set after toggle all:", Array.from(next));
     setSelected(next);
   };
 
@@ -95,29 +141,45 @@ export default function RegionPage() {
   async function handleSave() {
     const user = JSON.parse(localStorage.getItem("user"));
     const token = localStorage.getItem("accessToken");
-    if (!user?.userId || !token) return;
+    const surveyId = localStorage.getItem("lastServiceId");
+    if (!user?.userId || !token || !surveyId) return;
 
     try {
-      // Backend expects an array of strings, not objects
+      // Convert selected IDs into their matching names
       const payload = {
-        regions: Array.from(selected), // ["regionId1", "regionId2", ...]
+        surveyId,
+        regions: Array.from(selected).map((id) => {
+          const region = regions.find((r) => String(r.id) === String(id));
+          return region?.name || id; // fallback if region not found
+        }),
       };
 
-      await http.patch(
-        `/users/${user.userId}/filters/regions`,
-        payload,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      console.log("📤 Sending PATCH payload:", payload);
 
-      console.log("✅ Regions saved:", payload);
+      await http.patch(`/users/${user.userId}/filters/regions`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      console.log("✅ Regions saved successfully:", payload);
+
+      // 💾 Save locally for dashboard sync
+      localStorage.setItem("selectedRegionIds", JSON.stringify(Array.from(selected)));
+      if (regions.length > 0) {
+        const regionNameMap = {};
+        for (const r of regions) {
+          regionNameMap[String(r.id)] = String(r.name);
+        }
+        localStorage.setItem("regionNameMap", JSON.stringify(regionNameMap));
+        console.log("🗺️ Updated regionNameMap:", regionNameMap);
+      }
+
+      localStorage.setItem("filtersRefresh", "true");
       navigate("/dashboard");
     } catch (err) {
       console.error("Failed to save selected regions:", err);
       alert("Failed to save regions");
     }
   }
-
-
 
   // === Loader ===
   if (loading) {
@@ -128,7 +190,7 @@ export default function RegionPage() {
     );
   }
 
-  // === Original UI below (unchanged) ===
+  // === Original UI (unchanged) ===
   return (
     <div className="p-0">
       <div className="flex justify-center items-center mb-6">
@@ -204,24 +266,32 @@ export default function RegionPage() {
 
           {/* Rows */}
           <div className="max-h-[48vh] overflow-auto">
-            {filtered.map((name, idx) => {
-              const checked = selected.has(name);
+            {filtered.map((r, idx) => {
+              const checked = selected.has(String(r.id));
               const rowHighlight =
-                name === "Naimur Rahman" ? "bg-[#F7FAFF]" : "";
+                r.name === "Naimur Rahman" ? "bg-[#F7FAFF]" : "";
 
               return (
                 <div
-                  key={name + idx}
+                  key={r.id || idx}
                   className={`flex items-center gap-3 px-4 sm:px-6 h-12 border-b border-[#F2F5FC] hover:bg-[#FAFBFE] ${rowHighlight}`}
                 >
                   <input
                     type="checkbox"
                     checked={checked}
-                    onChange={() => toggleOne(name)}
+                    onChange={() => {
+                      console.log(
+                        `🖱️ Clicked on checkbox for region:`,
+                        r.name,
+                        "| ID:",
+                        r.id
+                      );
+                      toggleOne(r.id);
+                    }}
                     className="h-4 w-4 rounded border-[#C9D3EA] text-[#3F11FF] focus:ring-0"
-                    aria-label={`Select ${name}`}
+                    aria-label={`Select ${r.name}`}
                   />
-                  <span className="text-sm text-[#2B3674]">{name}</span>
+                  <span className="text-sm text-[#2B3674]">{r.name}</span>
                 </div>
               );
             })}

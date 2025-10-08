@@ -61,6 +61,29 @@ export default function Dashboard() {
           chosenSurveyId = null;
         }
 
+        // ✅ NEW: if coming from RegionPage, refresh filters
+        const shouldRefreshFilters = localStorage.getItem("filtersRefresh") === "true";
+        if (shouldRefreshFilters && chosenSurveyId) {
+          try {
+            console.log("🔄 Refreshing region filters from backend...");
+            const filterRes = await http.get(`/users/${userId}/filters`, {
+              params: { surveyId: chosenSurveyId },
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            if (filterRes.data?.success) {
+              const regions = filterRes.data.data.region?.values || [];
+              console.log("🧩 Active region filters loaded:", regions);
+              // (Optional) store or show active regions if needed
+            } else {
+              console.warn("⚠️ No region filters found or request failed:", filterRes.data);
+            }
+          } catch (e) {
+            console.error("❌ Failed to refresh region filters:", e);
+          } finally {
+            localStorage.removeItem("filtersRefresh");
+          }
+        }
+
         // Check saved filter from backend first (to restore last selection)
         if (!chosenSurveyId) {
           try {
@@ -95,6 +118,22 @@ export default function Dashboard() {
           setSurveyId(chosenSurveyId);
           localStorage.setItem("lastServiceId", chosenSurveyId);
 
+          // Clear outdated region filters if switching surveys
+          const prevSurveyId = localStorage.getItem("prevServiceId");
+          if (prevSurveyId && prevSurveyId !== chosenSurveyId) {
+            console.log("🧹 Clearing region filters for previous survey:", prevSurveyId);
+            try {
+              await http.patch(`/users/${userId}/filters/regions`, {
+                surveyId: chosenSurveyId,
+                regions: [], // reset
+              });
+            } catch (e) {
+              console.warn("Failed to clear old region filters:", e.message);
+            }
+          }
+          localStorage.setItem("prevServiceId", chosenSurveyId);
+
+
           if (location.state?.service) {
             // Use name passed in navigation state
             setServiceName(location.state.service);
@@ -122,7 +161,6 @@ export default function Dashboard() {
             }
           }
         }
-
 
       } catch (err) {
         console.error(err);
