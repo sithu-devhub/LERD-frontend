@@ -87,8 +87,12 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
 
   const chartRef = useRef(null);
 
-  // Only pass surveyId (hook will fetch filters itself)
-  const { filteredRegions, selectedRegionIds } = useFilteredRegions(surveyId);
+  // Use custom region filter hook
+  const { filteredRegions, selectedRegionIds, regionNames } = useFilteredRegions(
+    surveyId,
+    responseData
+  );
+
 
   useLayoutEffect(() => {
     const el = chartRef.current;
@@ -124,15 +128,16 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
           });
 
           if (Array.isArray(json.data.regions)) {
-            // Normalize regions
+            // Normalize regions to support both numeric and named villages
             const regions = json.data.regions
               .filter((r) => r.villageName)
               .map((r) => {
                 const name = String(r.villageName || "").trim();
-                const facilityCode = String(r.facilityCode || "");
+                const codeLike = /^\d+$/.test(name);
                 return {
-                  id: facilityCode || name,          // prefer numeric id if exists
-                  facilityCode,
+                  // If name looks numeric, treat it as facility code
+                  id: codeLike ? name : String(r.facilityCode || name),
+                  facilityCode: codeLike ? name : String(r.facilityCode || ""),
                   villageName: name,
                   name,
                   value: r.participantCount || 0,
@@ -158,35 +163,22 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
     return () => {
       aborted = true;
     };
-  }, [gender, participantType, period, surveyId, selectedRegionIds]);
+  }, [gender, participantType, period, surveyId]);
 
-  // Build displayData only once
-  const regionNameMap = JSON.parse(localStorage.getItem("regionNameMap") || "{}");
-
-  const displayData = showAll
-    ? [{ name: "Overall", value: responseTotals.totalParticipants || 0 }]
-    : responseData
-        .filter(r => {
-          if (selectedRegionIds.length === 0) return true;
-
-          const idStr = String(r.facilityCode || r.id);
-
-          // Direct match with facilityCode
-          if (selectedRegionIds.includes(idStr)) return true;
-
-          // Check if selected filter maps to this village
-          return selectedRegionIds.some(selId => {
-            const mappedName = regionNameMap[selId];
-            return mappedName && mappedName === r.villageName;
-          });
-        })
-        .slice(0, 5);
-
+  // ✅ Display filtered data from the hook
+  let displayData;
+  if (showAll) {
+    displayData = [
+      { name: "Overall", value: responseTotals.totalParticipants || 0 },
+    ];
+  } else {
+    displayData = filteredRegions.slice(0, 5);
+  }
 
   // detect no-data
   const noData =
     (responseTotals.totalParticipants || 0) === 0 ||
-    (filteredRegions.length === 0 && responseData.length === 0);
+    filteredRegions.length === 0;
 
   return (
     <ChartCard
@@ -274,6 +266,14 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                               stopOpacity="0.9"
                             />
                             <stop offset="100%" stopColor="#6366F1" />
+                            <animateTransform
+                              attributeName="gradientTransform"
+                              type="translate"
+                              dur="2s"
+                              repeatCount="indefinite"
+                              values="0 -1; 0 1; 0 1"
+                              keyTimes="0;0.8;1"
+                            />
                           </linearGradient>
                         </defs>
                         <path
