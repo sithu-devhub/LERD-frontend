@@ -29,3 +29,6 @@ git push origin main (This will trigger deployment automatically in netlix)
 https://lerd.netlify.app/login (username - sithu    |    password - 123)
 
 
+
+nvm use 16
+npm run dev
