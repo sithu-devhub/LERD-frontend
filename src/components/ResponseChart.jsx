@@ -125,27 +125,22 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
 
           if (Array.isArray(json.data.regions)) {
             // Normalize regions
-            const regions = json.data.regions
-              .filter((r) => r.villageName)
-              .map((r) => {
-                const name = String(r.villageName || "").trim();
-                const facilityCode = String(r.facilityCode || "");
-                return {
-                  id: facilityCode || name,          // prefer numeric id if exists
-                  facilityCode,
-                  villageName: name,
-                  name,
-                  value: r.participantCount || 0,
-                };
-              });
+            const allRegions = json.data.regions.map((r) => ({
+              villageName: String(r.villageName || "").trim(),
+              name: String(r.villageName || "").trim(),
+              value: r.participantCount || 0,
+            }));
 
+            // ✅ Filter immediately based on selected region names
+            const filtered = selectedRegionIds?.length
+              ? allRegions.filter((r) => selectedRegionIds.includes(r.villageName))
+              : allRegions;
 
+            console.log("[ResponseChart] Filtered regions:", filtered.map((r) => r.name));
 
-            console.log("🧩 All region IDs from chart API:", regions.map((r) => r.id));
-            console.log("🎯 Selected filters (from hook):", selectedRegionIds);
-
-            setResponseData(regions);
+            setResponseData(filtered);
           }
+
         }
       } catch (e) {
         if (!aborted) setError(e.message);
@@ -160,27 +155,12 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
     };
   }, [gender, participantType, period, surveyId, selectedRegionIds]);
 
-  // Build displayData only once
-  const regionNameMap = JSON.parse(localStorage.getItem("regionNameMap") || "{}");
+
 
   const displayData = showAll
     ? [{ name: "Overall", value: responseTotals.totalParticipants || 0 }]
-    : responseData
-        .filter(r => {
-          if (selectedRegionIds.length === 0) return true;
+    : responseData.slice(0, 5);
 
-          const idStr = String(r.facilityCode || r.id);
-
-          // Direct match with facilityCode
-          if (selectedRegionIds.includes(idStr)) return true;
-
-          // Check if selected filter maps to this village
-          return selectedRegionIds.some(selId => {
-            const mappedName = regionNameMap[selId];
-            return mappedName && mappedName === r.villageName;
-          });
-        })
-        .slice(0, 5);
 
 
   // detect no-data
