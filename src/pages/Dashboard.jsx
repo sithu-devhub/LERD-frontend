@@ -178,7 +178,7 @@ export default function Dashboard() {
 
       {serviceError && <div className="text-sm text-red-600 mb-4">{serviceError}</div>}
 
-      {/* ✅ Only render charts when surveyId is a valid UUID */}
+      {/* Only render charts when surveyId is a valid UUID */}
       {surveyId && isUUID(surveyId) && (
         <>
           <div className="grid grid-cols-3 gap-6 mb-6">

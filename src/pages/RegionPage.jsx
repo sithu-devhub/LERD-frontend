@@ -8,7 +8,7 @@ export default function RegionPage() {
 
   // --- State (same as before) ---
   const [query, setQuery] = useState("");
-  const [regions, setRegions] = useState([]); // from API [{id, name}]
+  const [regions, setRegions] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState("");
@@ -23,7 +23,7 @@ export default function RegionPage() {
         const surveyId = localStorage.getItem("lastServiceId");
         if (!user?.userId || !token || !surveyId) return;
 
-        // 1️⃣ Fetch regions for this survey
+        // 1.Fetch regions for this survey
         const regionsRes = await http.get(`/surveys/${surveyId}/regions`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -44,7 +44,7 @@ export default function RegionPage() {
           console.log("📦 Loaded regions (fixed mapping):", allRegions);
           setRegions(allRegions);
 
-          // 🗺️ Save region name↔ID mapping for dashboard filters
+          // Save region name↔ID mapping for dashboard filters
           if (Array.isArray(allRegions) && allRegions.length > 0) {
             const regionNameMap = {};
             for (const r of allRegions) {
@@ -55,7 +55,7 @@ export default function RegionPage() {
           }
         }
 
-        // 2️⃣ Fetch user filters to restore saved regions
+        // 2.Fetch user filters to restore saved regions
         const filtersRes = await http.get(`/users/${user.userId}/filters`, {
           params: { surveyId },
           headers: { Authorization: `Bearer ${token}` },
@@ -72,7 +72,7 @@ export default function RegionPage() {
           savedRegionIds = filtersRes.data.data.region.values.map(String); // ensure string IDs
         }
 
-        // 🧹 Filter invalid values (legacy name-based ones)
+        // Filter invalid values (legacy name-based ones)
         const validIds = new Set(allRegions.map((r) => String(r.id)));
         savedRegionIds = savedRegionIds.filter((id) => validIds.has(id));
         if (savedRegionIds.length < filtersRes.data.data.region.values.length) {
@@ -82,7 +82,7 @@ export default function RegionPage() {
           );
         }
 
-        // 3️⃣ Default to select all if no saved filters
+        // 3.Default to select all if no saved filters
         const initialSelected =
           savedRegionIds.length > 0
             ? savedRegionIds
@@ -92,7 +92,7 @@ export default function RegionPage() {
 
         setSelected(new Set(initialSelected));
 
-        // 💾 Save combined list (IDs + names) in localStorage for future
+        // Save combined list (IDs + names) in localStorage for future
         const selectedCombined = allRegions
           .filter((r) => initialSelected.includes(String(r.id)))
           .map((r) => ({ id: String(r.id), name: r.name }));
@@ -163,7 +163,7 @@ export default function RegionPage() {
     if (!user?.userId || !token || !surveyId) return;
 
     try {
-      // ✅ Always send only facilityCode IDs (string form)
+      // Always send only facilityCode IDs (string form)
       const uniqueIds = Array.from(new Set(Array.from(selected).map(String)));
 
       const payload = {
@@ -181,7 +181,7 @@ export default function RegionPage() {
 
       console.log("✅ Regions saved successfully:", res.data);
 
-      // 💾 Cache locally for dashboard use (IDs + names)
+      // Cache locally for dashboard use (IDs + names)
       const combined = regions
         .filter((r) => uniqueIds.includes(String(r.id)))
         .map((r) => ({ id: String(r.id), name: r.name }));
@@ -216,7 +216,6 @@ export default function RegionPage() {
     );
   }
 
-  // === Original UI (unchanged) ===
   return (
     <div className="p-0">
       <div className="flex justify-center items-center mb-6">
@@ -236,7 +235,7 @@ export default function RegionPage() {
 
       {apiError && <p className="text-red-500 text-sm mb-3">{apiError}</p>}
 
-      {/* === BIG WHITE CANVAS === */}
+      {/* === CANVAS === */}
       <div
         className="
           mx-auto w-full max-w-[1600px]
