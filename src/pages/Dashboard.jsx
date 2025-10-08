@@ -29,13 +29,13 @@ export default function Dashboard() {
 
   const [surveyId, setSurveyId] = useState(null);
   const [serviceName, setServiceName] = useState("Loading…");
-  const [selectedRegions, setSelectedRegions] = useState([]);   // ✅ NEW
+  const [selectedRegions, setSelectedRegions] = useState([]);   
   const [serviceLoading, setServiceLoading] = useState(false);
   const [serviceError, setServiceError] = useState('');
 
   const [availableAttrs, setAvailableAttrs] = useState([]);
   const [selectedAttrs, setSelectedAttrs] = useState(new Set());
-  const [hasServices, setHasServices] = useState(true); // ✅ NEW STATE
+  const [hasServices, setHasServices] = useState(true); 
 
   // Load survey + selected regions
   useEffect(() => {
@@ -153,6 +153,7 @@ export default function Dashboard() {
           <p className="text-sm">Please contact your administrator to assign one.</p>
         </div>
       )}
+
 
       {surveyId && isUUID(surveyId) && hasServices && selectedRegions.length > 0 && (
         <>

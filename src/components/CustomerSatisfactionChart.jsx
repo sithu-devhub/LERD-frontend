@@ -1,3 +1,5 @@
+// src/components/CustomerSatisfactionChart.js.js
+
 import React, { useState, useEffect } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import ChartCard from "../components/ChartCard";
@@ -36,55 +38,82 @@ export default function CustomerSatisfaction({
     satisfiedPercentage: 0,
     somewhatSatisfiedPercentage: 0,
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const { selectedRegionIds } = useFilteredRegions(surveyId);
 
-  // ✅ Added state for region-level data (frontend filtering)
+  // also take loading from hook so we don't fetch until IDs are ready
+  const { selectedRegionIds, loading: regionFilterLoading } = useFilteredRegions(surveyId);
+
+  // State kept as-is (you had it before); we won't remove it
   const [regionResponses, setRegionResponses] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
+
     async function load() {
       try {
+        // lways show spinner as soon as component mounts
         setLoading(true);
         setError("");
+
+        // Wait until region IDs are ready before making API calls
+        if (!surveyId || regionFilterLoading) return;
 
         console.groupCollapsed("[CustomerSatisfaction] Fetch start");
         console.log("Survey ID:", surveyId);
         console.log("Gender:", gender);
         console.log("ParticipantType:", participantType);
         console.log("Period:", period);
-        console.log("Regions:", regions);
-        console.log("Selected Region IDs:", selectedRegionIds);
+        console.log("Regions prop:", regions);
+        console.log("Selected Region IDs (from hook):", selectedRegionIds);
 
         const token = localStorage.getItem("accessToken");
 
-        // ✅ Step 1: Try normal aggregated API
+        // Build params once; include region IDs if we have them
+        const params = { surveyId, gender, participantType, period };
+
+        if (Array.isArray(selectedRegionIds) && selectedRegionIds.length > 0) {
+          const csv = selectedRegionIds.map(String).join(",");
+          Object.assign(params, {
+            region: csv,
+            regions: csv,
+            regionIds: csv,
+            facilityCodes: csv,
+            facilityCode: csv,
+          });
+          console.log("[CustomerSatisfaction] Sending region filter CSV:", csv);
+        } else {
+          console.log("[CustomerSatisfaction] No region filter; requesting overall.");
+        }
+
+        // Main API call
         const res = await http.get(`/charts/customer-satisfaction`, {
-          params: { surveyId, gender, participantType, period },
+          params,
           headers: { Authorization: `Bearer ${token}` },
         });
 
         let computedData = null;
 
         if (res.data?.success && res.data?.data) {
-          const { verySatisfiedPercentage, satisfiedPercentage, somewhatSatisfiedPercentage } =
-            res.data.data;
+          const {
+            verySatisfiedPercentage,
+            satisfiedPercentage,
+            somewhatSatisfiedPercentage,
+          } = res.data.data;
 
           computedData = {
-            verySatisfiedPercentage: parseFloat(verySatisfiedPercentage || 0),
-            satisfiedPercentage: parseFloat(satisfiedPercentage || 0),
-            somewhatSatisfiedPercentage: parseFloat(somewhatSatisfiedPercentage || 0),
+            verySatisfiedPercentage: parseFloat(verySatisfiedPercentage ?? 0),
+            satisfiedPercentage: parseFloat(satisfiedPercentage ?? 0),
+            somewhatSatisfiedPercentage: parseFloat(
+              somewhatSatisfiedPercentage ?? 0
+            ),
           };
-
-          console.log("[CustomerSatisfaction] Data (API aggregate):", res.data.data);
         } else {
           throw new Error(res.data?.message || "No satisfaction data");
         }
 
-        // ✅ Step 2: Apply frontend region filter if regions are selected
-        if (selectedRegionIds.length > 0) {
+        // secondary request (diagnostic only)
+        if (Array.isArray(selectedRegionIds) && selectedRegionIds.length > 0) {
           try {
             const respRes = await http.get(`/charts/response`, {
               params: { surveyId, gender, participantType, period },
@@ -92,23 +121,16 @@ export default function CustomerSatisfaction({
             });
 
             const all = respRes.data?.data?.regions || [];
-
-            // Filter responses matching selected region IDs
             const filtered = all.filter((r) => {
               const fid = String(r.facilityCode || r.regionName || "").trim();
               return selectedRegionIds.includes(fid);
             });
-
-            if (filtered.length > 0) {
-              setRegionResponses(filtered);
-            }
+            setRegionResponses(filtered);
           } catch (innerErr) {
-            console.warn("[CustomerSatisfaction] Region filter fallback failed:", innerErr.message);
+            console.warn("[CustomerSatisfaction] response fetch failed:", innerErr.message);
           }
         }
 
-
-        // ✅ Step 3: Apply whichever dataset we have
         if (!cancelled && computedData) {
           setData(computedData);
         }
@@ -124,11 +146,18 @@ export default function CustomerSatisfaction({
       }
     }
 
-    if (surveyId) load();
+    load();
+
+    // Run again when regionFilterLoading flips to false
+    if (!regionFilterLoading) {
+      load();
+    }
+
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType, period, regions, selectedRegionIds]);
+  }, [surveyId, gender, participantType, period, regions, selectedRegionIds, regionFilterLoading]);
+
 
   const pieData = [
     { name: "Very Satisfied", value: data.verySatisfiedPercentage },
@@ -136,10 +165,7 @@ export default function CustomerSatisfaction({
     { name: "Somewhat Satisfied", value: data.somewhatSatisfiedPercentage },
   ];
 
-  const noData =
-    !loading &&
-    !error &&
-    pieData.every((p) => p.value === 0);
+  const noData = !loading && !error && pieData.every((p) => Number(p.value) === 0);
 
   return (
     <ChartCard
