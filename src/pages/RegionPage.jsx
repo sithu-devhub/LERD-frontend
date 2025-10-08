@@ -13,7 +13,7 @@ export default function RegionPage() {
   const [apiError, setApiError] = useState("");
   const { serviceId } = useParams();
 
-  // ✅ NEW
+
   const [hasServices, setHasServices] = useState(true);
 
   // === Fetch regions & saved selections ===
@@ -202,7 +202,7 @@ export default function RegionPage() {
   return (
     <div className="p-0">
       {/* Page heading */}
-      <div className="flex justify-center items-center mb-6">
+      <div className="flex justify-center items-center mb-6 mt-6">
         <h1 className="text-2xl font-semibold text-gray-800">Region</h1>
       </div>
 

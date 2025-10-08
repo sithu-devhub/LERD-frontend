@@ -1,8 +1,11 @@
-// src/components/CustomerSatisfaction.jsx
+// src/components/CustomerSatisfactionChart.js.js
+
 import React, { useState, useEffect } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
+import { useFilteredRegions } from "../utils/useFilteredRegions";
+import http from "../api/http";
 
 const pieColors = ["#3F11FF", "#6AD2FF", "#E0E0E0"];
 
@@ -23,54 +26,138 @@ const PieTooltip = ({ active, payload, coordinate, viewBox }) => {
   );
 };
 
-
-export default function CustomerSatisfaction({ surveyId, gender, participantType, period }) {
+export default function CustomerSatisfaction({
+  surveyId,
+  regions = [],
+  gender,
+  participantType,
+  period,
+}) {
   const [data, setData] = useState({
     verySatisfiedPercentage: 0,
     satisfiedPercentage: 0,
     somewhatSatisfiedPercentage: 0,
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // also take loading from hook so we don't fetch until IDs are ready
+  const { selectedRegionIds, loading: regionFilterLoading } = useFilteredRegions(surveyId);
+
+  // State kept as-is (you had it before); we won't remove it
+  const [regionResponses, setRegionResponses] = useState([]);
+
   useEffect(() => {
-    let aborted = false;
+    let cancelled = false;
+
     async function load() {
       try {
+        // lways show spinner as soon as component mounts
         setLoading(true);
         setError("");
 
-        const baseUrl = `${import.meta.env.VITE_API_BASE_URL}/charts/customer-satisfaction`;
-        const params = new URLSearchParams({ surveyId });
+        // Wait until region IDs are ready before making API calls
+        if (!surveyId || regionFilterLoading) return;
 
-        if (gender != null) params.append("gender", gender);
-        if (participantType != null) params.append("participantType", participantType);
-        if (period != null) params.append("period", period);
+        console.groupCollapsed("[CustomerSatisfaction] Fetch start");
+        console.log("Survey ID:", surveyId);
+        console.log("Gender:", gender);
+        console.log("ParticipantType:", participantType);
+        console.log("Period:", period);
+        console.log("Regions prop:", regions);
+        console.log("Selected Region IDs (from hook):", selectedRegionIds);
 
-        const url = `${baseUrl}?${params.toString()}`;
-        const res = await fetch(url, { headers: { Accept: "application/json" } });
+        const token = localStorage.getItem("accessToken");
 
-        if (!res.ok) throw new Error(`API error ${res.status}`);
-        const json = await res.json();
+        // Build params once; include region IDs if we have them
+        const params = { surveyId, gender, participantType, period };
 
-        if (!aborted && json.data) {
-          setData({
-            verySatisfiedPercentage: json.data.verySatisfiedPercentage || 0,
-            satisfiedPercentage: json.data.satisfiedPercentage || 0,
-            somewhatSatisfiedPercentage: json.data.somewhatSatisfiedPercentage || 0,
+        if (Array.isArray(selectedRegionIds) && selectedRegionIds.length > 0) {
+          const csv = selectedRegionIds.map(String).join(",");
+          Object.assign(params, {
+            region: csv,
+            regions: csv,
+            regionIds: csv,
+            facilityCodes: csv,
+            facilityCode: csv,
           });
+          console.log("[CustomerSatisfaction] Sending region filter CSV:", csv);
+        } else {
+          console.log("[CustomerSatisfaction] No region filter; requesting overall.");
         }
-      } catch (e) {
-        if (!aborted) setError(e.message);
+
+        // Main API call
+        const res = await http.get(`/charts/customer-satisfaction`, {
+          params,
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        let computedData = null;
+
+        if (res.data?.success && res.data?.data) {
+          const {
+            verySatisfiedPercentage,
+            satisfiedPercentage,
+            somewhatSatisfiedPercentage,
+          } = res.data.data;
+
+          computedData = {
+            verySatisfiedPercentage: parseFloat(verySatisfiedPercentage ?? 0),
+            satisfiedPercentage: parseFloat(satisfiedPercentage ?? 0),
+            somewhatSatisfiedPercentage: parseFloat(
+              somewhatSatisfiedPercentage ?? 0
+            ),
+          };
+        } else {
+          throw new Error(res.data?.message || "No satisfaction data");
+        }
+
+        // secondary request (diagnostic only)
+        if (Array.isArray(selectedRegionIds) && selectedRegionIds.length > 0) {
+          try {
+            const respRes = await http.get(`/charts/response`, {
+              params: { surveyId, gender, participantType, period },
+              headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const all = respRes.data?.data?.regions || [];
+            const filtered = all.filter((r) => {
+              const fid = String(r.facilityCode || r.regionName || "").trim();
+              return selectedRegionIds.includes(fid);
+            });
+            setRegionResponses(filtered);
+          } catch (innerErr) {
+            console.warn("[CustomerSatisfaction] response fetch failed:", innerErr.message);
+          }
+        }
+
+        if (!cancelled && computedData) {
+          setData(computedData);
+        }
+
+        console.groupEnd();
+      } catch (err) {
+        if (!cancelled) {
+          console.error("[CustomerSatisfaction] ❌ Fetch failed:", err);
+          setError(err.message);
+        }
       } finally {
-        if (!aborted) setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
+
     load();
+
+    // Run again when regionFilterLoading flips to false
+    if (!regionFilterLoading) {
+      load();
+    }
+
     return () => {
-      aborted = true;
+      cancelled = true;
     };
-  }, [surveyId, gender, participantType, period]);
+  }, [surveyId, gender, participantType, period, regions, selectedRegionIds, regionFilterLoading]);
+
 
   const pieData = [
     { name: "Very Satisfied", value: data.verySatisfiedPercentage },
@@ -78,13 +165,7 @@ export default function CustomerSatisfaction({ surveyId, gender, participantType
     { name: "Somewhat Satisfied", value: data.somewhatSatisfiedPercentage },
   ];
 
-  // Detect no data
-  const noData =
-    !loading &&
-    !error &&
-    data.verySatisfiedPercentage === 0 &&
-    data.satisfiedPercentage === 0 &&
-    data.somewhatSatisfiedPercentage === 0;
+  const noData = !loading && !error && pieData.every((p) => Number(p.value) === 0);
 
   return (
     <ChartCard
@@ -92,68 +173,24 @@ export default function CustomerSatisfaction({ surveyId, gender, participantType
       content={
         <div className="flex flex-col items-center">
           {error ? (
-            <ErrorPlaceholder
-              status={error}
-              onRetry={() => window.location.reload()}
-            />
+            <ErrorPlaceholder status={error} onRetry={() => window.location.reload()} />
           ) : loading ? (
-            /* Loader */
             <div className="flex flex-col items-center justify-center w-full py-8">
               <div className="relative w-32 h-32">
-                <div className="absolute inset-0 rounded-full border-4 border-[#E5E7EB]"></div>
-                <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#3F11FF] animate-spin"></div>
-              </div>
-              <div className="grid grid-cols-3 gap-4 w-full mt-6 text-center animate-pulse">
-                <div className="space-y-2">
-                  <div className="h-3 w-16 mx-auto bg-gray-200 rounded"></div>
-                  <div className="h-4 w-10 mx-auto bg-gray-200 rounded"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="h-3 w-16 mx-auto bg-gray-200 rounded"></div>
-                  <div className="h-4 w-10 mx-auto bg-gray-200 rounded"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="h-3 w-20 mx-auto bg-gray-200 rounded"></div>
-                  <div className="h-4 w-10 mx-auto bg-gray-200 rounded"></div>
-                </div>
+                <div className="absolute inset-0 rounded-full border-4 border-[#E5E7EB]" />
+                <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#3F11FF] animate-spin" />
               </div>
             </div>
           ) : noData ? (
-            /* No data: styled same as loader */
             <div className="flex flex-col items-center justify-center w-full py-8 opacity-80">
               <div className="relative w-32 h-32">
-                {/* Base circle */}
                 <div className="absolute inset-0 rounded-full border-4 border-[#E5E7EB]" />
-                
-                {/* Modern gradient ring */}
-                <div className="absolute inset-0 rounded-full border-4 border-transparent bg-conic-to-r from-[#D1D5DB] via-[#E5E7EB] to-[#D1D5DB]" />
-
-                {/* Inner subtle glow */}
                 <div className="absolute inset-3 rounded-full bg-gradient-to-tr from-gray-50 to-white shadow-inner" />
               </div>
-
-              {/* Legend placeholders */}
-              <div className="grid grid-cols-3 gap-4 w-full mt-6 text-center">
-                <div className="space-y-2">
-                  <div className="h-3 w-16 mx-auto bg-gray-100 rounded"></div>
-                  <div className="h-4 w-10 mx-auto bg-gray-100 rounded"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="h-3 w-16 mx-auto bg-gray-100 rounded"></div>
-                  <div className="h-4 w-10 mx-auto bg-gray-100 rounded"></div>
-                </div>
-                <div className="space-y-2">
-                  <div className="h-3 w-20 mx-auto bg-gray-100 rounded"></div>
-                  <div className="h-4 w-10 mx-auto bg-gray-100 rounded"></div>
-                </div>
-              </div>
-
-              {/* Caption */}
               <div className="mt-4 text-sm font-medium text-gray-400">
                 No data for selected filters
               </div>
             </div>
-
           ) : (
             <>
               <ResponsiveContainer width={180} height={180}>
@@ -186,44 +223,21 @@ export default function CustomerSatisfaction({ surveyId, gender, participantType
                 </PieChart>
               </ResponsiveContainer>
 
-              {/* Legend */}
               <div className="grid grid-cols-3 gap-4 w-full mt-4 text-center">
-                <div>
-                  <div className="flex items-center justify-center gap-2 text-xs text-[#A3AED0]">
-                    <span
-                      className="inline-block w-3 h-3 rounded-full"
-                      style={{ backgroundColor: pieColors[0] }}
-                    />
-                    <span>Very Satisfied</span>
+                {pieData.map((p, i) => (
+                  <div key={p.name}>
+                    <div className="flex items-center justify-center gap-2 text-xs text-[#A3AED0]">
+                      <span
+                        className="inline-block w-3 h-3 rounded-full"
+                        style={{ backgroundColor: pieColors[i] }}
+                      />
+                      <span>{p.name}</span>
+                    </div>
+                    <div className="text-xl font-bold text-[#2B3674] mt-1">
+                      {p.value}%
+                    </div>
                   </div>
-                  <div className="text-xl font-bold text-[#2B3674] mt-1">
-                    {data.verySatisfiedPercentage}%
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-center gap-2 text-xs text-[#A3AED0]">
-                    <span
-                      className="inline-block w-3 h-3 rounded-full"
-                      style={{ backgroundColor: pieColors[1] }}
-                    />
-                    <span>Satisfied</span>
-                  </div>
-                  <div className="text-xl font-bold text-[#2B3674] mt-1">
-                    {data.satisfiedPercentage}%
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-center gap-2 text-xs text-[#A3AED0]">
-                    <span
-                      className="inline-block w-3 h-3 rounded-full"
-                      style={{ backgroundColor: pieColors[2] }}
-                    />
-                    <span>Somewhat Satisfied</span>
-                  </div>
-                  <div className="text-xl font-bold text-[#2B3674] mt-1">
-                    {data.somewhatSatisfiedPercentage}%
-                  </div>
-                </div>
+                ))}
               </div>
             </>
           )}
