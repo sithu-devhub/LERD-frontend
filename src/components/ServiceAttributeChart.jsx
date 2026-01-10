@@ -6,6 +6,8 @@ import {
 } from "recharts";
 import ChartCard from "./ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
+import http from "../api/http";
+
 
 // === small helper for click-away ===
 function useClickAway(ref, onAway) {
@@ -253,10 +255,6 @@ const ChartSkeleton = () => {
 
 
 // === Component ===
-// src/components/ServiceAttributeChart.jsx
-
-// ... keep all your imports and helpers exactly the same ...
-
 export default function ServiceAttributeChart({
   surveyId,
   gender,
@@ -291,25 +289,52 @@ export default function ServiceAttributeChart({
         setLoading(true);
         setError("");
 
-        const baseUrl = `${import.meta.env.VITE_API_BASE_URL}/charts/service-attributes`;
-        const params = new URLSearchParams({ surveyId });
-        if (gender != null) params.append("gender", gender);
-        if (participantType != null) params.append("participantType", participantType);
-        if (period != null) params.append("period", period);
+        const isEmpty = (v) =>
+          v === undefined ||
+          v === null ||
+          v === "" ||
+          v === "All" ||
+          v === "Select period";
 
-        const url = `${baseUrl}?${params.toString()}`;
-        const res = await fetch(url, { headers: { Accept: "application/json" } });
+        const toNumber = (v) => {
+          if (v === null || v === undefined) return 0;
+          if (typeof v === "number") return v;
+          const n = parseFloat(String(v).replace("%", ""));
+          return Number.isFinite(n) ? n : 0;
+        };
 
-        if (!res.ok) throw new Error(`API error ${res.status}`);
-        const json = await res.json();
+        const token = localStorage.getItem("accessToken");
+
+        const params = { surveyId };
+
+        if (!isEmpty(gender)) params.gender = gender;
+        if (!isEmpty(participantType)) params.participantType = participantType;
+
+        // block accidental default year like 2026
+        const invalidPeriods = new Set([2026, "2026"]);
+        if (!isEmpty(period) && !invalidPeriods.has(period)) {
+          params.period = period;
+        }
+
+        console.log("[ServiceAttributeChart] sending params:", params);
+
+        const res = await http.get("/charts/service-attributes", {
+          params,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+
+        const json = res.data;
+        console.log("[ServiceAttributeChart] response:", json);
+
 
         if (!cancelled && json.success) {
           if (Array.isArray(json.data?.attributes)) {
             const mapped = json.data.attributes.map((a) => ({
-              name: a.attributeName,
-              always: a.alwaysPercentage ?? 0,
-              most: a.mostPercentage ?? 0,
+              name: String(a.attributeName || "").trim(),
+              always: toNumber(a.alwaysPercentage),
+              most: toNumber(a.mostPercentage),
             }));
+
             setData(mapped);
 
             const avail = mapped.map((a) => a.name);

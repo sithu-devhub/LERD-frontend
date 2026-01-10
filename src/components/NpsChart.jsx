@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { PieChart, Pie, Cell } from "recharts";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
+import http from "../api/http";
 
 export default function NpsChart({
   surveyId,
@@ -19,44 +20,69 @@ export default function NpsChart({
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!surveyId) return; // don’t call API until we have a surveyId
+    if (!surveyId) return;
     let cancelled = false;
+
+    const isEmpty = (v) =>
+      v === undefined ||
+      v === null ||
+      v === "" ||
+      v === "All" ||
+      v === "Select period";
+
+    const toNumber = (v) => {
+      if (v === null || v === undefined) return 0;
+      if (typeof v === "number") return v;
+      const n = parseFloat(String(v).replace("%", ""));
+      return Number.isFinite(n) ? n : 0;
+    };
 
     async function fetchNps() {
       try {
         setLoading(true);
         setError("");
 
-        const baseUrl = `${import.meta.env.VITE_API_BASE_URL}/charts/nps`;
-        const params = new URLSearchParams({ surveyId });
-        if (gender != null) params.append("gender", gender);
-        if (participantType != null) params.append("participantType", participantType);
-        if (period != null) params.append("period", period);
+        const token = localStorage.getItem("accessToken");
 
-        const url = `${baseUrl}?${params.toString()}`;
+        const params = { surveyId };
 
-        const SIMULATE_ERROR = null;
-        const res = await fetch(url, { headers: { Accept: "application/json" } });
+        if (!isEmpty(gender)) params.gender = gender;
+        if (!isEmpty(participantType)) params.participantType = participantType;
 
-        if (SIMULATE_ERROR) throw new Error(`Error ${SIMULATE_ERROR}`);
-        if (!res.ok) throw new Error(`API error ${res.status}`);
+        // block accidental default year like 2026
+        const invalidPeriods = new Set([2026, "2026"]);
+        if (!isEmpty(period) && !invalidPeriods.has(period)) {
+          params.period = period;
+        }
 
-        const json = await res.json();
-        if (!cancelled && json.success) {
-          setScore(json.data?.npsScore ?? 0);
+        console.log("[NpsChart] sending params:", params);
+
+        const res = await http.get("/charts/nps", {
+          params,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+
+        const json = res.data;
+        console.log("[NpsChart] response:", json);
+
+        if (!cancelled && json?.success) {
+          setScore(toNumber(json.data?.npsScore));
         }
       } catch (e) {
-        if (!cancelled) setError(e.message || "Failed to load NPS data");
+        if (!cancelled) setError(e?.message || "Failed to load NPS data");
+        if (!cancelled) setScore(0);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
     fetchNps();
+
     return () => {
       cancelled = true;
     };
   }, [surveyId, gender, participantType, period]);
+
 
   const t = useMemo(() => {
     const v = Math.max(min, Math.min(max, score));
