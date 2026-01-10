@@ -8,6 +8,7 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
+import http from "../api/http";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
 
@@ -55,46 +56,83 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+
   useEffect(() => {
+    if (!surveyId) return;
     let cancelled = false;
+
+    const isEmpty = (v) =>
+      v === undefined ||
+      v === null ||
+      v === "" ||
+      v === "All" ||
+      v === "Select period";
+
+    const toNumber = (v) => {
+      if (v === null || v === undefined) return 0;
+      if (typeof v === "number") return v;
+      const n = parseFloat(String(v).replace("%", ""));
+      return Number.isFinite(n) ? n : 0;
+    };
+
     async function fetchTrend() {
       try {
         setLoading(true);
         setError("");
 
-        const baseUrl = `${import.meta.env.VITE_API_BASE_URL}/charts/customer-satisfaction-trend`;
-        const params = new URLSearchParams({ surveyId });
+        const token = localStorage.getItem("accessToken");
 
-        if (gender != null) params.append("gender", gender);
-        if (participantType != null) params.append("participantType", participantType);
-        if (period != null) params.append("period", period);
+        // Build params like ResponseChart (avoid sending default UI values)
+        const params = { surveyId };
 
-        const url = `${baseUrl}?${params.toString()}`;
-        const SIMULATE_ERROR = null;
+        if (!isEmpty(gender)) params.gender = gender;
+        if (!isEmpty(participantType)) params.participantType = participantType;
 
-        const res = await fetch(url, { headers: { Accept: "application/json" } });
-        if (SIMULATE_ERROR) throw new Error(`Error ${SIMULATE_ERROR}`);
-        if (!res.ok) throw new Error(`API error ${res.status}`);
-        const json = await res.json();
+        // block accidental default year (same as your ResponseChart)
+        const invalidPeriods = new Set([2026, "2026"]);
+        if (!isEmpty(period) && !invalidPeriods.has(period)) {
+          params.period = period;
+        }
 
-        if (!cancelled && json.success && Array.isArray(json.data?.years)) {
+        console.log("[CustomerSatisfactionTrend] sending params:", params);
+
+        const res = await http.get("/charts/customer-satisfaction-trend", {
+          params,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+
+        const json = res.data;
+        console.log("[CustomerSatisfactionTrend] response:", json);
+
+        if (cancelled) return;
+
+        if (json?.success && Array.isArray(json.data?.years)) {
           const mapped = json.data.years.map((y) => ({
             year: String(y.year),
-            very: y.verySatisfiedPercentage ?? 0,
-            satisfied: y.satisfiedPercentage ?? 0,
-            somewhat: y.somewhatSatisfiedPercentage ?? 0,
+            very: toNumber(y.verySatisfiedPercentage),
+            satisfied: toNumber(y.satisfiedPercentage),
+            somewhat: toNumber(y.somewhatSatisfiedPercentage),
           }));
+
           setSatisfactionTrend(mapped);
+        } else {
+          setSatisfactionTrend([]);
         }
       } catch (err) {
-        if (!cancelled) setError(err.message || "Failed to load trend");
+        if (!cancelled) setError(err?.message || "Failed to load trend");
+        if (!cancelled) setSatisfactionTrend([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
+
     fetchTrend();
-    return () => { cancelled = true; };
+
+    return () => {
+      cancelled = true;
+    };
   }, [surveyId, gender, participantType, period]);
+
 
   const noData = !loading && !error && (!satisfactionTrend || satisfactionTrend.length === 0);
 

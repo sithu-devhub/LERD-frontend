@@ -167,56 +167,6 @@ export default function CustomerSatisfaction({
                 No data for selected filters
               </div>
             </div>
-          // ) : (
-          //   <>
-          //     <ResponsiveContainer width={180} height={180}>
-          //       <PieChart margin={{ top: 40 }}>
-          //         <Pie
-          //           data={pieData}
-          //           cx="60%"
-          //           cy="60%"
-          //           outerRadius={70}
-          //           startAngle={90}
-          //           endAngle={-270}
-          //           dataKey="value"
-          //         >
-          //           {pieData.map((entry, i) => (
-          //             <Cell key={i} fill={pieColors[i]} />
-          //           ))}
-          //         </Pie>
-          //         <Tooltip
-          //           cursor={false}
-          //           content={<PieTooltip />}
-          //           offset={0}
-          //           allowEscapeViewBox={{ x: true, y: true }}
-          //           wrapperStyle={{ zIndex: 9999 }}
-          //           contentStyle={{
-          //             background: "transparent",
-          //             border: "none",
-          //             boxShadow: "none",
-          //           }}
-          //         />
-          //       </PieChart>
-          //     </ResponsiveContainer>
-
-          //     <div className="grid grid-cols-3 gap-4 w-full mt-4 text-center">
-          //       {pieData.map((p, i) => (
-          //         <div key={p.name}>
-          //           <div className="flex items-center justify-center gap-2 text-xs text-[#A3AED0]">
-          //             <span
-          //               className="inline-block w-3 h-3 rounded-full"
-          //               style={{ backgroundColor: pieColors[i] }}
-          //             />
-          //             <span>{p.name}</span>
-          //           </div>
-          //           <div className="text-xl font-bold text-[#2B3674] mt-1">
-          //             {p.value}%
-          //           </div>
-          //         </div>
-          //       ))}
-          //     </div>
-          //   </>
-          // )
           ) : (
             <>
               {/* fixed layout height so legend can sit at the card bottom */}
