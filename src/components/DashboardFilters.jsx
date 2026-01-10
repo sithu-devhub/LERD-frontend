@@ -77,7 +77,7 @@ function MenuItem({ checked, children, onClick }) {
 
 function GenderMenu({ value, onChange, onClose, menuRef }) {
   useClickOutside(menuRef, onClose);
-  const options = ["All", "Male", "Female", "Other"];
+  const options = ["All", "Male", "Female"];
   return (
     <FloatingCard ref={menuRef}>
       <div className="flex flex-col gap-1">
@@ -273,7 +273,7 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
   // Only fire API when committed state changes (after Done)
   useEffect(() => {
     if (typeof onChange === "function") {
-      const genderMap = { All: null, Male: 1, Female: 2, Other: 3 };
+      const genderMap = { All: null, Male: 1, Female: 2};
       const clientTypeMap = { All: null, Residents: 1, "Next of Kin": 2 };
 
       const period = buildPeriodParam(range);
