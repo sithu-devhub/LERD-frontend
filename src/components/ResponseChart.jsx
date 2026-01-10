@@ -193,7 +193,8 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
   // detect no-data
   const noData =
     (responseTotals.totalParticipants || 0) === 0 ||
-    (filteredRegions.length === 0 && responseData.length === 0);
+    (!showAll && responseData.length === 0);
+
 
   return (
     <ChartCard
@@ -252,7 +253,7 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                 </div>
 
                 {/* Arrow toggle */}
-                {filteredRegions.length > 5 && (
+                {responseData.length > 5 && (
                   <div className="flex justify-end mt-3">
                     <button
                       onClick={() => setShowAll((prev) => !prev)}
@@ -277,7 +278,7 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                             <stop offset="0%" stopColor="#6366F1" />
                             <stop
                               offset="50%"
-                              stopColor="#FFFFFF"
+                              stopColor="#d8d8edff"
                               stopOpacity="0.9"
                             />
                             <stop offset="100%" stopColor="#6366F1" />
@@ -326,7 +327,7 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                     <ResponsiveContainer width="100%" height={200}>
                       <BarChart
                         data={displayData}
-                        margin={{ top: 20, bottom: 50, left: 0, right: 10 }}
+                        margin={{ top: 20, bottom: 10, left: 0, right: 10 }}
                       >
                         <defs>
                           <linearGradient
@@ -366,13 +367,13 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                   )}
 
                   {/* +N more chip */}
-                  {filteredRegions.length > 5 && (
+                  {!showAll && responseData.length > 5 && (
                     <div className="flex justify-end mt-3">
                       <button
                         onClick={() => setShowVillageModal(true)}
                         className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm hover:bg-indigo-200"
                       >
-                        +{filteredRegions.length - 5} more
+                        +{responseData.length - 5} more
                       </button>
                     </div>
                   )}
@@ -381,7 +382,7 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                   <VillageListModal
                     visible={showVillageModal}
                     onClose={() => setShowVillageModal(false)}
-                    villages={filteredRegions.map((r) => r.name)}
+                    villages={responseData.map((r) => r.name)}
                   />
                 </>
               )}

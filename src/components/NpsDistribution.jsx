@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
+import http from "../api/http";
+
 
 export default function NpsDistribution({ surveyId, gender, participantType, period }) {
   const [loading, setLoading] = useState(false);
@@ -10,57 +12,94 @@ export default function NpsDistribution({ surveyId, gender, participantType, per
   const [distribution, setDistribution] = useState([]);
 
   useEffect(() => {
+    if (!surveyId) return;
     let cancelled = false;
+
+    const isEmpty = (v) =>
+      v === undefined ||
+      v === null ||
+      v === "" ||
+      v === "All" ||
+      v === "Select period";
+
+    const toNumber = (v) => {
+      if (v === null || v === undefined) return 0;
+      if (typeof v === "number") return v;
+      const n = parseFloat(String(v).replace("%", ""));
+      return Number.isFinite(n) ? n : 0;
+    };
 
     async function fetchDistribution() {
       try {
         setLoading(true);
         setError("");
 
-        const baseUrl = `${import.meta.env.VITE_API_BASE_URL}/charts/nps`;
-        const params = new URLSearchParams({ surveyId });
-        if (gender != null) params.append("gender", gender);
-        if (participantType != null) params.append("participantType", participantType);
-        if (period != null) params.append("period", period);
+        const token = localStorage.getItem("accessToken");
 
-        const url = `${baseUrl}?${params.toString()}`;
+        const params = { surveyId };
 
-        // ---- CONST TO SIMULATE ERROR -----
-        const SIMULATE_ERROR = null; // "500", "401", null for no error
-        // ---- CONST TO SIMULATE ERROR -----
+        if (!isEmpty(gender)) params.gender = gender;
+        if (!isEmpty(participantType)) params.participantType = participantType;
 
-        const res = await fetch(url, { headers: { Accept: "application/json" } });
-        
-        // ---- SIMULATE ERROR -----
-        if (SIMULATE_ERROR) {
-          throw new Error(`Error ${SIMULATE_ERROR}`);
+        // block accidental default year like 2026
+        const invalidPeriods = new Set([2026, "2026"]);
+        if (!isEmpty(period) && !invalidPeriods.has(period)) {
+          params.period = period;
         }
-        // ---- SIMULATE ERROR -----
 
-        if (!res.ok) throw new Error(`API error ${res.status}`);
-        const json = await res.json();
+        console.log("[NpsDistribution] sending params:", params);
 
-        if (!cancelled && json.success) {
+        const res = await http.get("/charts/nps", {
+          params,
+          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        });
+
+        const json = res.data;
+        console.log("[NpsDistribution] response:", json);
+
+        if (cancelled) return;
+
+        if (json?.success) {
           const dist = json.data?.distribution || {};
-          setDistribution([
-            { name: "Promoter", value: dist.promoterPercentage ?? 0, count: dist.promoterCount ?? 0, color: "#3F11FF" },
-            { name: "Passive", value: dist.passivePercentage ?? 0, count: dist.passiveCount ?? 0, color: "#6AD2FF" },
-            { name: "Detractor", value: dist.detractorPercentage ?? 0, count: dist.detractorCount ?? 0, color: "#9CA3AF" },
-          ]);
-        }
 
+          setDistribution([
+            {
+              name: "Promoter",
+              value: toNumber(dist.promoterPercentage),
+              count: toNumber(dist.promoterCount),
+              color: "#3F11FF",
+            },
+            {
+              name: "Passive",
+              value: toNumber(dist.passivePercentage),
+              count: toNumber(dist.passiveCount),
+              color: "#6AD2FF",
+            },
+            {
+              name: "Detractor",
+              value: toNumber(dist.detractorPercentage),
+              count: toNumber(dist.detractorCount),
+              color: "#9CA3AF",
+            },
+          ]);
+        } else {
+          setDistribution([]);
+        }
       } catch (err) {
-        if (!cancelled) setError(err.message || "Failed to load NPS distribution");
+        if (!cancelled) setError(err?.message || "Failed to load NPS distribution");
+        if (!cancelled) setDistribution([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
     }
 
     fetchDistribution();
+
     return () => {
       cancelled = true;
     };
   }, [surveyId, gender, participantType, period]);
+
 
   return (
     <ChartCard
