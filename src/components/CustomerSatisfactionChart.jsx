@@ -9,9 +9,16 @@ import http from "../api/http";
 
 const pieColors = ["#3F11FF", "#6AD2FF", "#E0E0E0"];
 
+const round2 = (v) => {
+  const n =
+    typeof v === "number" ? v : parseFloat(String(v ?? "").replace("%", ""));
+  if (!Number.isFinite(n)) return 0;
+  return Math.round(n * 100) / 100;
+};
+
 const PieTooltip = ({ active, payload, coordinate, viewBox }) => {
   if (!active || !payload?.length) return null;
-  const val = payload?.[0]?.value;
+  const val = round2(payload?.[0]?.value).toFixed(2);
   const midX = (viewBox?.x ?? 0) + (viewBox?.width ?? 0) / 2;
   const side =
     coordinate?.x != null && midX
@@ -115,10 +122,11 @@ export default function CustomerSatisfaction({
 
         const d = res.data?.data || {};
         setData({
-          verySatisfiedPercentage: parseFloat(d.verySatisfiedPercentage ?? 0),
-          satisfiedPercentage: parseFloat(d.satisfiedPercentage ?? 0),
-          somewhatSatisfiedPercentage: parseFloat(d.somewhatSatisfiedPercentage ?? 0),
+          verySatisfiedPercentage: round2(d.verySatisfiedPercentage),
+          satisfiedPercentage: round2(d.satisfiedPercentage),
+          somewhatSatisfiedPercentage: round2(d.somewhatSatisfiedPercentage),
         });
+
       } catch (err) {
         if (!cancelled) {
           console.error("[CustomerSatisfaction] ❌ Fetch failed:", err);
@@ -217,8 +225,9 @@ export default function CustomerSatisfaction({
                         <span>{p.name}</span>
                       </div>
                       <div className="text-xl font-bold text-[#2B3674] mt-1">
-                        {p.value}%
+                        {round2(p.value).toFixed(2)}%
                       </div>
+
                     </div>
                   ))}
                 </div>
