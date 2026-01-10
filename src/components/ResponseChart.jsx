@@ -109,11 +109,32 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
 
         const token = localStorage.getItem("accessToken");
 
-        // 1️⃣ Load full chart data
-        const res = await http.get(`/charts/response`, {
-          params: { surveyId, gender, participantType, period },
+        console.log("[ResponseChart] props:", { surveyId, gender, participantType, period });
+
+        const isEmpty = (v) =>
+          v === undefined || v === null || v === "" || v === "All" || v === "Select period";
+
+        const params = { surveyId };
+
+        // Send only if user truly selected something
+        if (!isEmpty(gender)) params.gender = gender;
+        if (!isEmpty(participantType)) params.participantType = participantType;
+
+        // Some UIs accidentally keep a default year like 2026 even when "Select period" is shown.
+        // Block it so the backend behaves like Postman (surveyId only).
+        const invalidPeriods = new Set([2026, "2026"]);
+        if (!isEmpty(period) && !invalidPeriods.has(period)) {
+          params.period = period;
+        }
+
+        console.log("[ResponseChart] sending params:", params);
+
+        const res = await http.get("/charts/response", {
+          params,
           headers: { Authorization: `Bearer ${token}` },
         });
+
+
 
         const json = res.data;
 
@@ -125,20 +146,26 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
 
           if (Array.isArray(json.data.regions)) {
             // Normalize regions
-            const allRegions = json.data.regions.map((r) => ({
-              villageName: String(r.villageName || "").trim(),
-              name: String(r.villageName || "").trim(),
-              value: r.participantCount || 0,
-            }));
+            const allRegions = (json.data.regions || [])
+              .map((r) => ({
+                villageName: String(r.villageName || "").trim(),
+                name: String(r.villageName || "").trim(),
+                value: Number(r.participantCount) || 0,  // IMPORTANT: must be number
+              }))
+              .filter((r) => r.name && r.value > 0)
+              .sort((a, b) => b.value - a.value);
+
+            console.log("[ResponseChart] allRegions:", allRegions);
+            setResponseData(allRegions);
+
 
             // ✅ Filter immediately based on selected region names
-            const filtered = selectedRegionIds?.length
-              ? allRegions.filter((r) => selectedRegionIds.includes(r.villageName))
-              : allRegions;
+            // const filtered = selectedRegionIds?.length
+            //   ? allRegions.filter((r) => selectedRegionIds.includes(r.villageName))
+            //   : allRegions;
 
-            console.log("[ResponseChart] Filtered regions:", filtered.map((r) => r.name));
-
-            setResponseData(filtered);
+            // console.log("[ResponseChart] Filtered regions:", filtered.map((r) => r.name));
+            // setResponseData(filtered);
           }
 
         }
@@ -299,7 +326,7 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                     <ResponsiveContainer width="100%" height={200}>
                       <BarChart
                         data={displayData}
-                        margin={{ top: 10, bottom: 50, left: 0, right: 10 }}
+                        margin={{ top: 20, bottom: 50, left: 0, right: 10 }}
                       >
                         <defs>
                           <linearGradient
