@@ -52,12 +52,15 @@ export default function CustomerSatisfaction({
 
     async function load() {
       // Don't start loading until we have valid filters
-      if (!surveyId || regionFilterLoading) return;
+      if (!surveyId) return;
+
+      // Only wait for region filter if we are actually going to send regions
+      if (regionFilterLoading && selectedRegionIds?.length) return;
+
 
       setLoading(true);
       setError("");
 
-      // ✅ ADD HERE
       console.groupCollapsed("[CustomerSatisfaction] Fetch start");
       console.log("Survey ID:", surveyId);
       console.log("Gender:", gender);
@@ -69,18 +72,44 @@ export default function CustomerSatisfaction({
 
       try {
         const token = localStorage.getItem("accessToken");
-        const params = { surveyId, gender, participantType, period };
 
-        if (selectedRegionIds?.length) {
-          const csv = selectedRegionIds.join(",");
-          Object.assign(params, { region: csv });
+        const isEmpty = (v) => {
+          const s = String(v ?? "").trim().toLowerCase();
+          return (
+            s === "" ||
+            s === "all" ||
+            s === "select period" ||
+            s === "select" ||
+            s === "undefined" ||
+            s === "null"
+          );
+        };
+
+        const params = { surveyId };
+
+        // send only if user actually selected something
+        if (!isEmpty(gender)) params.gender = gender;
+        if (!isEmpty(participantType)) params.participantType = participantType;
+
+        // block accidental default year like 2026
+        const invalidPeriods = new Set(["2026", 2026]);
+        if (!isEmpty(period) && !invalidPeriods.has(period)) {
+          params.period = period;
         }
-        
+
+        // region filter (only if selected)
+        if (selectedRegionIds?.length) {
+          params.region = selectedRegionIds.join(",");
+        }
+
         console.log("[CustomerSatisfaction] Sending params:", params);
+
         const res = await http.get("/charts/customer-satisfaction", {
           params,
           headers: { Authorization: `Bearer ${token}` },
         });
+
+
 
         if (cancelled) return;
 
@@ -118,7 +147,7 @@ export default function CustomerSatisfaction({
     <ChartCard
       title="Customer Satisfaction"
       content={
-        <div className="flex flex-col items-center">
+        <div className="flex flex-col items-center w-full">
           {error ? (
             <ErrorPlaceholder status={error} onRetry={() => window.location.reload()} />
           ) : loading ? (
@@ -138,56 +167,117 @@ export default function CustomerSatisfaction({
                 No data for selected filters
               </div>
             </div>
+          // ) : (
+          //   <>
+          //     <ResponsiveContainer width={180} height={180}>
+          //       <PieChart margin={{ top: 40 }}>
+          //         <Pie
+          //           data={pieData}
+          //           cx="60%"
+          //           cy="60%"
+          //           outerRadius={70}
+          //           startAngle={90}
+          //           endAngle={-270}
+          //           dataKey="value"
+          //         >
+          //           {pieData.map((entry, i) => (
+          //             <Cell key={i} fill={pieColors[i]} />
+          //           ))}
+          //         </Pie>
+          //         <Tooltip
+          //           cursor={false}
+          //           content={<PieTooltip />}
+          //           offset={0}
+          //           allowEscapeViewBox={{ x: true, y: true }}
+          //           wrapperStyle={{ zIndex: 9999 }}
+          //           contentStyle={{
+          //             background: "transparent",
+          //             border: "none",
+          //             boxShadow: "none",
+          //           }}
+          //         />
+          //       </PieChart>
+          //     </ResponsiveContainer>
+
+          //     <div className="grid grid-cols-3 gap-4 w-full mt-4 text-center">
+          //       {pieData.map((p, i) => (
+          //         <div key={p.name}>
+          //           <div className="flex items-center justify-center gap-2 text-xs text-[#A3AED0]">
+          //             <span
+          //               className="inline-block w-3 h-3 rounded-full"
+          //               style={{ backgroundColor: pieColors[i] }}
+          //             />
+          //             <span>{p.name}</span>
+          //           </div>
+          //           <div className="text-xl font-bold text-[#2B3674] mt-1">
+          //             {p.value}%
+          //           </div>
+          //         </div>
+          //       ))}
+          //     </div>
+          //   </>
+          // )
           ) : (
             <>
-              <ResponsiveContainer width={180} height={180}>
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={70}
-                    startAngle={90}
-                    endAngle={-270}
-                    dataKey="value"
-                  >
-                    {pieData.map((entry, i) => (
-                      <Cell key={i} fill={pieColors[i]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    cursor={false}
-                    content={<PieTooltip />}
-                    offset={0}
-                    allowEscapeViewBox={{ x: true, y: true }}
-                    wrapperStyle={{ zIndex: 9999 }}
-                    contentStyle={{
-                      background: "transparent",
-                      border: "none",
-                      boxShadow: "none",
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+              {/* fixed layout height so legend can sit at the card bottom */}
+              <div className="w-full h-[300px] flex flex-col items-center justify-between">
+                {/* Pie stays same size */}
+                <div className="flex justify-center pt-2 w-full">
+                  <ResponsiveContainer width={180} height={180}>
+                    <PieChart>
+                      <Pie
+                        data={pieData}
+                        cx="60%"
+                        cy="60%"
+                        outerRadius={70}
+                        startAngle={90}
+                        endAngle={-270}
+                        dataKey="value"
+                      >
+                        {pieData.map((entry, i) => (
+                          <Cell key={i} fill={pieColors[i]} />
+                        ))}
+                      </Pie>
 
-              <div className="grid grid-cols-3 gap-4 w-full mt-4 text-center">
-                {pieData.map((p, i) => (
-                  <div key={p.name}>
-                    <div className="flex items-center justify-center gap-2 text-xs text-[#A3AED0]">
-                      <span
-                        className="inline-block w-3 h-3 rounded-full"
-                        style={{ backgroundColor: pieColors[i] }}
+                      <Tooltip
+                        cursor={false}
+                        content={<PieTooltip />}
+                        offset={0}
+                        allowEscapeViewBox={{ x: true, y: true }}
+                        wrapperStyle={{ zIndex: 9999 }}
+                        contentStyle={{
+                          background: "transparent",
+                          border: "none",
+                          boxShadow: "none",
+                        }}
                       />
-                      <span>{p.name}</span>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Legend sits at the bottom naturally */}
+                <div className="w-full grid grid-cols-3 gap-4 text-center pb-2">
+                  {pieData.map((p, i) => (
+                    <div key={p.name}>
+                      <div className="flex items-center justify-center gap-2 text-xs text-[#A3AED0] min-h-[28px] leading-tight">
+                        <span
+                          className="inline-block w-3 h-3 rounded-full"
+                          style={{ backgroundColor: pieColors[i] }}
+                        />
+                        <span>{p.name}</span>
+                      </div>
+                      <div className="text-xl font-bold text-[#2B3674] mt-1">
+                        {p.value}%
+                      </div>
                     </div>
-                    <div className="text-xl font-bold text-[#2B3674] mt-1">
-                      {p.value}%
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+
             </>
-          )}
+          )
+
+          }
         </div>
       }
     />

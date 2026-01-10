@@ -278,7 +278,7 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                             <stop offset="0%" stopColor="#6366F1" />
                             <stop
                               offset="50%"
-                              stopColor="#FFFFFF"
+                              stopColor="#d8d8edff"
                               stopOpacity="0.9"
                             />
                             <stop offset="100%" stopColor="#6366F1" />
@@ -327,7 +327,7 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
                     <ResponsiveContainer width="100%" height={200}>
                       <BarChart
                         data={displayData}
-                        margin={{ top: 20, bottom: 50, left: 0, right: 10 }}
+                        margin={{ top: 20, bottom: 10, left: 0, right: 10 }}
                       >
                         <defs>
                           <linearGradient
