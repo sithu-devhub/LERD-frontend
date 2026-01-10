@@ -124,7 +124,17 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange }) => {
 const ServiceAttributeTooltip = ({ active, payload, coordinate, viewBox }) => {
   if (!active || !payload?.length) return null;
   const byKey = Object.fromEntries(payload.map((p) => [p.dataKey, p.value]));
-  const total = (byKey.always || 0) + (byKey.most || 0);
+  // const total = (byKey.always || 0) + (byKey.most || 0);
+
+  const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
+
+  const total = round2((byKey.always || 0) + (byKey.most || 0));
+
+  const rows = [
+    { key: "always", label: "Always", cls: "trend-dot trend-dot--very", val: round2(byKey.always) },
+    { key: "most", label: "Most of the time", cls: "trend-dot trend-dot--satisfied", val: round2(byKey.most) },
+  ];
+
   const midX = (viewBox?.x ?? 0) + ((viewBox?.width ?? 0) / 2);
   const side =
     coordinate?.x != null && midX
@@ -133,18 +143,15 @@ const ServiceAttributeTooltip = ({ active, payload, coordinate, viewBox }) => {
         : "left"
       : "left";
 
-  const rows = [
-    { key: "always", label: "Always", cls: "trend-dot trend-dot--very", val: byKey.always },
-    { key: "most", label: "Most of the time", cls: "trend-dot trend-dot--satisfied", val: byKey.most },
-  ];
+
 
   return (
     <div className={`trend-tooltip trend-tooltip--${side}`}>
-      <div className="trend-tooltip__total">{total}%</div>
+      <div className="trend-tooltip__total">{total.toFixed(2)}%</div>
       {rows.map((r) => (
         <div key={r.key} className="trend-tooltip__row">
           <span className={r.cls} />
-          <span className="trend-tooltip__value">{r.val}%</span>
+          <span className="trend-tooltip__value">{Number(r.val).toFixed(2)}%</span>
         </div>
       ))}
     </div>
@@ -298,10 +305,18 @@ export default function ServiceAttributeChart({
 
         const toNumber = (v) => {
           if (v === null || v === undefined) return 0;
-          if (typeof v === "number") return v;
-          const n = parseFloat(String(v).replace("%", ""));
-          return Number.isFinite(n) ? n : 0;
+
+          const n =
+            typeof v === "number"
+              ? v
+              : parseFloat(String(v).replace("%", ""));
+
+          if (!Number.isFinite(n)) return 0;
+
+          // round to 2 decimals
+          return Math.round(n * 100) / 100;
         };
+
 
         const token = localStorage.getItem("accessToken");
 

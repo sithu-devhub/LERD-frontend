@@ -15,8 +15,10 @@ import ErrorPlaceholder from "./ErrorPlaceholder";
 const TrendTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
   const byKey = Object.fromEntries(payload.map((p) => [p.dataKey, p.value]));
-  const total =
+  const totalRaw =
     (byKey.somewhat || 0) + (byKey.satisfied || 0) + (byKey.very || 0);
+
+  const total = Math.round(totalRaw * 100) / 100;
 
   const rows = [
     { key: "very", label: "Very Satisfied", cls: "trend-dot trend-dot--very", val: byKey.very },
@@ -26,11 +28,11 @@ const TrendTooltip = ({ active, payload }) => {
 
   return (
     <div className="trend-tooltip trend-tooltip--left">
-      <div className="trend-tooltip__total">{total}%</div>
+      <div className="trend-tooltip__total">{total.toFixed(2)}%</div>
       {rows.map((r) => (
         <div key={r.key} className="trend-tooltip__row">
           <span className={r.cls} />
-          <span className="trend-tooltip__value">{r.val}%</span>
+          <span className="trend-tooltip__value">{r.val.toFixed(2)}%</span>
         </div>
       ))}
     </div>
@@ -70,9 +72,14 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
 
     const toNumber = (v) => {
       if (v === null || v === undefined) return 0;
-      if (typeof v === "number") return v;
-      const n = parseFloat(String(v).replace("%", ""));
-      return Number.isFinite(n) ? n : 0;
+      const n =
+        typeof v === "number"
+          ? v
+          : parseFloat(String(v).replace("%", ""));
+      if (!Number.isFinite(n)) return 0;
+
+      // round to 2 decimal places
+      return Math.round(n * 100) / 100;
     };
 
     async function fetchTrend() {
