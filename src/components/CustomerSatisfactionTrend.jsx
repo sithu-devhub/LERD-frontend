@@ -1,5 +1,5 @@
 // src/pages/CustomerSatisfactionTrend.jsx
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -11,6 +11,7 @@ import {
 import http from "../api/http";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
+import { useFilteredRegions } from "../utils/useFilteredRegions";
 
 const TrendTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
@@ -81,6 +82,29 @@ export default function CustomerSatisfactionTrend({
   const [hoverBar, setHoverBar] = useState(false);
   const wrapRef = useRef(null);
 
+
+  const { selectedRegionIds, loading: regionFilterLoading } = useFilteredRegions(surveyId);
+
+  // Prefer RegionPage saved selection (localStorage), fallback to hook selection
+  const storedSelectedRegionIds = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  }, [surveyId]);
+
+  const effectiveSelectedRegionIds = useMemo(() => {
+    return storedSelectedRegionIds.length > 0
+      ? storedSelectedRegionIds
+      : (selectedRegionIds || []).map(String);
+  }, [storedSelectedRegionIds, selectedRegionIds]);
+
+
+
+
   useEffect(() => {
     if (!surveyId) return;
     let cancelled = false;
@@ -104,29 +128,42 @@ export default function CustomerSatisfactionTrend({
 
     async function fetchTrend() {
       try {
+        if (regionFilterLoading && storedSelectedRegionIds.length === 0) return;
+
         setLoading(true);
         setError("");
 
         const token = localStorage.getItem("accessToken");
 
         // Build params like ResponseChart (avoid sending default UI values)
-        const params = { surveyId };
+        const params = new URLSearchParams({ surveyId });
 
-        if (!isEmpty(gender)) params.gender = gender;
-        if (!isEmpty(participantType)) params.participantType = participantType;
+        if (!isEmpty(gender)) params.append("gender", gender);
+        if (!isEmpty(participantType)) params.append("participantType", participantType);
 
         // block accidental default year (same as your ResponseChart)
         const invalidPeriods = new Set([2026, "2026"]);
         if (!isEmpty(period) && !invalidPeriods.has(period)) {
-          params.period = period;
+          params.append("period", period);
+        }
+
+
+        // region filter (only if selected)
+        if (effectiveSelectedRegionIds.length > 0) {
+          effectiveSelectedRegionIds.forEach((id) => {
+            params.append("regions", id);
+          });
         }
 
         console.log("[CustomerSatisfactionTrend] sending params:", params);
 
-        const res = await http.get("/charts/customer-satisfaction-trend", {
-          params,
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
+        const res = await http.get(
+          `/charts/customer-satisfaction-trend?${params.toString()}`,
+          {
+            headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          }
+        );
+
 
         const json = res.data;
         console.log("[CustomerSatisfactionTrend] response:", json);
@@ -158,7 +195,7 @@ export default function CustomerSatisfactionTrend({
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType, period]);
+  }, [surveyId, gender, participantType, period, effectiveSelectedRegionIds.join(","), regionFilterLoading]);
 
   const noData =
     !loading && !error && (!satisfactionTrend || satisfactionTrend.length === 0);

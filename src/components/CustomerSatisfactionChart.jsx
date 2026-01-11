@@ -51,6 +51,23 @@ export default function CustomerSatisfaction({
   // also take loading from hook so we don't fetch until IDs are ready
   const { selectedRegionIds, loading: regionFilterLoading } = useFilteredRegions(surveyId);
 
+  // Prefer RegionPage saved selection (localStorage), fallback to API/hook selection
+  const storedSelectedRegionIds = (() => {
+    try {
+      const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  const effectiveSelectedRegionIds =
+    storedSelectedRegionIds.length > 0
+      ? storedSelectedRegionIds
+      : (selectedRegionIds || []).map(String);
+
+
   // State kept as-is (you had it before); we won't remove it
   const [regionResponses, setRegionResponses] = useState([]);
 
@@ -62,7 +79,7 @@ export default function CustomerSatisfaction({
       if (!surveyId) return;
 
       // Only wait for region filter if we are actually going to send regions
-      if (regionFilterLoading && selectedRegionIds?.length) return;
+      if (regionFilterLoading && storedSelectedRegionIds.length === 0) return;
 
 
       setLoading(true);
@@ -92,29 +109,32 @@ export default function CustomerSatisfaction({
           );
         };
 
-        const params = { surveyId };
+        const params = new URLSearchParams({ surveyId });
 
         // send only if user actually selected something
-        if (!isEmpty(gender)) params.gender = gender;
-        if (!isEmpty(participantType)) params.participantType = participantType;
+        if (!isEmpty(gender)) params.append("gender", gender);
+        if (!isEmpty(participantType)) params.append("participantType", participantType);
 
-        // block accidental default year like 2026
         const invalidPeriods = new Set(["2026", 2026]);
         if (!isEmpty(period) && !invalidPeriods.has(period)) {
-          params.period = period;
+          params.append("period", period);
         }
 
-        // region filter (only if selected)
-        if (selectedRegionIds?.length) {
-          params.region = selectedRegionIds.join(",");
+        // region filter (only if selected) — repeat regions param
+        if (effectiveSelectedRegionIds.length > 0) {
+          effectiveSelectedRegionIds.forEach((id) => {
+            params.append("regions", id);
+          });
         }
 
-        console.log("[CustomerSatisfaction] Sending params:", params);
+        console.log("[CustomerSatisfaction] Sending params:", params.toString());
 
-        const res = await http.get("/charts/customer-satisfaction", {
-          params,
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await http.get(
+          `/charts/customer-satisfaction?${params.toString()}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
 
 
 
@@ -140,7 +160,7 @@ export default function CustomerSatisfaction({
 
     load();
     return () => { cancelled = true; };
-  }, [surveyId, gender, participantType, period, selectedRegionIds, regionFilterLoading]);
+  }, [surveyId, gender, participantType, period, effectiveSelectedRegionIds.join(","), regionFilterLoading]);
 
 
   const pieData = [

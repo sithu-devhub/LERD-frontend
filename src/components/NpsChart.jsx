@@ -4,6 +4,7 @@ import { PieChart, Pie, Cell } from "recharts";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
 import http from "../api/http";
+import { useFilteredRegions } from "../utils/useFilteredRegions";
 
 export default function NpsChart({
   surveyId,
@@ -18,6 +19,25 @@ export default function NpsChart({
   const [loading, setLoading] = useState(true);
   const [score, setScore] = useState(0);
   const [error, setError] = useState("");
+
+  const { selectedRegionIds, loading: regionFilterLoading } = useFilteredRegions(surveyId);
+
+  // Prefer RegionPage saved selection (localStorage), fallback to hook selection
+  const storedSelectedRegionIds = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  }, [surveyId]);
+
+  const effectiveSelectedRegionIds = useMemo(() => {
+    return storedSelectedRegionIds.length > 0
+      ? storedSelectedRegionIds
+      : (selectedRegionIds || []).map(String);
+  }, [storedSelectedRegionIds, selectedRegionIds]);
 
   useEffect(() => {
     if (!surveyId) return;
@@ -39,26 +59,35 @@ export default function NpsChart({
 
     async function fetchNps() {
       try {
+        // wait until hook finishes only if we don't have localStorage selection
+        if (regionFilterLoading && effectiveSelectedRegionIds.length === 0) return;
+
         setLoading(true);
         setError("");
 
         const token = localStorage.getItem("accessToken");
 
-        const params = { surveyId };
+        const params = new URLSearchParams({ surveyId });
 
-        if (!isEmpty(gender)) params.gender = gender;
-        if (!isEmpty(participantType)) params.participantType = participantType;
 
-        // block accidental default year like 2026
+        if (!isEmpty(gender)) params.append("gender", gender);
+        if (!isEmpty(participantType)) params.append("participantType", participantType);
+
         const invalidPeriods = new Set([2026, "2026"]);
         if (!isEmpty(period) && !invalidPeriods.has(period)) {
-          params.period = period;
+          params.append("period", period);
         }
+
+        if (effectiveSelectedRegionIds.length > 0) {
+          effectiveSelectedRegionIds.forEach((id) => {
+            params.append("regions", id);
+          });
+        }
+
 
         console.log("[NpsChart] sending params:", params);
 
-        const res = await http.get("/charts/nps", {
-          params,
+        const res = await http.get(`/charts/nps?${params.toString()}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
 
@@ -81,8 +110,14 @@ export default function NpsChart({
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType, period]);
-
+  }, [
+  surveyId,
+  gender,
+  participantType,
+  period,
+  effectiveSelectedRegionIds.join(","),
+  regionFilterLoading
+]);
 
   const t = useMemo(() => {
     const v = Math.max(min, Math.min(max, score));

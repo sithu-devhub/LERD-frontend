@@ -88,7 +88,37 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
   const chartRef = useRef(null);
 
   // Only pass surveyId (hook will fetch filters itself)
-  const { filteredRegions, selectedRegionIds } = useFilteredRegions(surveyId);
+  const {
+    filteredRegions: surveyRegions,
+    selectedRegionIds,
+    loading: regionFilterLoading,
+  } = useFilteredRegions(surveyId);
+
+  // Use latest saved ids from localStorage (RegionPage writes here on Continue)
+  const storedSelectedRegionIds = (() => {
+    try {
+      const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  })();
+
+  // Prefer localStorage (fresh), fallback to hook (API)
+  const effectiveSelectedRegionIds =
+    storedSelectedRegionIds.length > 0
+      ? storedSelectedRegionIds
+      : (selectedRegionIds || []).map(String);
+
+  console.log("[ResponseChart hook]", {
+    surveyId,
+    surveyRegionsCount: surveyRegions?.length,
+    selectedRegionIdsCount: selectedRegionIds?.length,
+    surveyRegions,
+    selectedRegionIds,
+  });
+
 
   useLayoutEffect(() => {
     const el = chartRef.current;
@@ -100,41 +130,64 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
 
   useEffect(() => {
     if (!surveyId) return;
+    console.log("[ResponseChart effect trigger]", {
+      surveyId,
+      surveyRegionsCount: surveyRegions?.length,
+      selectedRegionIdsCount: selectedRegionIds?.length,
+    });
+
+    setShowAll(false);
+    setShowVillageModal(false);
+
     let aborted = false;
 
     async function loadResponse() {
       try {
+        // wait for hook only if no localStorage selection
+        if (regionFilterLoading && storedSelectedRegionIds.length === 0) return;
+
         setLoading(true);
         setError("");
 
         const token = localStorage.getItem("accessToken");
 
-        console.log("[ResponseChart] props:", { surveyId, gender, participantType, period });
+        console.log("[ResponseChart] props:", { gender, participantType, period, surveyId, selectedRegionIds, surveyRegions });
 
         const isEmpty = (v) =>
           v === undefined || v === null || v === "" || v === "All" || v === "Select period";
 
-        const params = { surveyId };
+        const params = new URLSearchParams({ surveyId });
 
         // Send only if user truly selected something
-        if (!isEmpty(gender)) params.gender = gender;
-        if (!isEmpty(participantType)) params.participantType = participantType;
+        if (!isEmpty(gender)) params.append("gender", gender);
+        if (!isEmpty(participantType)) params.append("participantType", participantType);
 
-        // Some UIs accidentally keep a default year like 2026 even when "Select period" is shown.
-        // Block it so the backend behaves like Postman (surveyId only).
         const invalidPeriods = new Set([2026, "2026"]);
         if (!isEmpty(period) && !invalidPeriods.has(period)) {
-          params.period = period;
+          params.append("period", period);
         }
 
-        console.log("[ResponseChart] sending params:", params);
 
-        const res = await http.get("/charts/response", {
-          params,
+        /**
+         * Regions filter:
+         * - If user has saved specific regions -> send regions=...
+         * - If user selected all (or no saved filter) -> do not send regions
+         * - Prevent sending until filteredRegions is loaded
+         */
+        const selectedIds = effectiveSelectedRegionIds;
+
+        // Send regions only if user selected something
+        if (selectedIds.length > 0) {
+          selectedIds.forEach((id) => {
+            params.append("regions", id);
+          });
+        }
+
+        console.log("[ResponseChart] sending params:", params.toString());
+
+        const res = await http.get(`/charts/response?${params.toString()}`, {
           headers: { Authorization: `Bearer ${token}` },
         });
-
-
 
         const json = res.data;
 
@@ -150,22 +203,15 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
               .map((r) => ({
                 villageName: String(r.villageName || "").trim(),
                 name: String(r.villageName || "").trim(),
-                value: Number(r.participantCount) || 0,  // IMPORTANT: must be number
+                value: Number(r.participantCount) || 0,  // must be number
               }))
               .filter((r) => r.name && r.value > 0)
               .sort((a, b) => b.value - a.value);
 
             console.log("[ResponseChart] allRegions:", allRegions);
+            
             setResponseData(allRegions);
 
-
-            // ✅ Filter immediately based on selected region names
-            // const filtered = selectedRegionIds?.length
-            //   ? allRegions.filter((r) => selectedRegionIds.includes(r.villageName))
-            //   : allRegions;
-
-            // console.log("[ResponseChart] Filtered regions:", filtered.map((r) => r.name));
-            // setResponseData(filtered);
           }
 
         }
@@ -180,14 +226,21 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
     return () => {
       aborted = true;
     };
-  }, [gender, participantType, period, surveyId, selectedRegionIds]);
+  }, [
+  gender,
+  participantType,
+  period,
+  surveyId,
+  effectiveSelectedRegionIds.join(","),
+  regionFilterLoading,
+  storedSelectedRegionIds.length,
+]);
 
 
 
   const displayData = showAll
     ? [{ name: "Overall", value: responseTotals.totalParticipants || 0 }]
     : responseData.slice(0, 5);
-
 
 
   // detect no-data
