@@ -67,11 +67,12 @@ export default function Dashboard() {
           }
 
           setHasServices(true);
-          const selectedService = services.find(s => s.isSelected);
+          const selectedService = services.find((s) => s.isSelected);
           if (selectedService) {
             activeSurveyId = selectedService.surveyId;
-            activeServiceName = selectedService.serviceName;
+            activeServiceName = selectedService.serviceType || selectedService.serviceName;
           }
+
         }
 
         if (!activeSurveyId) {

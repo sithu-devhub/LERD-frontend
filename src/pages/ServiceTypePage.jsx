@@ -177,13 +177,14 @@ export default function ServiceType() {
 
       localStorage.setItem("lastServiceId", selected);
       const selectedSurvey = surveys.find((s) => s.surveyId === selected);
-      if (selectedSurvey?.serviceName) {
-        localStorage.setItem("lastServiceName", selectedSurvey.serviceName);
-        localStorage.setItem(`surveyName:${selected}`, selectedSurvey.serviceName);
+      const displayServiceLabel = selectedSurvey?.serviceType || selectedSurvey?.serviceName;
+      if (displayServiceLabel) {
+        localStorage.setItem("lastServiceName", displayServiceLabel);
+        localStorage.setItem(`surveyName:${selected}`, displayServiceLabel);
       }
 
       navigate(`/dashboard/${encodeURIComponent(selected)}`, {
-        state: { service: selectedSurvey?.serviceName },
+        state: { service: displayServiceLabel },
       });
     } else {
       alert("No valid surveys found for your account. Please contact admin.");
@@ -259,7 +260,7 @@ export default function ServiceType() {
                 >
                   <ServiceTile
                     value={item.surveyId}
-                    label={item.serviceName}
+                    label={item.serviceType || item.serviceName}
                     selected={selected}
                     onChange={(val) => {
                       hasUserSelected.current = true;
