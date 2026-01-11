@@ -55,9 +55,9 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange }) => {
     if (next.has(name)) {
       next.delete(name);
     } else {
-      // Enforce max 5
-      if (next.size >= 5) {
-        return; // block more than 5
+      // Enforce max 6
+      if (next.size >= 6) {
+        return; // block more than 6
       }
       next.add(name);
     }
@@ -65,7 +65,8 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange }) => {
   };
 
   const clearAll = () => onChange(new Set());
-  const selectFive = () => onChange(new Set(allItems.slice(0, 5))); // only first 5
+  const selectSix = () => onChange(new Set(allItems.slice(0, 6))); // only first 6
+
 
   return (
     <div ref={boxRef} className="relative inline-block">
@@ -89,16 +90,16 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange }) => {
           <div className="px-4 py-3 border-b border-[#E7ECF6] flex items-center justify-between">
             <span className="text-[15px] font-semibold text-[#2B3674]">Attributes</span>
             <button
-              onClick={selectedSet.size > 0 ? clearAll : selectFive}
-              className="text-[13px] font-medium text-[#3F11FF] hover:underline"
+              onClick={selectedSet.size > 0 ? clearAll : selectSix}
             >
-              {selectedSet.size > 0 ? "Clear all" : "Select 5"}
+              {selectedSet.size > 0 ? "Clear all" : "Select 6"}
             </button>
+
           </div>
           <div className="max-h-64 overflow-y-auto">
             {allItems.map((name, idx) => {
               const checked = selectedSet.has(name);
-              const disabled = !checked && selectedSet.size >= 5; // disable after 5
+              const disabled = !checked && selectedSet.size >= 6; // disable after 6
               return (
                 <button
                   key={name}
