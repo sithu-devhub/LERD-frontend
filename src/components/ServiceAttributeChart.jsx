@@ -275,6 +275,7 @@ export default function ServiceAttributeChart({
   const [error, setError] = useState("");
   const [data, setData] = useState([]);
   const [availableAttrs, setAvailableAttrs] = useState([]);
+  const [hoverBar, setHoverBar] = useState(false);
 
   const chartRef = useRef(null);
   const [cardWidth, setCardWidth] = useState(0);
@@ -389,7 +390,7 @@ export default function ServiceAttributeChart({
   );
   const xAxisHeight = maxLines * LABEL_LINE_HEIGHT + AXIS_BOTTOM_PADDING;
 
-  // ✅ detect no data safely
+  // detect no data safely
   const noData =
     !loading && !error && (!dataForChart || dataForChart.length === 0);
 
@@ -445,7 +446,9 @@ export default function ServiceAttributeChart({
                     left: 0,
                     bottom: xAxisHeight,
                   }}
+                  onMouseLeave={() => setHoverBar(false)}
                 >
+
                   <YAxis domain={[0, 100]} hide />
                   <ReferenceLine
                     y={80}
@@ -478,18 +481,29 @@ export default function ServiceAttributeChart({
                     )}
                   />
                   <Tooltip
+                    active={hoverBar}
+                    isAnimationActive={false}
                     cursor={{ fill: "transparent" }}
                     content={<ServiceAttributeTooltip />}
                     offset={0}
                     allowEscapeViewBox={{ x: true, y: true }}
-                    wrapperStyle={{ zIndex: 9999, overflow: "visible" }}
+                    wrapperStyle={{ zIndex: 9999, overflow: "visible", pointerEvents: "none" }}
                     contentStyle={{
                       background: "transparent",
                       border: "none",
                       boxShadow: "none",
                     }}
                   />
-                  <Bar dataKey="most" stackId="a" fill="#6AD2FF" barSize={32} />
+
+                  <Bar
+                    dataKey="most"
+                    stackId="a"
+                    fill="#6AD2FF"
+                    barSize={45}
+                    onMouseEnter={() => setHoverBar(true)}
+                    onMouseLeave={() => setHoverBar(false)}
+                  />
+
                   <Bar
                     dataKey="always"
                     stackId="a"
@@ -497,7 +511,10 @@ export default function ServiceAttributeChart({
                     barSize={32}
                     radius={[8, 8, 0, 0]}
                     minPointSize={6}
+                    onMouseEnter={() => setHoverBar(true)}
+                    onMouseLeave={() => setHoverBar(false)}
                   />
+
                 </BarChart>
               </ResponsiveContainer>
 
