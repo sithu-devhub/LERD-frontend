@@ -1,5 +1,5 @@
 // src/pages/CustomerSatisfactionTrend.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -21,9 +21,24 @@ const TrendTooltip = ({ active, payload }) => {
   const total = Math.round(totalRaw * 100) / 100;
 
   const rows = [
-    { key: "very", label: "Very Satisfied", cls: "trend-dot trend-dot--very", val: byKey.very },
-    { key: "satisfied", label: "Satisfied", cls: "trend-dot trend-dot--satisfied", val: byKey.satisfied },
-    { key: "somewhat", label: "Somewhat Satisfied", cls: "trend-dot trend-dot--somewhat", val: byKey.somewhat },
+    {
+      key: "very",
+      label: "Very Satisfied",
+      cls: "trend-dot trend-dot--very",
+      val: byKey.very,
+    },
+    {
+      key: "satisfied",
+      label: "Satisfied",
+      cls: "trend-dot trend-dot--satisfied",
+      val: byKey.satisfied,
+    },
+    {
+      key: "somewhat",
+      label: "Somewhat Satisfied",
+      cls: "trend-dot trend-dot--somewhat",
+      val: byKey.somewhat,
+    },
   ];
 
   return (
@@ -53,11 +68,18 @@ const TrendLegendBelow = () => (
   </div>
 );
 
-export default function CustomerSatisfactionTrend({ surveyId, gender, participantType, period }) {
+export default function CustomerSatisfactionTrend({
+  surveyId,
+  gender,
+  participantType,
+  period,
+}) {
   const [satisfactionTrend, setSatisfactionTrend] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const [hoverBar, setHoverBar] = useState(false);
+  const wrapRef = useRef(null);
 
   useEffect(() => {
     if (!surveyId) return;
@@ -73,9 +95,7 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
     const toNumber = (v) => {
       if (v === null || v === undefined) return 0;
       const n =
-        typeof v === "number"
-          ? v
-          : parseFloat(String(v).replace("%", ""));
+        typeof v === "number" ? v : parseFloat(String(v).replace("%", ""));
       if (!Number.isFinite(n)) return 0;
 
       // round to 2 decimal places
@@ -140,8 +160,8 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
     };
   }, [surveyId, gender, participantType, period]);
 
-
-  const noData = !loading && !error && (!satisfactionTrend || satisfactionTrend.length === 0);
+  const noData =
+    !loading && !error && (!satisfactionTrend || satisfactionTrend.length === 0);
 
   return (
     <ChartCard
@@ -209,9 +229,10 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
             </div>
           </div>
         ) : (
-          <div className="trend-chart relative">
+          <div ref={wrapRef} className="trend-chart relative">
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={satisfactionTrend} barCategoryGap="35%">
+              <BarChart data={satisfactionTrend} barCategoryGap="35%" onMouseLeave={() => setHoverBar(false)}>
+
                 <XAxis
                   dataKey="year"
                   axisLine={false}
@@ -220,25 +241,44 @@ export default function CustomerSatisfactionTrend({ surveyId, gender, participan
                 />
                 <YAxis hide />
                 <Tooltip
+                  active={hoverBar}
+                  isAnimationActive={false}
                   cursor={{ fill: "transparent" }}
                   content={<TrendTooltip />}
                   offset={0}
                   allowEscapeViewBox={{ x: true, y: true }}
-                  wrapperStyle={{ zIndex: 9999, overflow: "visible" }}
+                  wrapperStyle={{ zIndex: 9999, overflow: "visible", pointerEvents: "none" }}
                   contentStyle={{
                     background: "transparent",
                     border: "none",
                     boxShadow: "none",
                   }}
                 />
-                <Bar dataKey="somewhat" stackId="a" fill="#E0E6F5" />
-                <Bar dataKey="satisfied" stackId="a" fill="#40CFFF" />
+
+                <Bar
+                  dataKey="somewhat"
+                  stackId="a"
+                  fill="#E0E6F5"
+                  onMouseEnter={() => setHoverBar(true)}
+                  onMouseLeave={() => setHoverBar(false)}
+                />
+
+                <Bar
+                  dataKey="satisfied"
+                  stackId="a"
+                  fill="#40CFFF"
+                  onMouseEnter={() => setHoverBar(true)}
+                  onMouseLeave={() => setHoverBar(false)}
+                />
                 <Bar
                   dataKey="very"
                   stackId="a"
                   fill="#3F11FF"
                   radius={[8, 8, 0, 0]}
+                  onMouseEnter={() => setHoverBar(true)}
+                  onMouseLeave={() => setHoverBar(false)}
                 />
+
               </BarChart>
             </ResponsiveContainer>
             <TrendLegendBelow />
