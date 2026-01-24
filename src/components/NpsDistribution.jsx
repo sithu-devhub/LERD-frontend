@@ -1,15 +1,45 @@
 // src/components/NpsDistribution.jsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
 import http from "../api/http";
-
+import { useFilteredRegions } from "../utils/useFilteredRegions";
 
 export default function NpsDistribution({ surveyId, gender, participantType, period }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [distribution, setDistribution] = useState([]);
+
+  const { selectedRegionIds, loading: regionFilterLoading } =
+    useFilteredRegions(surveyId);
+
+  /* ---------- LOCAL STORAGE (MEMO) ---------- */
+  const storedSelectedRegionIds = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  }, [surveyId]);
+
+  /* ---------- EFFECTIVE REGION IDS ---------- */
+  const effectiveSelectedRegionIds = useMemo(() => {
+    return storedSelectedRegionIds.length > 0
+      ? storedSelectedRegionIds
+      : (selectedRegionIds || []).map(String);
+  }, [storedSelectedRegionIds, selectedRegionIds]);
+
+
+  /* ---------- STABLE REGION DEPENDENCY KEY ---------- */
+  const regionsKey = useMemo(
+    () => effectiveSelectedRegionIds.join(","),
+    [effectiveSelectedRegionIds]
+  );
+
+
 
   useEffect(() => {
     if (!surveyId) return;
@@ -31,26 +61,37 @@ export default function NpsDistribution({ surveyId, gender, participantType, per
 
     async function fetchDistribution() {
       try {
+        // wait for hook only if no localStorage selection
+        if (regionFilterLoading && storedSelectedRegionIds.length === 0) {
+          if (!cancelled) setLoading(false);
+          return;
+        }
+
         setLoading(true);
         setError("");
 
         const token = localStorage.getItem("accessToken");
 
-        const params = { surveyId };
+        const params = new URLSearchParams({ surveyId });
 
-        if (!isEmpty(gender)) params.gender = gender;
-        if (!isEmpty(participantType)) params.participantType = participantType;
+        if (!isEmpty(gender)) params.append("gender", gender);
+        if (!isEmpty(participantType)) params.append("participantType", participantType);
 
-        // block accidental default year like 2026
         const invalidPeriods = new Set([2026, "2026"]);
         if (!isEmpty(period) && !invalidPeriods.has(period)) {
-          params.period = period;
+          params.append("period", period);
         }
+
+        if (effectiveSelectedRegionIds.length > 0) {
+          effectiveSelectedRegionIds.forEach((id) => {
+            params.append("regions", id);
+          });
+        }
+
 
         console.log("[NpsDistribution] sending params:", params);
 
-        const res = await http.get("/charts/nps", {
-          params,
+        const res = await http.get(`/charts/nps?${params.toString()}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
 
@@ -98,7 +139,17 @@ export default function NpsDistribution({ surveyId, gender, participantType, per
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType, period]);
+  }, [
+  surveyId,
+  gender,
+  participantType,
+  period,
+  regionsKey,
+  regionFilterLoading,
+  storedSelectedRegionIds.length,
+]);
+
+
 
 
   return (

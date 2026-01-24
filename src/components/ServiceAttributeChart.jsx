@@ -7,6 +7,7 @@ import {
 import ChartCard from "./ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
 import http from "../api/http";
+import { useFilteredRegions } from "../utils/useFilteredRegions";
 
 
 // === small helper for click-away ===
@@ -290,11 +291,41 @@ export default function ServiceAttributeChart({
     return () => ro.disconnect();
   }, []);
 
+  const { selectedRegionIds, loading: regionFilterLoading } =
+    useFilteredRegions(surveyId);
+
+  const storedSelectedRegionIds = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  }, [surveyId]);
+
+  const effectiveSelectedRegionIds = useMemo(() => {
+    return storedSelectedRegionIds.length > 0
+      ? storedSelectedRegionIds
+      : (selectedRegionIds || []).map(String);
+  }, [storedSelectedRegionIds, selectedRegionIds]);
+
+  const regionsKey = useMemo(
+    () => effectiveSelectedRegionIds.join(","),
+    [effectiveSelectedRegionIds]
+  );
+
   useEffect(() => {
     let cancelled = false;
 
     async function fetchServiceAttributes() {
       try {
+
+        if (regionFilterLoading && storedSelectedRegionIds.length === 0) {
+          setLoading(false);
+          return;
+        }
+
         setLoading(true);
         setError("");
 
@@ -322,21 +353,25 @@ export default function ServiceAttributeChart({
 
         const token = localStorage.getItem("accessToken");
 
-        const params = { surveyId };
+        const params = new URLSearchParams({ surveyId });
 
-        if (!isEmpty(gender)) params.gender = gender;
-        if (!isEmpty(participantType)) params.participantType = participantType;
+        if (!isEmpty(gender)) params.append("gender", gender);
+        if (!isEmpty(participantType)) params.append("participantType", participantType);
 
-        // block accidental default year like 2026
         const invalidPeriods = new Set([2026, "2026"]);
         if (!isEmpty(period) && !invalidPeriods.has(period)) {
-          params.period = period;
+          params.append("period", period);
+        }
+
+        if (effectiveSelectedRegionIds.length > 0) {
+          effectiveSelectedRegionIds.forEach((id) => {
+            params.append("regions", id);
+          });
         }
 
         console.log("[ServiceAttributeChart] sending params:", params);
 
-        const res = await http.get("/charts/service-attributes", {
-          params,
+        const res = await http.get(`/charts/service-attributes?${params.toString()}`, {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
         });
 
@@ -374,7 +409,7 @@ export default function ServiceAttributeChart({
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType, period]);
+  }, [surveyId, gender, participantType, period, regionsKey, regionFilterLoading]);
 
   const dataForChart = useMemo(() => {
     if (!selectedAttrs || selectedAttrs.size === 0) return data;
