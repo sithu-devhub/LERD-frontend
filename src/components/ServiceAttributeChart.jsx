@@ -315,8 +315,6 @@ export default function ServiceAttributeChart({
     [effectiveSelectedRegionIds]
   );
 
-
-
   useEffect(() => {
     let cancelled = false;
 

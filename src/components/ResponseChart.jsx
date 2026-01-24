@@ -94,18 +94,22 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
     loading: regionFilterLoading,
   } = useFilteredRegions(surveyId);
 
-  // Use latest saved ids from localStorage (RegionPage writes here on Continue)
-  const storedSelectedRegionIds = (() => {
+  const [storedSelectedRegionIds, setStoredSelectedRegionIds] = useState([]);
+
+  useEffect(() => {
+    if (!surveyId) return;
+
     try {
       const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
       const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed.map(String) : [];
+      setStoredSelectedRegionIds(Array.isArray(parsed) ? parsed.map(String) : []);
     } catch {
-      return [];
+      setStoredSelectedRegionIds([]);
     }
-  })();
+  }, [surveyId]);
 
-  // Prefer localStorage (fresh), fallback to hook (API)
+
+  // localStorage (fresh), fallback to hook (API)
   const effectiveSelectedRegionIds =
     storedSelectedRegionIds.length > 0
       ? storedSelectedRegionIds
@@ -231,9 +235,8 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
   participantType,
   period,
   surveyId,
-  effectiveSelectedRegionIds.join(","),
   regionFilterLoading,
-  storedSelectedRegionIds.length,
+  storedSelectedRegionIds,
 ]);
 
 
