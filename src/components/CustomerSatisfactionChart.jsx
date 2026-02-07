@@ -1,6 +1,6 @@
 // src/components/CustomerSatisfactionChart.js.js
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
@@ -52,7 +52,16 @@ export default function CustomerSatisfaction({
   const { selectedRegionIds, loading: regionFilterLoading } = useFilteredRegions(surveyId);
 
   // Prefer RegionPage saved selection (localStorage), fallback to API/hook selection
-  const storedSelectedRegionIds = (() => {
+  // const storedSelectedRegionIds = (() => {
+  //   try {
+  //     const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
+  //     const parsed = raw ? JSON.parse(raw) : [];
+  //     return Array.isArray(parsed) ? parsed.map(String) : [];
+  //   } catch {
+  //     return [];
+  //   }
+  // })();
+  const storedSelectedRegionIds = useMemo(() => {
     try {
       const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
       const parsed = raw ? JSON.parse(raw) : [];
@@ -60,7 +69,7 @@ export default function CustomerSatisfaction({
     } catch {
       return [];
     }
-  })();
+  }, [surveyId]);
 
   const effectiveSelectedRegionIds =
     storedSelectedRegionIds.length > 0

@@ -25,9 +25,11 @@ export default function RegionPage() {
         const token = localStorage.getItem("accessToken");
         if (!user?.userId || !token) return;
 
-        let activeSurveyId = serviceId || localStorage.getItem("lastServiceId");
+        let activeSurveyId = serviceId;
+        if (!activeSurveyId) activeSurveyId = localStorage.getItem("lastServiceId");
 
-        // 🔹 Step 1: Get selected service from API
+
+        // Step 1: Get selected service from API
         try {
           const servicesRes = await http.get(`/users/${user.userId}/services`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -35,7 +37,7 @@ export default function RegionPage() {
           if (servicesRes.data?.success && Array.isArray(servicesRes.data.data)) {
             const services = servicesRes.data.data;
 
-            // ✅ If user has no services
+            // If user has no services
             if (services.length === 0) {
               setHasServices(false);
               setApiError("");
@@ -45,13 +47,21 @@ export default function RegionPage() {
 
             setHasServices(true);
 
-            const selectedService = services.find(s => s.isSelected);
+            const selectedService = services.find(
+              s => String(s.surveyId) === String(activeSurveyId)
+            );
+
             if (selectedService?.surveyId) {
               activeSurveyId = selectedService.surveyId;
+
+              const name = selectedService.serviceType || selectedService.surveyName;
+
               localStorage.setItem("lastServiceId", activeSurveyId);
-              localStorage.setItem(`surveyName:${activeSurveyId}`, selectedService.serviceName);
-              localStorage.setItem("lastServiceName", selectedService.serviceName);
+              localStorage.setItem(`surveyName:${activeSurveyId}`, name);
+              localStorage.setItem("lastServiceName", name);
             }
+
+
           }
         } catch (err) {
           console.warn("⚠️ Could not fetch selected service, fallback to lastServiceId");
@@ -63,7 +73,7 @@ export default function RegionPage() {
           return;
         }
 
-        // 🔹 Step 2: Fetch all regions for that survey
+        // Step 2: Fetch all regions for that survey
         const regionsRes = await http.get(`/surveys/${activeSurveyId}/regions`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -75,7 +85,7 @@ export default function RegionPage() {
           setRegions(allRegions);
         }
 
-        // 🔹 Step 3: Fetch saved region filters
+        // Step 3: Fetch saved region filters
         const filtersRes = await http.get(`/users/${user.userId}/filters`, {
           params: { surveyId: activeSurveyId },
           headers: { Authorization: `Bearer ${token}` },
@@ -129,20 +139,45 @@ export default function RegionPage() {
   const toggleOne = (id) => {
     const idStr = String(id);
     const next = new Set(selected);
-    if (next.has(idStr)) next.delete(idStr);
-    else next.add(idStr);
+
+    if (next.has(idStr)) {
+      // Prevent removing last selected region
+      if (next.size === 1) return;
+      next.delete(idStr);
+    } else {
+      next.add(idStr);
+    }
+
     setSelected(next);
   };
+
 
   const toggleAllVisible = () => {
     const next = new Set(selected);
     const allIds = filtered.map((r) => String(r.id));
-    if (isAllVisibleChecked) allIds.forEach((id) => next.delete(id));
-    else allIds.forEach((id) => next.add(id));
+
+    if (isAllVisibleChecked) {
+      // Remove visible ones
+      allIds.forEach((id) => next.delete(id));
+
+      // ❌ If removing would make 0 → cancel
+      if (next.size === 0) return;
+    } else {
+      // Add visible ones
+      allIds.forEach((id) => next.add(id));
+    }
+
     setSelected(next);
   };
 
+
+
   async function handleSave() {
+    if (selected.size === 0) {
+      alert("Please select at least one region.");
+      return;
+    }
+
     const user = JSON.parse(localStorage.getItem("user"));
     const token = localStorage.getItem("accessToken");
     const surveyId = serviceId || localStorage.getItem("lastServiceId");

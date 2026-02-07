@@ -1,6 +1,6 @@
 // src/pages/Dashboard.jsx
 import React, { useState, useCallback, useEffect } from 'react';
-import { useParams, useLocation } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import ChartCard from '../components/ChartCard';
 import '../styles/dashboard.css';
 import DashboardFilters from "../components/DashboardFilters";
@@ -26,6 +26,7 @@ export default function Dashboard() {
 
   const { serviceId } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
 
   const [surveyId, setSurveyId] = useState(null);
   const [serviceName, setServiceName] = useState("Loading…");
@@ -46,12 +47,31 @@ export default function Dashboard() {
 
       try {
         setServiceLoading(true);
-        setServiceError('');
+        setServiceError("");
 
         let activeSurveyId = null;
         let activeServiceName = null;
 
-        // 🔹 Step 1: get services and find isSelected:true
+        // ✅ Source of truth: URL param
+        if (serviceId && isUUID(serviceId)) {
+          activeSurveyId = serviceId;
+        } else {
+          // ✅ fallback: default survey, then redirect
+          const def = await http.get(`/users/${user.userId}/surveys/default`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+
+          const defId = def.data?.data?.surveyId;
+          if (def.data?.success && defId && isUUID(defId)) {
+            navigate(`/dashboard/${encodeURIComponent(defId)}`, { replace: true });
+            return;
+          }
+
+          setServiceError("No valid survey found");
+          return;
+        }
+
+        // ✅ Get service name for title
         const servicesRes = await http.get(`/users/${user.userId}/services`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -60,46 +80,36 @@ export default function Dashboard() {
           const services = servicesRes.data.data;
 
           if (services.length === 0) {
-            // No services available
             setHasServices(false);
             setServiceError("");
             return;
           }
 
           setHasServices(true);
-          const selectedService = services.find((s) => s.isSelected);
-          if (selectedService) {
-            activeSurveyId = selectedService.surveyId;
-            activeServiceName = selectedService.serviceType || selectedService.serviceName;
-          }
 
-        }
-
-        if (!activeSurveyId) {
-          setServiceError("No active survey found");
-          return;
+          const match = services.find((s) => String(s.surveyId) === String(activeSurveyId));
+          activeServiceName = match?.serviceType || match?.serviceName;
         }
 
         setSurveyId(activeSurveyId);
         setServiceName(activeServiceName || "Unknown Survey");
 
+        // (cache)
         localStorage.setItem("lastServiceId", activeSurveyId);
         localStorage.setItem("lastServiceName", activeServiceName || "");
         localStorage.setItem(`surveyName:${activeSurveyId}`, activeServiceName || "");
 
-        // 🔹 Step 2: get selected regions from filters
+        // ✅ Regions from backend saved filters
         const filtersRes = await http.get(`/users/${user.userId}/filters`, {
           params: { surveyId: activeSurveyId },
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (filtersRes.data?.success && filtersRes.data.data?.region?.values) {
-          const savedIds = filtersRes.data.data.region.values.map(String);
-          setSelectedRegions(savedIds);
+        const savedIds = filtersRes.data?.data?.region?.values?.map(String) || [];
+        setSelectedRegions(savedIds);
 
-          localStorage.setItem(`selectedRegionIds:${activeSurveyId}`, JSON.stringify(savedIds));
-        }
-
+        // optional cache
+        localStorage.setItem(`selectedRegionIds:${activeSurveyId}`, JSON.stringify(savedIds));
       } catch (err) {
         console.error("❌ Dashboard load error:", err);
         setServiceError("Failed to load survey data");
@@ -109,7 +119,9 @@ export default function Dashboard() {
     }
 
     loadSurveyAndRegions();
-  }, [serviceId, location.state?.service]);
+  }, [serviceId, navigate, location.state?.service]);
+
+
 
   useEffect(() => {
     if (availableAttrs.length) {
@@ -156,7 +168,7 @@ export default function Dashboard() {
       )}
 
 
-      {surveyId && isUUID(surveyId) && hasServices && selectedRegions.length > 0 && (
+      {surveyId && isUUID(surveyId) && hasServices && (
         <>
           <div className="grid grid-cols-3 gap-6 mb-6">
             <ResponseChart surveyId={surveyId} regions={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
@@ -172,6 +184,7 @@ export default function Dashboard() {
 
           <div className="mb-6">
             <DashboardFilters
+              regionIds={selectedRegions}
               value={{
                 surveyId,
                 gender: genderReverseMap[filters.gender],
