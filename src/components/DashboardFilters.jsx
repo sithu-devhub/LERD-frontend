@@ -235,7 +235,7 @@ function buildPeriodParam(range) {
   return `${new Date().getFullYear()}`;
 }
 
-export default function DashboardFilters({ value, onChange, className = "" }) {
+export default function DashboardFilters({ value, onChange, className = "", regionIds }) {
   // committed filters (actually used in API calls)
   const [gender, setGender] = useState(value?.gender || "All");
   const [clientType, setClientType] = useState(value?.clientType || "All");
@@ -266,9 +266,12 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
   const rootRef = useRef(null);
   useClickOutside(rootRef, () => setOpen(null));
 
-  // === NEW: data freshness state
+  // === data freshness state
   const [lastUpdated, setLastUpdated] = useState(null);
   const [isFreshnessLoading, setIsFreshnessLoading] = useState(false);
+  const regionIdsKey = useMemo(() => {
+    return Array.isArray(regionIds) ? regionIds.map(String).join(",") : "";
+  }, [regionIds]);
 
   // Only fire API when committed state changes (after Done)
   useEffect(() => {
@@ -282,9 +285,10 @@ export default function DashboardFilters({ value, onChange, className = "" }) {
         gender: genderMap[gender],
         participantType: clientTypeMap[clientType],
         period,
+        regionIds: (regionIds || []).map(String),
       });
     }
-  }, [gender, clientType, range, onChange]);
+  }, [gender, clientType, range, regionIdsKey, onChange]);
 
   // === NEW: Fetch Survey Data Freshness when surveyId changes
   useEffect(() => {

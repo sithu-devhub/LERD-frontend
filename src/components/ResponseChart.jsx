@@ -1,5 +1,5 @@
 // src/components/ResponseChart.jsx
-import React, { useEffect, useState, useRef, useLayoutEffect } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import ChartCard from "./ChartCard";
 import {
   BarChart,
@@ -123,14 +123,6 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
     selectedRegionIds,
   });
 
-
-  useLayoutEffect(() => {
-    const el = chartRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => {});
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   useEffect(() => {
     if (!surveyId) return;
