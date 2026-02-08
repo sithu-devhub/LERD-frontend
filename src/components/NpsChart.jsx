@@ -24,24 +24,6 @@ export default function NpsChart({
   const regionKey = Array.isArray(regionIds)
   ? regionIds.map(String).sort().join(",")
   : "";
-  // const { selectedRegionIds, loading: regionFilterLoading } = useFilteredRegions(surveyId);
-
-  // // Prefer RegionPage saved selection (localStorage), fallback to hook selection
-  // const storedSelectedRegionIds = useMemo(() => {
-  //   try {
-  //     const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
-  //     const parsed = raw ? JSON.parse(raw) : [];
-  //     return Array.isArray(parsed) ? parsed.map(String) : [];
-  //   } catch {
-  //     return [];
-  //   }
-  // }, [surveyId]);
-
-  // const effectiveSelectedRegionIds = useMemo(() => {
-  //   return storedSelectedRegionIds.length > 0
-  //     ? storedSelectedRegionIds
-  //     : (selectedRegionIds || []).map(String);
-  // }, [storedSelectedRegionIds, selectedRegionIds]);
 
   useEffect(() => {
     if (!surveyId) return;
@@ -63,8 +45,6 @@ export default function NpsChart({
 
     async function fetchNps() {
       try {
-        // wait until hook finishes only if we don't have localStorage selection
-        // if (regionFilterLoading && effectiveSelectedRegionIds.length === 0) return;
 
         setLoading(true);
         setError("");

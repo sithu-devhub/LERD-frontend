@@ -7,7 +7,6 @@ import {
 import ChartCard from "./ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
 import http from "../api/http";
-import { useFilteredRegions } from "../utils/useFilteredRegions";
 
 
 // === small helper for click-away ===
@@ -266,13 +265,15 @@ const ChartSkeleton = () => {
 // === Component ===
 export default function ServiceAttributeChart({
   surveyId,
+  regionIds = [],
   gender,
   participantType,
   period,
   selectedAttrs,
   onAvailableAttrs,
   onSelectedChange,
-}) {
+})
+{
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState([]);
@@ -291,40 +292,54 @@ export default function ServiceAttributeChart({
     return () => ro.disconnect();
   }, []);
 
-  const { selectedRegionIds, loading: regionFilterLoading } =
-    useFilteredRegions(surveyId);
+  const regionKey = Array.isArray(regionIds)
+  ? regionIds.map(String).sort().join(",")
+  : "";
 
-  const storedSelectedRegionIds = useMemo(() => {
-    try {
-      const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed.map(String) : [];
-    } catch {
-      return [];
-    }
-  }, [surveyId]);
+  // const { selectedRegionIds, loading: regionFilterLoading } =
+  //   useFilteredRegions(surveyId);
 
-  const effectiveSelectedRegionIds = useMemo(() => {
-    return storedSelectedRegionIds.length > 0
-      ? storedSelectedRegionIds
-      : (selectedRegionIds || []).map(String);
-  }, [storedSelectedRegionIds, selectedRegionIds]);
+  // const storedSelectedRegionIds = useMemo(() => {
+  //   try {
+  //     const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
+  //     const parsed = raw ? JSON.parse(raw) : [];
+  //     return Array.isArray(parsed) ? parsed.map(String) : [];
+  //   } catch {
+  //     return [];
+  //   }
+  // }, [surveyId]);
 
-  const regionsKey = useMemo(
-    () => effectiveSelectedRegionIds.join(","),
-    [effectiveSelectedRegionIds]
-  );
+  // const effectiveSelectedRegionIds = useMemo(() => {
+  //   return storedSelectedRegionIds.length > 0
+  //     ? storedSelectedRegionIds
+  //     : (selectedRegionIds || []).map(String);
+  // }, [storedSelectedRegionIds, selectedRegionIds]);
+
+  // const regionsKey = useMemo(
+  //   () => effectiveSelectedRegionIds.join(","),
+  //   [effectiveSelectedRegionIds]
+  // );
+
 
   useEffect(() => {
+    if (!surveyId) return;
+
     let cancelled = false;
 
+    console.log("[ServiceAttributeChart effect trigger]", {
+      surveyId,
+      regionIdsCount: Array.isArray(regionIds) ? regionIds.length : 0,
+      regionKey,
+    });
+
     async function fetchServiceAttributes() {
+
       try {
 
-        if (regionFilterLoading && storedSelectedRegionIds.length === 0) {
-          setLoading(false);
-          return;
-        }
+        // if (regionFilterLoading && storedSelectedRegionIds.length === 0) {
+        //   setLoading(false);
+        //   return;
+        // }
 
         setLoading(true);
         setError("");
@@ -353,6 +368,15 @@ export default function ServiceAttributeChart({
 
         const token = localStorage.getItem("accessToken");
 
+        console.log("[ServiceAttributeChart props]", {
+          surveyId,
+          gender,
+          participantType,
+          period,
+          regionIds,
+          regionKey,
+        });
+        
         const params = new URLSearchParams({ surveyId });
 
         if (!isEmpty(gender)) params.append("gender", gender);
@@ -363,11 +387,14 @@ export default function ServiceAttributeChart({
           params.append("period", period);
         }
 
-        if (effectiveSelectedRegionIds.length > 0) {
-          effectiveSelectedRegionIds.forEach((id) => {
+        const selectedIds = regionKey ? regionKey.split(",") : [];
+
+        if (selectedIds.length > 0) {
+          selectedIds.forEach((id) => {
             params.append("regions", id);
           });
         }
+
 
         console.log("[ServiceAttributeChart] sending params:", params);
 
@@ -409,7 +436,7 @@ export default function ServiceAttributeChart({
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType, period, regionsKey, regionFilterLoading]);
+  }, [surveyId, gender, participantType, period, regionKey]);
 
   const dataForChart = useMemo(() => {
     if (!selectedAttrs || selectedAttrs.size === 0) return data;
