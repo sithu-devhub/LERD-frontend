@@ -11,7 +11,6 @@ import {
 import http from "../api/http";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
-import { useFilteredRegions } from "../utils/useFilteredRegions";
 
 const TrendTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
@@ -71,6 +70,7 @@ const TrendLegendBelow = () => (
 
 export default function CustomerSatisfactionTrend({
   surveyId,
+  regionIds = [],
   gender,
   participantType,
   period,
@@ -82,32 +82,20 @@ export default function CustomerSatisfactionTrend({
   const [hoverBar, setHoverBar] = useState(false);
   const wrapRef = useRef(null);
 
-
-  const { selectedRegionIds, loading: regionFilterLoading } = useFilteredRegions(surveyId);
-
-  // Prefer RegionPage saved selection (localStorage), fallback to hook selection
-  const storedSelectedRegionIds = useMemo(() => {
-    try {
-      const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed.map(String) : [];
-    } catch {
-      return [];
-    }
-  }, [surveyId]);
-
-  const effectiveSelectedRegionIds = useMemo(() => {
-    return storedSelectedRegionIds.length > 0
-      ? storedSelectedRegionIds
-      : (selectedRegionIds || []).map(String);
-  }, [storedSelectedRegionIds, selectedRegionIds]);
-
-
-
+  const regionKey = Array.isArray(regionIds)
+    ? regionIds.map(String).sort().join(",")
+    : "";
 
   useEffect(() => {
     if (!surveyId) return;
     let cancelled = false;
+
+    console.log("[CustomerSatisfactionTrend effect trigger]", {
+      surveyId,
+      regionIdsCount: Array.isArray(regionIds) ? regionIds.length : 0,
+      regionKey,
+    });
+
 
     const isEmpty = (v) =>
       v === undefined ||
@@ -128,12 +116,20 @@ export default function CustomerSatisfactionTrend({
 
     async function fetchTrend() {
       try {
-        if (regionFilterLoading && storedSelectedRegionIds.length === 0) return;
-
         setLoading(true);
         setError("");
 
         const token = localStorage.getItem("accessToken");
+
+        console.log("[CustomerSatisfactionTrend props]", {
+          surveyId,
+          gender,
+          participantType,
+          period,
+          regionIds,
+          regionKey,
+        });
+
 
         // Build params like ResponseChart (avoid sending default UI values)
         const params = new URLSearchParams({ surveyId });
@@ -149,11 +145,16 @@ export default function CustomerSatisfactionTrend({
 
 
         // region filter (only if selected)
-        if (effectiveSelectedRegionIds.length > 0) {
-          effectiveSelectedRegionIds.forEach((id) => {
+        const selectedIds = regionKey ? regionKey.split(",") : [];
+
+        console.log("[CustomerSatisfactionTrend selectedIds]", selectedIds);
+
+        if (selectedIds.length > 0) {
+          selectedIds.forEach((id) => {
             params.append("regions", id);
           });
         }
+
 
         console.log("[CustomerSatisfactionTrend] sending params:", params);
 
@@ -195,7 +196,7 @@ export default function CustomerSatisfactionTrend({
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType, period, effectiveSelectedRegionIds.join(","), regionFilterLoading]);
+  }, [surveyId, gender, participantType, period, regionKey]);
 
   const noData =
     !loading && !error && (!satisfactionTrend || satisfactionTrend.length === 0);
