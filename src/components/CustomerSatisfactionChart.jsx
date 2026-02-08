@@ -1,10 +1,9 @@
 // src/components/CustomerSatisfactionChart.js.js
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
-import { useFilteredRegions } from "../utils/useFilteredRegions";
 import http from "../api/http";
 
 const pieColors = ["#3F11FF", "#6AD2FF", "#E0E0E0"];
@@ -35,7 +34,7 @@ const PieTooltip = ({ active, payload, coordinate, viewBox }) => {
 
 export default function CustomerSatisfaction({
   surveyId,
-  regions = [],
+  regionIds = [],
   gender,
   participantType,
   period,
@@ -48,47 +47,23 @@ export default function CustomerSatisfaction({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // also take loading from hook so we don't fetch until IDs are ready
-  const { selectedRegionIds, loading: regionFilterLoading } = useFilteredRegions(surveyId);
+  const regionKey = Array.isArray(regionIds)
+    ? [...regionIds].map(String).sort().join(",")
+    : "";
 
-  // Prefer RegionPage saved selection (localStorage), fallback to API/hook selection
-  // const storedSelectedRegionIds = (() => {
-  //   try {
-  //     const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
-  //     const parsed = raw ? JSON.parse(raw) : [];
-  //     return Array.isArray(parsed) ? parsed.map(String) : [];
-  //   } catch {
-  //     return [];
-  //   }
-  // })();
-  const storedSelectedRegionIds = useMemo(() => {
-    try {
-      const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed.map(String) : [];
-    } catch {
-      return [];
-    }
-  }, [surveyId]);
-
-  const effectiveSelectedRegionIds =
-    storedSelectedRegionIds.length > 0
-      ? storedSelectedRegionIds
-      : (selectedRegionIds || []).map(String);
-
-
-  // State kept as-is (you had it before); we won't remove it
-  const [regionResponses, setRegionResponses] = useState([]);
 
   useEffect(() => {
     let cancelled = false;
 
+    console.log("[CustomerSatisfaction effect trigger]", {
+      surveyId,
+      regionIdsCount: Array.isArray(regionIds) ? regionIds.length : 0,
+      regionKey,
+    });
+
     async function load() {
       // Don't start loading until we have valid filters
       if (!surveyId) return;
-
-      // Only wait for region filter if we are actually going to send regions
-      if (regionFilterLoading && storedSelectedRegionIds.length === 0) return;
 
 
       setLoading(true);
@@ -99,8 +74,8 @@ export default function CustomerSatisfaction({
       console.log("Gender:", gender);
       console.log("ParticipantType:", participantType);
       console.log("Period:", period);
-      console.log("Regions prop:", regions);
-      console.log("Selected Region IDs (from hook):", selectedRegionIds);
+      console.log("regionIds:", regionIds);
+      console.log("regionKey:", regionKey);
       console.groupEnd();
 
       try {
@@ -130,11 +105,15 @@ export default function CustomerSatisfaction({
         }
 
         // region filter (only if selected) — repeat regions param
-        if (effectiveSelectedRegionIds.length > 0) {
-          effectiveSelectedRegionIds.forEach((id) => {
+        const selectedIds = regionKey ? regionKey.split(",") : [];
+        console.log("[CustomerSatisfaction selectedIds]", selectedIds);
+
+        if (selectedIds.length > 0) {
+          selectedIds.forEach((id) => {
             params.append("regions", id);
           });
         }
+
 
         console.log("[CustomerSatisfaction] Sending params:", params.toString());
 
@@ -169,7 +148,7 @@ export default function CustomerSatisfaction({
 
     load();
     return () => { cancelled = true; };
-  }, [surveyId, gender, participantType, period, effectiveSelectedRegionIds.join(","), regionFilterLoading]);
+  }, [surveyId, gender, participantType, period, regionKey]);
 
 
   const pieData = [

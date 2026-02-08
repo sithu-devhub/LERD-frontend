@@ -171,15 +171,15 @@ export default function Dashboard() {
       {surveyId && isUUID(surveyId) && hasServices && (
         <>
           <div className="grid grid-cols-3 gap-6 mb-6">
-            <ResponseChart surveyId={surveyId} regions={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
-            <CustomerSatisfaction surveyId={surveyId} regions={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
-            <CustomerSatisfactionTrend surveyId={surveyId} regions={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
+            <ResponseChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
+            <CustomerSatisfaction surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
+            <CustomerSatisfactionTrend surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
           </div>
 
           <div className="grid gap-6 mb-6 grid-cols-[1fr_1fr_2fr]">
-            <NpsChart surveyId={surveyId} regions={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
-            <NpsDistribution surveyId={surveyId} regions={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
-            <ServiceAttributeChart surveyId={surveyId} regions={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} selectedAttrs={selectedAttrs} onAvailableAttrs={setAvailableAttrs} onSelectedChange={setSelectedAttrs}/>
+            <NpsChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
+            <NpsDistribution surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
+            <ServiceAttributeChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} selectedAttrs={selectedAttrs} onAvailableAttrs={setAvailableAttrs} onSelectedChange={setSelectedAttrs}/>
           </div>
 
           <div className="mb-6">

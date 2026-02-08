@@ -11,7 +11,6 @@ import {
 } from "recharts";
 import ErrorPlaceholder from "./ErrorPlaceholder";
 import http from "../api/http";
-import { useFilteredRegions } from "../utils/useFilteredRegions";
 
 /* === Custom Tick for two-line names === */
 const TwoLineTick = ({ x, y, payload }) => {
@@ -74,7 +73,7 @@ const VillageListModal = ({ visible, onClose, villages }) => {
 };
 /* === /modal === */
 
-export default function ResponseChart({ surveyId, gender, participantType, period }) {
+export default function ResponseChart({ surveyId, regionIds = [], gender, participantType, period }) {
   const [responseData, setResponseData] = useState([]);
   const [responseTotals, setResponseTotals] = useState({
     totalParticipants: 0,
@@ -87,50 +86,17 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
 
   const chartRef = useRef(null);
 
-  // Only pass surveyId (hook will fetch filters itself)
-  const {
-    filteredRegions: surveyRegions,
-    selectedRegionIds,
-    loading: regionFilterLoading,
-  } = useFilteredRegions(surveyId);
-
-  const [storedSelectedRegionIds, setStoredSelectedRegionIds] = useState([]);
-
-  useEffect(() => {
-    if (!surveyId) return;
-
-    try {
-      const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
-      const parsed = raw ? JSON.parse(raw) : [];
-      setStoredSelectedRegionIds(Array.isArray(parsed) ? parsed.map(String) : []);
-    } catch {
-      setStoredSelectedRegionIds([]);
-    }
-  }, [surveyId]);
-
-
-  // localStorage (fresh), fallback to hook (API)
-  const effectiveSelectedRegionIds =
-    storedSelectedRegionIds.length > 0
-      ? storedSelectedRegionIds
-      : (selectedRegionIds || []).map(String);
-
-  console.log("[ResponseChart hook]", {
-    surveyId,
-    surveyRegionsCount: surveyRegions?.length,
-    selectedRegionIdsCount: selectedRegionIds?.length,
-    surveyRegions,
-    selectedRegionIds,
-  });
-
+  const regionKey = Array.isArray(regionIds)
+  ? regionIds.map(String).sort().join(",")
+  : "";
 
   useEffect(() => {
     if (!surveyId) return;
     console.log("[ResponseChart effect trigger]", {
       surveyId,
-      surveyRegionsCount: surveyRegions?.length,
-      selectedRegionIdsCount: selectedRegionIds?.length,
+      regionIdsCount: Array.isArray(regionIds) ? regionIds.length : 0,
     });
+
 
     setShowAll(false);
     setShowVillageModal(false);
@@ -139,15 +105,12 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
 
     async function loadResponse() {
       try {
-        // wait for hook only if no localStorage selection
-        if (regionFilterLoading && storedSelectedRegionIds.length === 0) return;
-
         setLoading(true);
         setError("");
 
         const token = localStorage.getItem("accessToken");
 
-        console.log("[ResponseChart] props:", { gender, participantType, period, surveyId, selectedRegionIds, surveyRegions });
+        console.log("[ResponseChart] props:", { gender, participantType, period, surveyId, regionIds });
 
         const isEmpty = (v) =>
           v === undefined || v === null || v === "" || v === "All" || v === "Select period";
@@ -170,7 +133,7 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
          * - If user selected all (or no saved filter) -> do not send regions
          * - Prevent sending until filteredRegions is loaded
          */
-        const selectedIds = effectiveSelectedRegionIds;
+        const selectedIds = regionKey ? regionKey.split(",") : [];
 
         // Send regions only if user selected something
         if (selectedIds.length > 0) {
@@ -212,7 +175,7 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
 
         }
       } catch (e) {
-        if (!aborted) setError(e.message);
+        if (!aborted) setError(e?.response?.data?.message || e.message || "Failed to load response chart");
       } finally {
         if (!aborted) setLoading(false);
       }
@@ -222,14 +185,7 @@ export default function ResponseChart({ surveyId, gender, participantType, perio
     return () => {
       aborted = true;
     };
-  }, [
-  gender,
-  participantType,
-  period,
-  surveyId,
-  regionFilterLoading,
-  storedSelectedRegionIds,
-]);
+  }, [gender, participantType, period, surveyId, regionKey]);
 
 
 
