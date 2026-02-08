@@ -296,31 +296,6 @@ export default function ServiceAttributeChart({
   ? regionIds.map(String).sort().join(",")
   : "";
 
-  // const { selectedRegionIds, loading: regionFilterLoading } =
-  //   useFilteredRegions(surveyId);
-
-  // const storedSelectedRegionIds = useMemo(() => {
-  //   try {
-  //     const raw = localStorage.getItem(`selectedRegionIds:${surveyId}`);
-  //     const parsed = raw ? JSON.parse(raw) : [];
-  //     return Array.isArray(parsed) ? parsed.map(String) : [];
-  //   } catch {
-  //     return [];
-  //   }
-  // }, [surveyId]);
-
-  // const effectiveSelectedRegionIds = useMemo(() => {
-  //   return storedSelectedRegionIds.length > 0
-  //     ? storedSelectedRegionIds
-  //     : (selectedRegionIds || []).map(String);
-  // }, [storedSelectedRegionIds, selectedRegionIds]);
-
-  // const regionsKey = useMemo(
-  //   () => effectiveSelectedRegionIds.join(","),
-  //   [effectiveSelectedRegionIds]
-  // );
-
-
   useEffect(() => {
     if (!surveyId) return;
 
@@ -335,12 +310,6 @@ export default function ServiceAttributeChart({
     async function fetchServiceAttributes() {
 
       try {
-
-        // if (regionFilterLoading && storedSelectedRegionIds.length === 0) {
-        //   setLoading(false);
-        //   return;
-        // }
-
         setLoading(true);
         setError("");
 
@@ -479,7 +448,7 @@ export default function ServiceAttributeChart({
               onRetry={() => window.location.reload()}
             />
           ) : noData ? (
-            // ✅ Safe no-data placeholder
+            // Safe no-data placeholder
             <div className="flex flex-col items-center justify-center w-full py-10 text-gray-400">
               <div className="flex items-end justify-around w-full max-w-lg h-40 opacity-70">
                 {[...Array(5)].map((_, i) => (
