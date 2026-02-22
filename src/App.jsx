@@ -8,7 +8,8 @@ import ServiceTypePage from "./pages/ServiceTypePage";
 import AppLayout from "./pages/AppLayout";
 import RegionPage from "./pages/RegionPage";
 import AuthorizationManagementPage from "./pages/AuthorizationManagementPage.jsx";
-import { initAuth } from "./api/authUtils";   // import
+import { initAuth } from "./api/authUtils";
+import AttributePage from "./pages/AttributePage";
 
 function ProtectedRoute({ children }) {
   const [isReady, setIsReady] = React.useState(false);
@@ -64,6 +65,7 @@ export default function App() {
 
           <Route path="/service" element={<ServiceTypePage />} />
           <Route path="/region" element={<RegionPage />} />
+          <Route path="/attributes" element={<AttributePage />} />
           <Route path="/auth" element={<AuthorizationManagementPage />} />
         </Route>
       </Routes>
