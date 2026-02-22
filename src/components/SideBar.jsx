@@ -69,6 +69,7 @@ export default function SideBar() {
     { name: 'Service Type', path: '/service', Icon: MdShoppingCart },
     { name: 'Region', path: '/region', Icon: MdBarChart },
     // { name: 'Authorisation Management', path: '/auth', Icon: AuthorisationIcon },
+    { name: 'Attributes', path: '/attributes', Icon: MdBarChart },
     { name: 'Log out', action: 'logout', Icon: LogoutIcon },
   ];
 
@@ -95,9 +96,8 @@ export default function SideBar() {
 
   return (
     <div
-      className={`sidebar min-h-screen bg-white flex flex-col border-r border-gray-200 ${
-        collapsed ? 'sidebar--collapsed' : ''
-      }`}
+      className={`sidebar min-h-screen bg-white flex flex-col border-r border-gray-200 ${collapsed ? 'sidebar--collapsed' : ''
+        }`}
     >
       {/* Header */}
       <div>
