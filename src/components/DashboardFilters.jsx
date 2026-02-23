@@ -10,7 +10,7 @@ function useClickOutside(ref, handler) {
   useEffect(() => {
     const listener = (e) => {
       if (!ref.current || ref.current.contains(e.target)) return;
-      handler(e);
+      handler();
     };
     document.addEventListener("mousedown", listener);
     document.addEventListener("touchstart", listener);
@@ -137,18 +137,26 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
   const handleMonthClick = (idx) => {
     if (year === currentYear && idx > currentMonth) return; // block future months
 
+    const isInProgressRange = start !== null && end === null;
+
+    // If range selection is in progress and user clicks a different year - reset selection to that clicked month (start over)
+    if (isInProgressRange && year !== startYear) {
+      onSetRange({ start: idx, startYear: year, end: null, endYear: null });
+      return;
+    }
+
     // If starting fresh OR resetting range
     if (start === null || (start !== null && end !== null)) {
       onSetRange({ start: idx, startYear: year, end: null, endYear: null });
     }
-    // If already have start, set end
+    // If already have start, set end (same year only now)
     else if (start !== null && end === null) {
-      if (year < startYear || (year === startYear && idx < start)) {
-        // selected before start → swap
-        onSetRange({ start: idx, startYear: year, end: start, endYear: startYear });
+      if (idx < start) {
+        // selected before start >> swap (same year)
+        onSetRange({ start: idx, startYear: year, end: start, endYear: year });
       } else {
-        // selected after start
-        onSetRange({ start, startYear, end: idx, endYear: year });
+        // selected after start (same year)
+        onSetRange({ start, startYear: year, end: idx, endYear: year });
       }
     }
   };
@@ -273,7 +281,14 @@ export default function DashboardFilters({ value, onChange, className = "", regi
   const periodMenuRef = useRef(null);
 
   const rootRef = useRef(null);
-  useClickOutside(rootRef, () => setOpen(null));
+  useClickOutside(rootRef, () => {
+    if (open === "period") {
+      // Revert ANY pending edits (single or range) back to last committed state
+      setPendingRange(range);
+      setCurrentYear(range.startYear ?? new Date().getFullYear());
+    }
+    setOpen(null);
+  });
 
   // === data freshness state
   const [lastUpdated, setLastUpdated] = useState(null);
