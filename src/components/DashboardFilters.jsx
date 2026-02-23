@@ -10,7 +10,7 @@ function useClickOutside(ref, handler) {
   useEffect(() => {
     const listener = (e) => {
       if (!ref.current || ref.current.contains(e.target)) return;
-      handler(e);
+      handler();
     };
     document.addEventListener("mousedown", listener);
     document.addEventListener("touchstart", listener);
@@ -281,7 +281,14 @@ export default function DashboardFilters({ value, onChange, className = "", regi
   const periodMenuRef = useRef(null);
 
   const rootRef = useRef(null);
-  useClickOutside(rootRef, () => setOpen(null));
+  useClickOutside(rootRef, () => {
+    if (open === "period") {
+      // Revert ANY pending edits (single or range) back to last committed state
+      setPendingRange(range);
+      setCurrentYear(range.startYear ?? new Date().getFullYear());
+    }
+    setOpen(null);
+  });
 
   // === data freshness state
   const [lastUpdated, setLastUpdated] = useState(null);
