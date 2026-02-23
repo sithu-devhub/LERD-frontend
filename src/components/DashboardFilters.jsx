@@ -198,20 +198,30 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
       </div>
 
       <div className="mt-3 flex items-center justify-between rounded-xl bg-slate-50 px-3 py-2 text-xs text-black">
-        <span>
-          Period:{" "}
-          <span className="font-semibold text-black">
-            {start !== null ? `${months[start]} ${startYear}` : "—"}
-          </span>{" "}
-          –{" "}
-          <span className="ml-1 font-semibold text-black">
-            {end !== null ? `${months[end]} ${endYear}` : "-"}
-          </span>
-        </span>
+        {/* Reset */}
         <button
           onClick={() => {
-            onSetRange({ start, startYear, end, endYear }); // trigger state update for refresh
-            onClose();                  // close menu
+            const cleared = {
+              start: null,
+              startYear: new Date().getFullYear(),
+              end: null,
+              endYear: null,
+            };
+            onSetRange(cleared);
+            onChangeYear(new Date().getFullYear());
+            onClose(cleared);
+          }}
+          className="rounded-lg px-2 py-1 text-red-600 hover:bg-white"
+        >
+          Reset
+        </button>
+
+        {/* Done */}
+        <button
+          onClick={() => {
+            const selected = { start, startYear, end, endYear };
+            onSetRange(selected);
+            onClose(selected);
           }}
           className="rounded-lg px-2 py-1 text-black hover:bg-white"
         >
@@ -436,8 +446,8 @@ export default function DashboardFilters({ value, onChange, className = "", regi
               year={currentYear}
               onSetRange={setPendingRange}
               onChangeYear={setCurrentYear}
-              onClose={() => {
-                setRange(pendingRange); // commit full range (with years)
+              onClose={(nextRange) => {
+                setRange(nextRange ?? pendingRange); // commit passed range, else pendingRange
                 setOpen(null);
               }}
               menuRef={periodMenuRef}
