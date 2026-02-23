@@ -35,7 +35,7 @@ const Chip = ({ label, value, active, onClick, chipRef }) => (
     className={[
       "group inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-medium transition",
       active ? "bg-[#bfc8dd] text-white shadow-sm"
-             : "bg-[#bfc8dd] text-white hover:bg-[#c7d0e3]",
+        : "bg-[#bfc8dd] text-white hover:bg-[#c7d0e3]",
     ].join(" ")}
   >
     <span className="inline-flex items-center gap-2">
@@ -117,8 +117,8 @@ function MonthButton({ label, active, onClick, disabled }) {
         active
           ? "bg-[#bfc8dd] text-white"
           : disabled
-          ? "bg-slate-100 text-slate-400 cursor-not-allowed"
-          : "bg-slate-100 text-black hover:bg-slate-200",
+            ? "bg-slate-100 text-slate-400 cursor-not-allowed"
+            : "bg-slate-100 text-black hover:bg-slate-200",
       ].join(" ")}
     >
       {label}
@@ -129,7 +129,7 @@ function MonthButton({ label, active, onClick, disabled }) {
 function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuRef, startYear, endYear }) {
   useClickOutside(menuRef, onClose);
 
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   const now = new Date();
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth(); // 0-based
@@ -140,7 +140,7 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
     // If starting fresh OR resetting range
     if (start === null || (start !== null && end !== null)) {
       onSetRange({ start: idx, startYear: year, end: null, endYear: null });
-    } 
+    }
     // If already have start, set end
     else if (start !== null && end === null) {
       if (year < startYear || (year === startYear && idx < start)) {
@@ -165,11 +165,10 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
         <div className="text-sm font-semibold text-black">{year}</div>
         <button
           disabled={year >= currentYear}
-          className={`inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-sm ${
-            year >= currentYear
-              ? "text-slate-300 cursor-not-allowed"
-              : "text-black hover:bg-slate-50"
-          }`}
+          className={`inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2 py-1 text-sm ${year >= currentYear
+            ? "text-slate-300 cursor-not-allowed"
+            : "text-black hover:bg-slate-50"
+            }`}
           onClick={() => onChangeYear(year + 1)}
         >
           {year + 1} <ChevronRight className="h-4 w-4" />
@@ -184,8 +183,8 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
             (end !== null && idx === end && endYear === year) ||
             (start !== null && end !== null &&
               ((year > startYear && year < endYear) ||
-               (year === startYear && idx > start && (year < endYear || idx < end)) ||
-               (year === endYear && idx < end && (year > startYear || idx > start))));
+                (year === startYear && idx > start && (year < endYear || idx < end)) ||
+                (year === endYear && idx < end && (year > startYear || idx > start))));
           return (
             <MonthButton
               key={`${m}-${year}`}
@@ -206,14 +205,14 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
           </span>{" "}
           –{" "}
           <span className="ml-1 font-semibold text-black">
-            {end !== null ? `${months[end]} ${endYear}` : "Current"}
+            {end !== null ? `${months[end]} ${endYear}` : "-"}
           </span>
         </span>
-        <button 
+        <button
           onClick={() => {
             onSetRange({ start, startYear, end, endYear }); // trigger state update for refresh
             onClose();                  // close menu
-          }} 
+          }}
           className="rounded-lg px-2 py-1 text-black hover:bg-white"
         >
           Done
@@ -276,7 +275,7 @@ export default function DashboardFilters({ value, onChange, className = "", regi
   // Only fire API when committed state changes (after Done)
   useEffect(() => {
     if (typeof onChange === "function") {
-      const genderMap = { All: null, Male: 1, Female: 2};
+      const genderMap = { All: null, Male: 1, Female: 2 };
       const clientTypeMap = { All: null, Residents: 1, "Next of Kin": 2 };
 
       const period = buildPeriodParam(range);
@@ -323,11 +322,11 @@ export default function DashboardFilters({ value, onChange, className = "", regi
   }, [value?.surveyId]);
 
   const periodLabel = useMemo(() => {
-    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
     if (pendingRange.start !== null && pendingRange.end !== null) {
       return `${months[pendingRange.start]} ${pendingRange.startYear} – ${months[pendingRange.end]} ${pendingRange.endYear}`;
     } else if (pendingRange.start !== null) {
-      return `${months[pendingRange.start]} ${pendingRange.startYear} – Current`;
+      return `${months[pendingRange.start]} ${pendingRange.startYear}`;
     }
     return "Select period";
   }, [pendingRange]);
