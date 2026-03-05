@@ -11,12 +11,15 @@ import {
 
 import ResponseChart from "../components/ResponseChart";
 import CustomerSatisfaction from "../components/CustomerSatisfactionChart";
-import CustomerSatisfactionTrend from "../components/CustomerSatisfactionTrend"; 
-import NpsChart from "../components/NpsChart"; 
-import NpsDistribution from "../components/NpsDistribution"; 
-import ServiceAttributeChart from "../components/ServiceAttributeChart.jsx"; 
+import CustomerSatisfactionTrend from "../components/CustomerSatisfactionTrend";
+import NpsChart from "../components/NpsChart";
+import NpsDistribution from "../components/NpsDistribution";
+import ServiceAttributeChart from "../components/ServiceAttributeChart.jsx";
 
 import http from '../api/http';
+
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 const isUUID = (value) => /^[0-9a-fA-F-]{36}$/.test(value);
 
@@ -30,13 +33,40 @@ export default function Dashboard() {
 
   const [surveyId, setSurveyId] = useState(null);
   const [serviceName, setServiceName] = useState("Loading…");
-  const [selectedRegions, setSelectedRegions] = useState([]);   
+  const [selectedRegions, setSelectedRegions] = useState([]);
   const [serviceLoading, setServiceLoading] = useState(false);
   const [serviceError, setServiceError] = useState('');
 
   const [availableAttrs, setAvailableAttrs] = useState([]);
   const [selectedAttrs, setSelectedAttrs] = useState(new Set());
-  const [hasServices, setHasServices] = useState(true); 
+  const [hasServices, setHasServices] = useState(true);
+
+  // PDF Report exporting
+  const downloadPDF = async () => {
+
+    const element = document.getElementById("dashboard-export");
+    if (!element) return;
+
+    await new Promise(r => setTimeout(r, 300)); // wait charts render
+
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: "#ffffff"
+    });
+
+    const imgData = canvas.toDataURL("image/png");
+
+    const pdf = new jsPDF("p", "mm", "a4");
+
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight =
+      (canvas.height * pdfWidth) / canvas.width;
+
+    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
+
+    pdf.save("dashboard.pdf");
+  };
 
   // Load survey + selected regions
   useEffect(() => {
@@ -122,7 +152,6 @@ export default function Dashboard() {
   }, [serviceId, navigate, location.state?.service]);
 
 
-
   useEffect(() => {
     if (availableAttrs.length) {
       if (availableAttrs.length <= 5) {
@@ -151,9 +180,24 @@ export default function Dashboard() {
         <h1 className="absolute left-1/2 transform -translate-x-1/2 text-2xl font-semibold text-gray-800">
           Dashboard – {serviceLoading ? 'Loading…' : serviceName}
         </h1>
-        <div className="ml-auto">
+        {/* <div className="ml-auto">
           <img src="/team_icon.PNG" alt="Logo" className="w-32 h-16 object-contain" />
+        </div> */}
+
+        <div className="ml-auto flex items-center gap-3">
+          <button
+            onClick={downloadPDF}
+            className="px-4 py-2 bg-indigo-600 text-white rounded"
+          >
+            Download PDF
+          </button>
+          <img
+            src="/team_icon.PNG"
+            alt="Logo"
+            className="w-32 h-16 object-contain"
+          />
         </div>
+
       </div>
 
       {serviceError && <div className="text-sm text-red-600 mb-4">{serviceError}</div>}
@@ -169,17 +213,18 @@ export default function Dashboard() {
 
 
       {surveyId && isUUID(surveyId) && hasServices && (
-        <>
+        // <>
+        <div id="dashboard-export">
           <div className="grid grid-cols-3 gap-6 mb-6">
-            <ResponseChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
-            <CustomerSatisfaction surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
-            <CustomerSatisfactionTrend surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
+            <ResponseChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
+            <CustomerSatisfaction surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
+            <CustomerSatisfactionTrend surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
           </div>
 
           <div className="grid gap-6 mb-6 grid-cols-[1fr_1fr_2fr]">
-            <NpsChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
-            <NpsDistribution surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period}/>
-            <ServiceAttributeChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} selectedAttrs={selectedAttrs} onAvailableAttrs={setAvailableAttrs} onSelectedChange={setSelectedAttrs}/>
+            <NpsChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
+            <NpsDistribution surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
+            <ServiceAttributeChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} selectedAttrs={selectedAttrs} onAvailableAttrs={setAvailableAttrs} onSelectedChange={setSelectedAttrs} />
           </div>
 
           <div className="mb-6">
@@ -193,7 +238,7 @@ export default function Dashboard() {
               onChange={handleFilterChange}
             />
           </div>
-        </>
+        </div>
       )}
     </div>
   );
