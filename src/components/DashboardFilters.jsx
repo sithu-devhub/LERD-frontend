@@ -4,6 +4,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { MdBarChart } from "react-icons/md";
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
+const DEFAULT_YEAR = new Date().getFullYear() - 1;
 
 // outside-click helper
 function useClickOutside(ref, handler) {
@@ -209,12 +210,7 @@ function PeriodMenu({ start, end, year, onSetRange, onChangeYear, onClose, menuR
         {/* Reset */}
         <button
           onClick={() => {
-            const cleared = {
-              start: null,
-              startYear: new Date().getFullYear(),
-              end: null,
-              endYear: null,
-            };
+            const cleared = { start: null, startYear: new Date().getFullYear(), end: null, endYear: null };
             onSetRange(cleared);
             onChangeYear(new Date().getFullYear());
             onClose(cleared);
@@ -249,8 +245,10 @@ function buildPeriodParam(range) {
   } else if (range.start !== null) {
     return `${range.startYear}-${String(range.start + 1).padStart(2, "0")}`;
   }
-  return `${new Date().getFullYear()}`;
+  // No selection => ALL TIME (send nothing / null)
+  return null;
 }
+
 
 export default function DashboardFilters({ value, onChange, className = "", regionIds }) {
   // committed filters (actually used in API calls)
@@ -270,7 +268,7 @@ export default function DashboardFilters({ value, onChange, className = "", regi
   const [pendingRange, setPendingRange] = useState(range);
 
   const [open, setOpen] = useState(null);
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear()); // calendar navigation
+  const [currentYear, setCurrentYear] = useState(DEFAULT_YEAR); // calendar navigation
 
   const genderChipRef = useRef(null);
   const clientChipRef = useRef(null);
@@ -314,7 +312,7 @@ export default function DashboardFilters({ value, onChange, className = "", regi
     }
   }, [gender, clientType, range, regionIdsKey, onChange]);
 
-  // === NEW: Fetch Survey Data Freshness when surveyId changes
+  // === Fetch Survey Data Freshness when surveyId changes
   useEffect(() => {
     const surveyId = value?.surveyId;
     if (!surveyId) {
@@ -353,7 +351,7 @@ export default function DashboardFilters({ value, onChange, className = "", regi
     } else if (pendingRange.start !== null) {
       return `${months[pendingRange.start]} ${pendingRange.startYear}`;
     }
-    return "Select period";
+    return "Select Period";
   }, [pendingRange]);
 
   const handleOpen = (key) => {

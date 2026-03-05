@@ -41,33 +41,133 @@ export default function Dashboard() {
   const [selectedAttrs, setSelectedAttrs] = useState(new Set());
   const [hasServices, setHasServices] = useState(true);
 
+  const [regionLabelById, setRegionLabelById] = useState({});
+
+
+  // Builds { regionId: regionName } from the filters API response if labels/names exist.
+  const buildRegionMapFromFilters = (filtersResData) => {
+    const region = filtersResData?.data?.region;
+
+    const values = region?.values || [];
+    const labels = region?.labels || region?.names || region?.displayValues || [];
+
+    if (!Array.isArray(values) || !Array.isArray(labels)) return {};
+    if (values.length === 0 || labels.length === 0) return {};
+    if (values.length !== labels.length) return {};
+
+    const map = {};
+    for (let i = 0; i < values.length; i++) {
+      map[String(values[i])] = String(labels[i]);
+    }
+    return map;
+  };
+
+  // Fetches region data from the API and converts it into { regionId: regionName }
+  const fetchRegionLabelMap = async ({ token, surveyId }) => {
+    const regionsRes = await http.get(`/surveys/${surveyId}/regions`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const raw = regionsRes.data?.data;
+    const list = Array.isArray(raw) ? raw : (raw?.regions || raw?.items || []);
+
+    const map = {};
+    for (const r of list) {
+      const id = String(r.facilityCode ?? r.regionId ?? r.id);
+      const name = String(r.regionName ?? r.name ?? id);
+      if (id && id !== "undefined") map[id] = name;
+    }
+    return map;
+  };
+
   // PDF Report exporting
   const downloadPDF = async () => {
+    const original = document.getElementById("dashboard-export");
+    if (!original) return;
 
-    const element = document.getElementById("dashboard-export");
-    if (!element) return;
+    // Create an off-screen container
+    const holder = document.createElement("div");
+    holder.style.position = "fixed";
+    holder.style.left = "-10000px";
+    holder.style.top = "0";
+    holder.style.width = original.offsetWidth + "px";
+    holder.style.background = "#ffffff";
+    holder.style.zIndex = "-1";
 
-    await new Promise(r => setTimeout(r, 300)); // wait charts render
 
-    const canvas = await html2canvas(element, {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const token = localStorage.getItem("accessToken");
+    if (!user?.userId || !token || !surveyId) return;
+
+    // If map doesn't contain all selected region ids, fetch fresh map for export
+    let regionMap = regionLabelById;
+    const missing = selectedRegions.some((id) => !regionMap[String(id)]);
+    console.log("Export selectedRegions:", selectedRegions);
+    console.log("Export regionLabelById (state):", regionLabelById);
+    console.log("Export missing labels?", missing);
+
+    if (selectedRegions.length > 0 && missing) {
+      try {
+        console.log("Export fetchRegionLabelMap args:", { surveyId }); const fetched = await fetchRegionLabelMap({
+          token,
+          surveyId,
+        });
+
+        // merge so we keep any names we already had
+        regionMap = { ...regionMap, ...fetched };
+
+      } catch (e) {
+        // fallback: keep existing map (PDF will show ids if still missing)
+      }
+    }
+    console.log("Export regionMap (final):", regionMap);
+    console.log(
+      "Export resolved labels:",
+      selectedRegions.map((id) => ({ id: String(id), label: regionMap[String(id)] }))
+    );
+
+    holder.innerHTML = buildExportHTML(regionMap);
+    document.body.appendChild(holder);
+
+    // Clone dashboard into the export container
+    const exportMount = holder.querySelector("#export-dashboard");
+    const clone = original.cloneNode(true);
+
+    // Remove real filters UI from clone (we already added text summary above)
+    const filterArea = clone.querySelector("#dashboard-filters");
+    if (filterArea) filterArea.remove();
+
+    exportMount.appendChild(clone);
+
+    // Add faint outlines to charts for the exported report
+    const chartBoxes = clone.querySelectorAll('[class*="grid"] > *');
+    chartBoxes.forEach((box) => {
+      box.style.border = "1px solid #e5e7eb";
+      box.style.borderRadius = "8px";
+      box.style.padding = "8px";
+    });
+
+    // Wait a moment for layout/fonts
+    await new Promise((r) => setTimeout(r, 300));
+
+    const canvas = await html2canvas(holder, {
       scale: 2,
       useCORS: true,
-      backgroundColor: "#ffffff"
+      backgroundColor: "#ffffff",
     });
 
     const imgData = canvas.toDataURL("image/png");
 
     const pdf = new jsPDF("p", "mm", "a4");
-
     const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight =
-      (canvas.height * pdfWidth) / canvas.width;
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
     pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-
     pdf.save("dashboard.pdf");
-  };
 
+    // Clean up
+    document.body.removeChild(holder);
+  };
   // Load survey + selected regions
   useEffect(() => {
     async function loadSurveyAndRegions() {
@@ -82,11 +182,11 @@ export default function Dashboard() {
         let activeSurveyId = null;
         let activeServiceName = null;
 
-        // ✅ Source of truth: URL param
+        // Source of truth: URL param
         if (serviceId && isUUID(serviceId)) {
           activeSurveyId = serviceId;
         } else {
-          // ✅ fallback: default survey, then redirect
+          // fallback: default survey, then redirect
           const def = await http.get(`/users/${user.userId}/surveys/default`, {
             headers: { Authorization: `Bearer ${token}` },
           });
@@ -101,7 +201,7 @@ export default function Dashboard() {
           return;
         }
 
-        // ✅ Get service name for title
+        // Get service name for title
         const servicesRes = await http.get(`/users/${user.userId}/services`, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -129,14 +229,44 @@ export default function Dashboard() {
         localStorage.setItem("lastServiceName", activeServiceName || "");
         localStorage.setItem(`surveyName:${activeSurveyId}`, activeServiceName || "");
 
-        // ✅ Regions from backend saved filters
+        // Regions from backend saved filters
         const filtersRes = await http.get(`/users/${user.userId}/filters`, {
           params: { surveyId: activeSurveyId },
           headers: { Authorization: `Bearer ${token}` },
         });
+        console.log("Filters API response:", filtersRes.data);
 
         const savedIds = filtersRes.data?.data?.region?.values?.map(String) || [];
         setSelectedRegions(savedIds);
+
+        const mapFromFilters = buildRegionMapFromFilters(filtersRes.data);
+        if (Object.keys(mapFromFilters).length > 0) {
+          setRegionLabelById(mapFromFilters);
+        }
+
+
+        // load region names (so PDF shows names not IDs)
+        try {
+          const regionsRes = await http.get(`/surveys/${activeSurveyId}/regions`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          console.log("Regions API response:", regionsRes.data);
+
+          const list = regionsRes.data?.data || [];
+          const map = {};
+          for (const r of list) {
+            const id = String(r.facilityCode ?? r.regionId ?? r.id);
+            const name = r.regionName ?? r.name ?? id;
+            map[id] = name;
+          }
+          setRegionLabelById((prev) => ({ ...prev, ...map }));
+
+          console.log("Region map created:", map);
+          console.log("Selected region IDs:", savedIds);
+
+        } catch (e) {
+          // if endpoint doesn't exist, ignore and fallback to IDs
+        }
 
         // optional cache
         localStorage.setItem(`selectedRegionIds:${activeSurveyId}`, JSON.stringify(savedIds));
@@ -162,17 +292,67 @@ export default function Dashboard() {
     }
   }, [availableAttrs]);
 
+  // const [filters, setFilters] = useState(() => {
+  //   const saved = localStorage.getItem("dashboardFilters");
+  //   return saved
+  //     ? JSON.parse(saved)
+  //     // : { gender: null, participantType: null, period: new Date().getFullYear().toString() };
+  //     : {
+  //       gender: null,
+  //       participantType: null,
+  //       period: (new Date().getFullYear() - 1).toString()
+  //     };
+
+  // });
   const [filters, setFilters] = useState(() => {
     const saved = localStorage.getItem("dashboardFilters");
     return saved
       ? JSON.parse(saved)
-      : { gender: null, participantType: null, period: new Date().getFullYear().toString() };
+      : { gender: null, participantType: null, period: null }; // ✅ all-time
   });
+
   useEffect(() => { localStorage.setItem("dashboardFilters", JSON.stringify(filters)); }, [filters]);
+
+  useEffect(() => {
+    console.log("Dashboard filters state:", filters);
+  }, [filters]);
 
   const handleFilterChange = useCallback(({ gender, participantType, period }) => {
     setFilters({ gender, participantType, period });
   }, []);
+
+
+  // Builds a simplified HTML layout for the PDF export, including a readable summary of the currently applied dashboard filters.
+  const buildExportHTML = (regionMap) => {
+    const gender = genderReverseMap[filters.gender];
+    const clientType = clientReverseMap[filters.participantType];
+    const period = filters.period ? filters.period : "-";
+
+    const regionsText = (!selectedRegions || selectedRegions.length === 0)
+      ? "All"
+      : selectedRegions.map((id) => regionMap[String(id)] || String(id)).join(", ");
+    console.log("Export regionsText:", regionsText);
+
+    return `
+    <div style="padding:16px; font-family: Arial, sans-serif; color:#111;">
+      <h2 style="text-align:center; font-size:28px; font-weight:700; margin-bottom:80px;">
+        Dashboard – ${serviceName}
+      </h2>
+
+      <!-- Dashboard content goes here -->
+      <div id="export-dashboard"></div>
+
+      <!-- Filters at the bottom -->
+      <div style="border:1px solid #e5e7eb; border-radius:10px; padding:12px; margin-top:16px;">
+        <div style="font-weight:700; margin-bottom:8px;">Filters</div>
+        <div><b>Gender:</b> ${gender}</div>
+        <div><b>Client type:</b> ${clientType}</div>
+        <div><b>Period:</b> ${period}</div>
+        <div style="margin-top:8px;"><b>Selected regions:</b> ${regionsText}</div>
+      </div>
+    </div>
+  `;
+  };
 
   return (
     <div className="p-0">
@@ -180,9 +360,6 @@ export default function Dashboard() {
         <h1 className="absolute left-1/2 transform -translate-x-1/2 text-2xl font-semibold text-gray-800">
           Dashboard – {serviceLoading ? 'Loading…' : serviceName}
         </h1>
-        {/* <div className="ml-auto">
-          <img src="/team_icon.PNG" alt="Logo" className="w-32 h-16 object-contain" />
-        </div> */}
 
         <div className="ml-auto flex items-center gap-3">
           <button
@@ -227,7 +404,7 @@ export default function Dashboard() {
             <ServiceAttributeChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} selectedAttrs={selectedAttrs} onAvailableAttrs={setAvailableAttrs} onSelectedChange={setSelectedAttrs} />
           </div>
 
-          <div className="mb-6">
+          <div className="mb-6" id="dashboard-filters">
             <DashboardFilters
               regionIds={selectedRegions}
               value={{
@@ -238,6 +415,7 @@ export default function Dashboard() {
               onChange={handleFilterChange}
             />
           </div>
+
         </div>
       )}
     </div>
