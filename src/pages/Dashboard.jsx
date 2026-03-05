@@ -292,13 +292,30 @@ export default function Dashboard() {
     }
   }, [availableAttrs]);
 
+  // const [filters, setFilters] = useState(() => {
+  //   const saved = localStorage.getItem("dashboardFilters");
+  //   return saved
+  //     ? JSON.parse(saved)
+  //     // : { gender: null, participantType: null, period: new Date().getFullYear().toString() };
+  //     : {
+  //       gender: null,
+  //       participantType: null,
+  //       period: (new Date().getFullYear() - 1).toString()
+  //     };
+
+  // });
   const [filters, setFilters] = useState(() => {
     const saved = localStorage.getItem("dashboardFilters");
     return saved
       ? JSON.parse(saved)
-      : { gender: null, participantType: null, period: new Date().getFullYear().toString() };
+      : { gender: null, participantType: null, period: null }; // ✅ all-time
   });
+
   useEffect(() => { localStorage.setItem("dashboardFilters", JSON.stringify(filters)); }, [filters]);
+
+  useEffect(() => {
+    console.log("Dashboard filters state:", filters);
+  }, [filters]);
 
   const handleFilterChange = useCallback(({ gender, participantType, period }) => {
     setFilters({ gender, participantType, period });
@@ -309,7 +326,7 @@ export default function Dashboard() {
   const buildExportHTML = (regionMap) => {
     const gender = genderReverseMap[filters.gender];
     const clientType = clientReverseMap[filters.participantType];
-    const period = filters.period;
+    const period = filters.period ? filters.period : "-";
 
     const regionsText = (!selectedRegions || selectedRegions.length === 0)
       ? "All"
