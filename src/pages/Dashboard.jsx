@@ -20,6 +20,7 @@ import http from '../api/http';
 
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import PptxGenJS from "pptxgenjs";
 
 const isUUID = (value) => /^[0-9a-fA-F-]{36}$/.test(value);
 

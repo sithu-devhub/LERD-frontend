@@ -27,9 +27,8 @@ function useClickAway(ref, onAway) {
 
 const CheckBoxIcon = ({ checked }) => (
   <span
-    className={`flex h-4 w-4 items-center justify-center rounded-[4px] border ${
-      checked ? "bg-[#3F11FF] border-[#3F11FF]" : "bg-white border-[#DCE1ED]"
-    }`}
+    className={`flex h-4 w-4 items-center justify-center rounded-[4px] border ${checked ? "bg-[#3F11FF] border-[#3F11FF]" : "bg-white border-[#DCE1ED]"
+      }`}
   >
     <svg width="10" height="10" viewBox="0 0 24 24">
       <path
@@ -91,8 +90,10 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange }) => {
             <span className="text-[15px] font-semibold text-[#2B3674]">Attributes</span>
             <button
               onClick={selectedSet.size > 0 ? clearAll : selectSix}
+              className="text-xs text-[#A3AED0] hover:text-[#3F11FF]"
+
             >
-              {selectedSet.size > 0 ? "Clear all" : "Select 6"}
+              {selectedSet.size > 0 ? "Clear Filters" : "Select 6"}
             </button>
 
           </div>
@@ -105,9 +106,8 @@ const SelectedAttributesDropdown = ({ allItems, selectedSet, onChange }) => {
                   key={name}
                   onClick={() => toggle(name)}
                   disabled={disabled}
-                  className={`w-full px-4 py-3 text-left flex items-center gap-3 text-[15px] text-[#2B3674] hover:bg-[#F6F8FF] ${
-                    idx !== allItems.length - 1 ? "border-b border-[#EEF2FB]" : ""
-                  } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+                  className={`w-full px-4 py-3 text-left flex items-center gap-3 text-[15px] text-[#2B3674] hover:bg-[#F6F8FF] ${idx !== allItems.length - 1 ? "border-b border-[#EEF2FB]" : ""
+                    } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
                 >
                   <CheckBoxIcon checked={checked} />
                   <span>{name}</span>
@@ -272,8 +272,7 @@ export default function ServiceAttributeChart({
   selectedAttrs,
   onAvailableAttrs,
   onSelectedChange,
-})
-{
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [data, setData] = useState([]);
@@ -293,8 +292,8 @@ export default function ServiceAttributeChart({
   }, []);
 
   const regionKey = Array.isArray(regionIds)
-  ? regionIds.map(String).sort().join(",")
-  : "";
+    ? regionIds.map(String).sort().join(",")
+    : "";
 
   useEffect(() => {
     if (!surveyId) return;
@@ -345,7 +344,7 @@ export default function ServiceAttributeChart({
           regionIds,
           regionKey,
         });
-        
+
         const params = new URLSearchParams({ surveyId });
 
         if (!isEmpty(gender)) params.append("gender", gender);
@@ -454,11 +453,10 @@ export default function ServiceAttributeChart({
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="flex flex-col items-center gap-2">
                     <div
-                      className={`w-8 rounded-md ${
-                        i % 2 === 0
-                          ? "h-20 bg-gray-200"
-                          : "h-12 bg-gray-100"
-                      }`}
+                      className={`w-8 rounded-md ${i % 2 === 0
+                        ? "h-20 bg-gray-200"
+                        : "h-12 bg-gray-100"
+                        }`}
                     ></div>
                     <div className="h-3 w-12 bg-gray-100 rounded"></div>
                   </div>
