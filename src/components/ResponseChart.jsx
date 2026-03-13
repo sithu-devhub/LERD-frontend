@@ -102,7 +102,7 @@ export default function ResponseChart({
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [showAll, setShowAll] = useState(false);
+  const [showRegionView, setShowRegionView] = useState(false);
   const [showVillageModal, setShowVillageModal] = useState(false);
 
   const chartRef = useRef(null);
@@ -119,7 +119,7 @@ export default function ResponseChart({
     });
 
 
-    setShowAll(false);
+    setShowRegionView(false);
     setShowVillageModal(false);
 
     let aborted = false;
@@ -228,16 +228,17 @@ export default function ResponseChart({
 
 
 
-  const displayData = showAll
-    ? [{ name: "Overall", value: responseTotals.totalParticipants || 0 }]
-    : responseData.slice(0, 5);
-
+  const hasMoreThanFiveRegions = responseData.length > 5;
+  const displayData = hasMoreThanFiveRegions
+    ? showRegionView
+      ? responseData.slice(0, 5)
+      : [{ name: "Overall", value: responseTotals.totalParticipants || 0 }]
+    : responseData;
 
   // detect no-data
   const noData =
     (responseTotals.totalParticipants || 0) === 0 ||
-    (!showAll && responseData.length === 0);
-
+    responseData.length === 0;
 
   return (
     <ChartCard
@@ -295,17 +296,17 @@ export default function ResponseChart({
                 </div>
 
                 {/* Arrow toggle */}
-                {responseData.length > 5 && (
+                {hasMoreThanFiveRegions && (
                   <div className="flex justify-end mt-3">
                     <button
-                      onClick={() => setShowAll((prev) => !prev)}
+                      onClick={() => setShowRegionView((prev) => !prev)}
                       className="p-1 transition-transform duration-300 hover:scale-110"
                     >
                       <svg
                         width="32"
                         height="32"
                         viewBox="0 0 24 24"
-                        className={`transition-transform duration-300 ${showAll ? "rotate-180" : "rotate-0"
+                        className={`transition-transform duration-300 ${showRegionView ? "rotate-180" : "rotate-0"}
                           }`}
                       >
                         <defs>
@@ -407,7 +408,7 @@ export default function ResponseChart({
                   )}
 
                   {/* +N more chip */}
-                  {!showAll && responseData.length > 5 && (
+                  {showRegionView && hasMoreThanFiveRegions && (
                     <div className="flex justify-end mt-3">
                       <button
                         onClick={() => setShowVillageModal(true)}
