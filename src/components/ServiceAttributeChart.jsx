@@ -550,11 +550,10 @@ export default function ServiceAttributeChart({
 
               <div className="trend-legend--below mt-2">
                 <div className="trend-legend__item">
-                  <span className="trend-dot trend-dot--very" /> Always
+                  <span className="trend-dot trend-dot--satisfied" /> Most of the time
                 </div>
                 <div className="trend-legend__item">
-                  <span className="trend-dot trend-dot--satisfied" /> Most of the
-                  time
+                  <span className="trend-dot trend-dot--very" /> Always
                 </div>
               </div>
             </>

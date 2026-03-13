@@ -223,21 +223,24 @@ export default function CustomerSatisfaction({
 
                 {/* Legend sits at the bottom naturally */}
                 <div className="w-full grid grid-cols-3 gap-4 text-center pb-2">
-                  {pieData.map((p, i) => (
-                    <div key={p.name}>
-                      <div className="flex items-center justify-center gap-2 text-xs text-[#A3AED0] min-h-[28px] leading-tight">
-                        <span
-                          className="inline-block w-3 h-3 rounded-full"
-                          style={{ backgroundColor: pieColors[i] }}
-                        />
-                        <span>{p.name}</span>
-                      </div>
-                      <div className="text-xl font-bold text-[#2B3674] mt-1">
-                        {round2(p.value).toFixed(2)}%
-                      </div>
+                  {[...pieData].reverse().map((p) => {
+                    const originalIndex = pieData.findIndex((item) => item.name === p.name);
 
-                    </div>
-                  ))}
+                    return (
+                      <div key={p.name}>
+                        <div className="flex items-center justify-center gap-2 text-xs text-[#A3AED0] min-h-[28px] leading-tight">
+                          <span
+                            className="inline-block w-3 h-3 rounded-full"
+                            style={{ backgroundColor: pieColors[originalIndex] }}
+                          />
+                          <span>{p.name}</span>
+                        </div>
+                        <div className="text-xl font-bold text-[#2B3674] mt-1">
+                          {round2(p.value).toFixed(2)}%
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
