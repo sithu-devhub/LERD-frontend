@@ -1,5 +1,5 @@
 // src/pages/CustomerSatisfactionTrend.jsx
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   ResponsiveContainer,
   BarChart,
@@ -7,10 +7,43 @@ import {
   XAxis,
   YAxis,
   Tooltip,
+  LabelList,
 } from "recharts";
 import http from "../api/http";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
+
+// ======================================================
+// Clean blended label renderer for each stacked bar section
+// - No pill / no badge
+// - Just soft text inside each section
+// - Hides label if section is too small
+// ======================================================
+const SegmentLabel = ({ x, y, width, height, value, fill }) => {
+  const num = Number(value) || 0;
+
+  // Hide labels for zero / very small sections
+  if (num <= 0 || height < 26) return null;
+
+  // Softer text colors that blend with the chart
+  const textColor = fill === "#E0E6F5" ? "#6B7AA5" : "rgba(255,255,255,0.92)";
+
+  return (
+    <text
+      x={x + width / 2}
+      y={y + height / 2}
+      textAnchor="middle"
+      dominantBaseline="middle"
+      fill={textColor}
+      fontSize={9}
+      fontWeight={500}
+      letterSpacing="0.1px"
+    >
+      {num.toFixed(1)}%
+    </text>
+  );
+};
+
 
 const TrendTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
@@ -22,10 +55,10 @@ const TrendTooltip = ({ active, payload }) => {
 
   const rows = [
     {
-      key: "very",
-      label: "Very Satisfied",
-      cls: "trend-dot trend-dot--very",
-      val: byKey.very,
+      key: "somewhat",
+      label: "Somewhat Satisfied",
+      cls: "trend-dot trend-dot--somewhat",
+      val: byKey.somewhat,
     },
     {
       key: "satisfied",
@@ -34,10 +67,10 @@ const TrendTooltip = ({ active, payload }) => {
       val: byKey.satisfied,
     },
     {
-      key: "somewhat",
-      label: "Somewhat Satisfied",
-      cls: "trend-dot trend-dot--somewhat",
-      val: byKey.somewhat,
+      key: "very",
+      label: "Very Satisfied",
+      cls: "trend-dot trend-dot--very",
+      val: byKey.very,
     },
   ];
 
@@ -57,13 +90,13 @@ const TrendTooltip = ({ active, payload }) => {
 const TrendLegendBelow = () => (
   <div className="trend-legend--below">
     <div className="trend-legend__item">
-      <span className="trend-dot trend-dot--very" /> Very Satisfied
+      <span className="trend-dot trend-dot--somewhat" /> Somewhat Satisfied
     </div>
     <div className="trend-legend__item">
       <span className="trend-dot trend-dot--satisfied" /> Satisfied
     </div>
     <div className="trend-legend__item">
-      <span className="trend-dot trend-dot--somewhat" /> Somewhat Satisfied
+      <span className="trend-dot trend-dot--very" /> Very Satisfied
     </div>
   </div>
 );
@@ -278,6 +311,7 @@ export default function CustomerSatisfactionTrend({
                   tick={{ fill: "#A3AED0", fontSize: 14 }}
                 />
                 <YAxis hide />
+
                 <Tooltip
                   active={hoverBar}
                   isAnimationActive={false}
@@ -297,25 +331,44 @@ export default function CustomerSatisfactionTrend({
                   dataKey="somewhat"
                   stackId="a"
                   fill="#E0E6F5"
+                  isAnimationActive={false}
                   onMouseEnter={() => setHoverBar(true)}
                   onMouseLeave={() => setHoverBar(false)}
-                />
+                >
+                  <LabelList
+                    dataKey="somewhat"
+                    content={<SegmentLabel fill="#E0E6F5" />}
+                  />
+                </Bar>
 
                 <Bar
                   dataKey="satisfied"
                   stackId="a"
                   fill="#40CFFF"
+                  isAnimationActive={false}
                   onMouseEnter={() => setHoverBar(true)}
                   onMouseLeave={() => setHoverBar(false)}
-                />
+                >
+                  <LabelList
+                    dataKey="satisfied"
+                    content={<SegmentLabel fill="#40CFFF" />}
+                  />
+                </Bar>
+
                 <Bar
                   dataKey="very"
                   stackId="a"
                   fill="#3F11FF"
+                  isAnimationActive={false}
                   radius={[8, 8, 0, 0]}
                   onMouseEnter={() => setHoverBar(true)}
                   onMouseLeave={() => setHoverBar(false)}
-                />
+                >
+                  <LabelList
+                    dataKey="very"
+                    content={<SegmentLabel fill="#3F11FF" />}
+                  />
+                </Bar>
 
               </BarChart>
             </ResponsiveContainer>
