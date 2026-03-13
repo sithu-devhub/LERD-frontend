@@ -4,10 +4,6 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import ChartCard from '../components/ChartCard';
 import '../styles/dashboard.css';
 import DashboardFilters from "../components/DashboardFilters";
-import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, LabelList, ReferenceLine,
-} from 'recharts';
 
 import ResponseChart from "../components/ResponseChart";
 import CustomerSatisfaction from "../components/CustomerSatisfactionChart";
@@ -55,6 +51,12 @@ export default function Dashboard() {
   const [regionLabelById, setRegionLabelById] = useState({});
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportRef = useRef(null);
+  const [responseData, setResponseData] = useState([]);
+  const [satisfactionData, setSatisfactionData] = useState([]);
+  const [satisfactionTrendData, setSatisfactionTrendData] = useState([]);
+  const [npsData, setNpsData] = useState([]);
+  const [npsDistributionData, setNpsDistributionData] = useState([]);
+  const [serviceAttrData, setServiceAttrData] = useState([]);
 
   const [filters, setFilters] = useState(() => {
     const saved = localStorage.getItem("dashboardFilters");
@@ -220,7 +222,6 @@ export default function Dashboard() {
   };
 
   // Generates a PowerPoint (.pptx) file containing the dashboard image
-  // Generates a PowerPoint (.pptx) file containing the dashboard image
   const downloadPPT = async () => {
     const canvas = await captureDashboardCanvas();
     if (!canvas) return;
@@ -246,10 +247,6 @@ export default function Dashboard() {
       bold: true,
       align: "center",
     });
-
-    // Slide size in inches for LAYOUT_WIDE
-    const slideWidth = 13.333;
-    const slideHeight = 7.5;
 
     // Area available for the dashboard image
     const maxWidth = 12.7;
@@ -297,16 +294,11 @@ export default function Dashboard() {
     const user = JSON.parse(localStorage.getItem("user"));
     const token = localStorage.getItem("accessToken");
 
-    // Stop if required data is missing
     if (!user?.userId || !token || !surveyId) return;
 
-    // Start with the current region label map from state
     let regionMap = regionLabelById;
-
-    // Check whether any selected region names are still missing
     const missing = selectedRegions.some((id) => !regionMap[String(id)]);
 
-    // If some region names are missing, fetch them before export
     if (selectedRegions.length > 0 && missing) {
       try {
         const fetched = await fetchRegionLabelMap({ token, surveyId });
@@ -316,14 +308,15 @@ export default function Dashboard() {
       }
     }
 
-    // Convert selected region IDs into readable region names
     const regionText =
       selectedRegions.length === 0
         ? "All"
         : selectedRegions.map((id) => regionMap[String(id)] || String(id)).join(", ");
 
-    // Build rows for Excel
-    const exportRows = [
+    const workbook = XLSX.utils.book_new();
+
+    // Summary sheet
+    const summaryRows = [
       {
         "Service Name": serviceName,
         "Survey ID": surveyId,
@@ -335,11 +328,8 @@ export default function Dashboard() {
       },
     ];
 
-    // Create worksheet from JSON data
-    const worksheet = XLSX.utils.json_to_sheet(exportRows);
-
-    // Set column widths for better readability
-    worksheet["!cols"] = [
+    const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
+    summarySheet["!cols"] = [
       { wch: 25 },
       { wch: 40 },
       { wch: 12 },
@@ -348,17 +338,46 @@ export default function Dashboard() {
       { wch: 40 },
       { wch: 22 },
     ];
+    XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
 
-    // Create workbook
-    const workbook = XLSX.utils.book_new();
+    // Response
+    if (responseData.length > 0) {
+      const responseSheet = XLSX.utils.json_to_sheet(responseData);
+      XLSX.utils.book_append_sheet(workbook, responseSheet, "Response");
+    }
 
-    // Append worksheet
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Dashboard Report");
+    // Satisfaction
+    if (satisfactionData.length > 0) {
+      const satisfactionSheet = XLSX.utils.json_to_sheet(satisfactionData);
+      XLSX.utils.book_append_sheet(workbook, satisfactionSheet, "Satisfaction");
+    }
 
-    // Save Excel file
-    XLSX.writeFile(workbook, "dashboard.xlsx");
+    // Satisfaction Trend
+    if (satisfactionTrendData.length > 0) {
+      const trendSheet = XLSX.utils.json_to_sheet(satisfactionTrendData);
+      XLSX.utils.book_append_sheet(workbook, trendSheet, "Satisfaction Trend");
+    }
+
+    // NPS
+    if (npsData.length > 0) {
+      const npsSheet = XLSX.utils.json_to_sheet(npsData);
+      XLSX.utils.book_append_sheet(workbook, npsSheet, "NPS");
+    }
+
+    // NPS Distribution
+    if (npsDistributionData.length > 0) {
+      const npsDistSheet = XLSX.utils.json_to_sheet(npsDistributionData);
+      XLSX.utils.book_append_sheet(workbook, npsDistSheet, "NPS Distribution");
+    }
+
+    // Service Attributes
+    if (serviceAttrData.length > 0) {
+      const attrSheet = XLSX.utils.json_to_sheet(serviceAttrData);
+      XLSX.utils.book_append_sheet(workbook, attrSheet, "Service Attributes");
+    }
+
+    XLSX.writeFile(workbook, "dashboard_report.xlsx");
   };
-
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -549,72 +568,65 @@ export default function Dashboard() {
         </h1>
 
         <div className="ml-auto flex items-center gap-3">
-          <div className="ml-auto flex items-center gap-3">
-            <div className="relative" ref={exportRef}>
-              <button
-                onClick={() => setShowExportMenu((prev) => !prev)}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 transition"
-              >
-                <Download size={18} />
-                <span>Export</span>
-                <ChevronDown size={16} />
-              </button>
+          <div className="relative" ref={exportRef}>
+            <button
+              onClick={() => setShowExportMenu((prev) => !prev)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 transition"
+            >
+              <Download size={18} />
+              <span>Export</span>
+              <ChevronDown size={16} />
+            </button>
 
-              {showExportMenu && (
-                <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
-                  <button
-                    onClick={() => {
-                      downloadPDF();
-                      setShowExportMenu(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
-                  >
-                    <FileText size={16} />
-                    Download PDF
-                  </button>
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                <button
+                  onClick={() => {
+                    downloadPDF();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <FileText size={16} />
+                  Download PDF
+                </button>
 
-                  <button
-                    onClick={() => {
-                      downloadPNG();
-                      setShowExportMenu(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
-                  >
-                    <FileImage size={16} />
-                    Download PNG
-                  </button>
+                <button
+                  onClick={() => {
+                    downloadPNG();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <FileImage size={16} />
+                  Download PNG
+                </button>
 
-                  <button
-                    onClick={() => {
-                      downloadPPT();
-                      setShowExportMenu(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
-                  >
-                    <Presentation size={16} />
-                    Download PPT
-                  </button>
+                <button
+                  onClick={() => {
+                    downloadPPT();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <Presentation size={16} />
+                  Download PPT
+                </button>
 
-                  <button
-                    onClick={() => {
-                      downloadExcel();
-                      setShowExportMenu(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
-                  >
-                    <FileSpreadsheet size={16} />
-                    Download Excel
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <img
-              src="/team_icon.PNG"
-              alt="Logo"
-              className="w-32 h-16 object-contain"
-            />
+                <button
+                  onClick={() => {
+                    downloadExcel();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <FileSpreadsheet size={16} />
+                  Download Excel
+                </button>
+              </div>
+            )}
           </div>
+
           <img
             src="/team_icon.PNG"
             alt="Logo"
@@ -640,15 +652,64 @@ export default function Dashboard() {
         // <>
         <div id="dashboard-export">
           <div className="grid grid-cols-3 gap-6 mb-6">
-            <ResponseChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
-            <CustomerSatisfaction surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
-            <CustomerSatisfactionTrend surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
+            <ResponseChart
+              surveyId={surveyId}
+              regionIds={selectedRegions}
+              gender={filters.gender}
+              participantType={filters.participantType}
+              period={filters.period}
+              onData={setResponseData}
+            />
+
+            <CustomerSatisfaction
+              surveyId={surveyId}
+              regionIds={selectedRegions}
+              gender={filters.gender}
+              participantType={filters.participantType}
+              period={filters.period}
+              onData={setSatisfactionData}
+            />
+
+            <CustomerSatisfactionTrend
+              surveyId={surveyId}
+              regionIds={selectedRegions}
+              gender={filters.gender}
+              participantType={filters.participantType}
+              period={filters.period}
+              onData={setSatisfactionTrendData}
+            />
           </div>
 
           <div className="grid gap-6 mb-6 grid-cols-[1fr_1fr_2fr]">
-            <NpsChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
-            <NpsDistribution surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
-            <ServiceAttributeChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} selectedAttrs={selectedAttrs} onAvailableAttrs={setAvailableAttrs} onSelectedChange={setSelectedAttrs} />
+            <NpsChart
+              surveyId={surveyId}
+              regionIds={selectedRegions}
+              gender={filters.gender}
+              participantType={filters.participantType}
+              period={filters.period}
+              onData={setNpsData}
+            />
+
+            <NpsDistribution
+              surveyId={surveyId}
+              regionIds={selectedRegions}
+              gender={filters.gender}
+              participantType={filters.participantType}
+              period={filters.period}
+              onData={setNpsDistributionData}
+            />
+
+            <ServiceAttributeChart
+              surveyId={surveyId}
+              regionIds={selectedRegions}
+              gender={filters.gender}
+              participantType={filters.participantType}
+              period={filters.period}
+              selectedAttrs={selectedAttrs}
+              onAvailableAttrs={setAvailableAttrs}
+              onSelectedChange={setSelectedAttrs}
+              onData={setServiceAttrData}
+            />
           </div>
 
           <div className="mb-6" id="dashboard-filters">

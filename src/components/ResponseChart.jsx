@@ -87,7 +87,14 @@ const VillageListModal = ({ visible, onClose, villages }) => {
 };
 /* === /modal === */
 
-export default function ResponseChart({ surveyId, regionIds = [], gender, participantType, period }) {
+export default function ResponseChart({
+  surveyId,
+  regionIds = [],
+  gender,
+  participantType,
+  period,
+  onData,
+}) {
   const [responseData, setResponseData] = useState([]);
   const [responseTotals, setResponseTotals] = useState({
     totalParticipants: 0,
@@ -171,20 +178,38 @@ export default function ResponseChart({ surveyId, regionIds = [], gender, partic
           });
 
           if (Array.isArray(json.data.regions)) {
-            // Normalize regions
             const allRegions = (json.data.regions || [])
               .map((r) => ({
-                villageName: String(r.villageName || "").trim(),
-                name: String(r.villageName || "").trim(),
-                value: Number(r.participantCount) || 0,  // must be number
+                Region: String(r.villageName || "").trim(),
+                Participants: Number(r.participantCount) || 0,
               }))
-              .filter((r) => r.name && r.value > 0)
-              .sort((a, b) => b.value - a.value);
+              .filter((r) => r.Region && r.Participants > 0)
+              .sort((a, b) => b.Participants - a.Participants);
 
             console.log("[ResponseChart] allRegions:", allRegions);
 
-            setResponseData(allRegions);
+            // For chart rendering
+            setResponseData(
+              allRegions.map((r) => ({
+                name: r.Region,
+                value: r.Participants,
+              }))
+            );
 
+            // For Excel export in Dashboard
+            if (onData) {
+              onData([
+                {
+                  Metric: "Total Participants",
+                  Value: json.data.totalParticipants || 0,
+                },
+                {
+                  Metric: "Response Rate",
+                  Value: json.data.responseRate || "0%",
+                },
+                ...allRegions,
+              ]);
+            }
           }
 
         }
