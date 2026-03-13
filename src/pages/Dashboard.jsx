@@ -57,6 +57,7 @@ export default function Dashboard() {
   const [npsData, setNpsData] = useState([]);
   const [npsDistributionData, setNpsDistributionData] = useState([]);
   const [serviceAttrData, setServiceAttrData] = useState([]);
+  const [isAllRegionsModalOpen, setIsAllRegionsModalOpen] = useState(false);
 
   const [filters, setFilters] = useState(() => {
     const saved = localStorage.getItem("dashboardFilters");
@@ -659,6 +660,7 @@ export default function Dashboard() {
               participantType={filters.participantType}
               period={filters.period}
               onData={setResponseData}
+              onAllRegionsModalToggle={setIsAllRegionsModalOpen}
             />
 
             <CustomerSatisfaction
