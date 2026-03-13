@@ -11,8 +11,8 @@ export default function NpsDistribution({ surveyId, regionIds = [], gender, part
   const [distribution, setDistribution] = useState([]);
 
   const regionKey = Array.isArray(regionIds)
-  ? regionIds.map(String).sort().join(",")
-  : "";
+    ? regionIds.map(String).sort().join(",")
+    : "";
 
 
   useEffect(() => {
@@ -85,10 +85,10 @@ export default function NpsDistribution({ surveyId, regionIds = [], gender, part
 
           setDistribution([
             {
-              name: "Promoter",
-              value: toNumber(dist.promoterPercentage),
-              count: toNumber(dist.promoterCount),
-              color: "#3F11FF",
+              name: "Detractor",
+              value: toNumber(dist.detractorPercentage),
+              count: toNumber(dist.detractorCount),
+              color: "#9CA3AF",
             },
             {
               name: "Passive",
@@ -97,10 +97,10 @@ export default function NpsDistribution({ surveyId, regionIds = [], gender, part
               color: "#6AD2FF",
             },
             {
-              name: "Detractor",
-              value: toNumber(dist.detractorPercentage),
-              count: toNumber(dist.detractorCount),
-              color: "#9CA3AF",
+              name: "Promoter",
+              value: toNumber(dist.promoterPercentage),
+              count: toNumber(dist.promoterCount),
+              color: "#3F11FF",
             },
           ]);
         } else {

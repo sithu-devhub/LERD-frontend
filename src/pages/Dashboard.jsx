@@ -1,13 +1,9 @@
 // src/pages/Dashboard.jsx
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import ChartCard from '../components/ChartCard';
 import '../styles/dashboard.css';
 import DashboardFilters from "../components/DashboardFilters";
-import {
-  PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip,
-  ResponsiveContainer, LabelList, ReferenceLine,
-} from 'recharts';
 
 import ResponseChart from "../components/ResponseChart";
 import CustomerSatisfaction from "../components/CustomerSatisfactionChart";
@@ -19,7 +15,18 @@ import ServiceAttributeChart from "../components/ServiceAttributeChart.jsx";
 import http from '../api/http';
 
 import html2canvas from "html2canvas";
-import jsPDF from "jspdf";
+import jsPDF from "jspdf"; // Library used to generate pdf files
+import PptxGenJS from "pptxgenjs"; // Library used to generate PowerPoint files
+import * as XLSX from "xlsx"; // Library used to generate Excel files
+
+import {
+  Download,
+  ChevronDown,
+  FileText,
+  FileImage,
+  FileSpreadsheet,
+  Presentation,
+} from "lucide-react";
 
 const isUUID = (value) => /^[0-9a-fA-F-]{36}$/.test(value);
 
@@ -42,7 +49,21 @@ export default function Dashboard() {
   const [hasServices, setHasServices] = useState(true);
 
   const [regionLabelById, setRegionLabelById] = useState({});
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportRef = useRef(null);
+  const [responseData, setResponseData] = useState([]);
+  const [satisfactionData, setSatisfactionData] = useState([]);
+  const [satisfactionTrendData, setSatisfactionTrendData] = useState([]);
+  const [npsData, setNpsData] = useState([]);
+  const [npsDistributionData, setNpsDistributionData] = useState([]);
+  const [serviceAttrData, setServiceAttrData] = useState([]);
 
+  const [filters, setFilters] = useState(() => {
+    const saved = localStorage.getItem("dashboardFilters");
+    return saved
+      ? JSON.parse(saved)
+      : { gender: null, participantType: null, period: null };
+  });
 
   // Builds { regionId: regionName } from the filters API response if labels/names exist.
   const buildRegionMapFromFilters = (filtersResData) => {
@@ -80,12 +101,16 @@ export default function Dashboard() {
     return map;
   };
 
-  // PDF Report exporting
-  const downloadPDF = async () => {
-    const original = document.getElementById("dashboard-export");
-    if (!original) return;
 
-    // Create an off-screen container
+  // Captures the dashboard as a canvas image.
+  // This function is reused by PDF, PNG and PPT exports.
+  const captureDashboardCanvas = async () => {
+
+    // Get the dashboard container
+    const original = document.getElementById("dashboard-export");
+    if (!original) return null;
+
+    // Create an off-screen container so the export layout does not affect UI
     const holder = document.createElement("div");
     holder.style.position = "fixed";
     holder.style.left = "-10000px";
@@ -94,80 +119,280 @@ export default function Dashboard() {
     holder.style.background = "#ffffff";
     holder.style.zIndex = "-1";
 
-
+    // Retrieve user information and token
     const user = JSON.parse(localStorage.getItem("user"));
     const token = localStorage.getItem("accessToken");
-    if (!user?.userId || !token || !surveyId) return;
 
-    // If map doesn't contain all selected region ids, fetch fresh map for export
+    if (!user?.userId || !token || !surveyId) return null;
+
+    // Ensure region names exist for export (instead of region IDs)
     let regionMap = regionLabelById;
     const missing = selectedRegions.some((id) => !regionMap[String(id)]);
-    console.log("Export selectedRegions:", selectedRegions);
-    console.log("Export regionLabelById (state):", regionLabelById);
-    console.log("Export missing labels?", missing);
 
+    // If labels are missing, fetch them
     if (selectedRegions.length > 0 && missing) {
       try {
-        console.log("Export fetchRegionLabelMap args:", { surveyId }); const fetched = await fetchRegionLabelMap({
-          token,
-          surveyId,
-        });
-
-        // merge so we keep any names we already had
+        const fetched = await fetchRegionLabelMap({ token, surveyId });
         regionMap = { ...regionMap, ...fetched };
-
       } catch (e) {
-        // fallback: keep existing map (PDF will show ids if still missing)
+        console.error("Region label fetch failed:", e);
       }
     }
-    console.log("Export regionMap (final):", regionMap);
-    console.log(
-      "Export resolved labels:",
-      selectedRegions.map((id) => ({ id: String(id), label: regionMap[String(id)] }))
-    );
 
+
+
+    // Build export layout with filters
     holder.innerHTML = buildExportHTML(regionMap);
     document.body.appendChild(holder);
 
-    // Clone dashboard into the export container
+    // Mount cloned dashboard into export container
     const exportMount = holder.querySelector("#export-dashboard");
     const clone = original.cloneNode(true);
 
-    // Remove real filters UI from clone (we already added text summary above)
+    // Remove filter UI from export (filters already shown in summary)
     const filterArea = clone.querySelector("#dashboard-filters");
     if (filterArea) filterArea.remove();
 
     exportMount.appendChild(clone);
 
-    // Add faint outlines to charts for the exported report
+    // Add borders around charts to improve exported report appearance
     const chartBoxes = clone.querySelectorAll('[class*="grid"] > *');
     chartBoxes.forEach((box) => {
       box.style.border = "1px solid #e5e7eb";
       box.style.borderRadius = "8px";
       box.style.padding = "8px";
+      box.style.background = "#ffffff";
     });
 
-    // Wait a moment for layout/fonts
-    await new Promise((r) => setTimeout(r, 300));
+    // Wait briefly to ensure layout and fonts render correctly
+    await new Promise((r) => setTimeout(r, 400));
 
+    // Convert dashboard into a canvas image
     const canvas = await html2canvas(holder, {
-      scale: 2,
+      scale: 2,            // Higher resolution
       useCORS: true,
       backgroundColor: "#ffffff",
     });
 
+    // Remove temporary container
+    document.body.removeChild(holder);
+
+    return canvas;
+  };
+
+  // Generates a PDF file from the captured dashboard image
+  const downloadPDF = async () => {
+
+    const canvas = await captureDashboardCanvas();
+    if (!canvas) return;
+
+    // Convert canvas into PNG image data
     const imgData = canvas.toDataURL("image/png");
 
+    // Create PDF document
     const pdf = new jsPDF("p", "mm", "a4");
+
     const pdfWidth = pdf.internal.pageSize.getWidth();
     const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
 
+    // Insert image into PDF
     pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-    pdf.save("dashboard.pdf");
 
-    // Clean up
-    document.body.removeChild(holder);
+    // Save PDF file
+    pdf.save("dashboard.pdf");
   };
+
+
+  // Downloads the dashboard as a PNG image
+  const downloadPNG = async () => {
+
+    const canvas = await captureDashboardCanvas();
+    if (!canvas) return;
+
+    // Convert canvas to PNG
+    const imgData = canvas.toDataURL("image/png");
+
+    // Create download link
+    const link = document.createElement("a");
+    link.href = imgData;
+    link.download = "dashboard.png";
+
+    // Trigger download
+    link.click();
+  };
+
+  // Generates a PowerPoint (.pptx) file containing the dashboard image
+  const downloadPPT = async () => {
+    const canvas = await captureDashboardCanvas();
+    if (!canvas) return;
+
+    const imgData = canvas.toDataURL("image/png");
+
+    // Create PowerPoint presentation
+    const pptx = new PptxGenJS();
+
+    // Use widescreen layout
+    pptx.layout = "LAYOUT_WIDE";
+
+    // Add a slide
+    const slide = pptx.addSlide();
+
+    // Add slide title
+    slide.addText(`Dashboard – ${serviceName}`, {
+      x: 0.5,
+      y: 0.2,
+      w: 12.3,
+      h: 0.4,
+      fontSize: 20,
+      bold: true,
+      align: "center",
+    });
+
+    // Area available for the dashboard image
+    const maxWidth = 12.7;
+    const maxHeight = 6.1;
+    const startX = 0.3;
+    const startY = 0.9;
+
+    // Original image aspect ratio
+    const imageRatio = canvas.width / canvas.height;
+    const boxRatio = maxWidth / maxHeight;
+
+    let renderWidth;
+    let renderHeight;
+    let renderX = startX;
+    let renderY = startY;
+
+    // Fit image inside the box without stretching
+    if (imageRatio > boxRatio) {
+      // Image is wider, fit by width
+      renderWidth = maxWidth;
+      renderHeight = maxWidth / imageRatio;
+      renderY = startY + (maxHeight - renderHeight) / 2;
+    } else {
+      // Image is taller, fit by height
+      renderHeight = maxHeight;
+      renderWidth = maxHeight * imageRatio;
+      renderX = startX + (maxWidth - renderWidth) / 2;
+    }
+
+    // Add dashboard image without distortion
+    slide.addImage({
+      data: imgData,
+      x: renderX,
+      y: renderY,
+      w: renderWidth,
+      h: renderHeight,
+    });
+
+    // Save PowerPoint file
+    await pptx.writeFile({ fileName: "dashboard.pptx" });
+  };
+
+  // Downloads dashboard filter/report data as an Excel file
+  const downloadExcel = async () => {
+    const user = JSON.parse(localStorage.getItem("user"));
+    const token = localStorage.getItem("accessToken");
+
+    if (!user?.userId || !token || !surveyId) return;
+
+    let regionMap = regionLabelById;
+    const missing = selectedRegions.some((id) => !regionMap[String(id)]);
+
+    if (selectedRegions.length > 0 && missing) {
+      try {
+        const fetched = await fetchRegionLabelMap({ token, surveyId });
+        regionMap = { ...regionMap, ...fetched };
+      } catch (error) {
+        console.error("Failed to fetch region labels for Excel export:", error);
+      }
+    }
+
+    const regionText =
+      selectedRegions.length === 0
+        ? "All"
+        : selectedRegions.map((id) => regionMap[String(id)] || String(id)).join(", ");
+
+    const workbook = XLSX.utils.book_new();
+
+    // Summary sheet
+    const summaryRows = [
+      {
+        "Service Name": serviceName,
+        "Survey ID": surveyId,
+        "Gender": genderReverseMap[filters.gender],
+        "Client Type": clientReverseMap[filters.participantType],
+        "Period": filters.period || "All",
+        "Selected Regions": regionText,
+        "Exported At": new Date().toLocaleString(),
+      },
+    ];
+
+    const summarySheet = XLSX.utils.json_to_sheet(summaryRows);
+    summarySheet["!cols"] = [
+      { wch: 25 },
+      { wch: 40 },
+      { wch: 12 },
+      { wch: 18 },
+      { wch: 12 },
+      { wch: 40 },
+      { wch: 22 },
+    ];
+    XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
+
+    // Response
+    if (responseData.length > 0) {
+      const responseSheet = XLSX.utils.json_to_sheet(responseData);
+      XLSX.utils.book_append_sheet(workbook, responseSheet, "Response");
+    }
+
+    // Satisfaction
+    if (satisfactionData.length > 0) {
+      const satisfactionSheet = XLSX.utils.json_to_sheet(satisfactionData);
+      XLSX.utils.book_append_sheet(workbook, satisfactionSheet, "Satisfaction");
+    }
+
+    // Satisfaction Trend
+    if (satisfactionTrendData.length > 0) {
+      const trendSheet = XLSX.utils.json_to_sheet(satisfactionTrendData);
+      XLSX.utils.book_append_sheet(workbook, trendSheet, "Satisfaction Trend");
+    }
+
+    // NPS
+    if (npsData.length > 0) {
+      const npsSheet = XLSX.utils.json_to_sheet(npsData);
+      XLSX.utils.book_append_sheet(workbook, npsSheet, "NPS");
+    }
+
+    // NPS Distribution
+    if (npsDistributionData.length > 0) {
+      const npsDistSheet = XLSX.utils.json_to_sheet(npsDistributionData);
+      XLSX.utils.book_append_sheet(workbook, npsDistSheet, "NPS Distribution");
+    }
+
+    // Service Attributes
+    if (serviceAttrData.length > 0) {
+      const attrSheet = XLSX.utils.json_to_sheet(serviceAttrData);
+      XLSX.utils.book_append_sheet(workbook, attrSheet, "Service Attributes");
+    }
+
+    XLSX.writeFile(workbook, "dashboard_report.xlsx");
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (exportRef.current && !exportRef.current.contains(event.target)) {
+        setShowExportMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+
   // Load survey + selected regions
   useEffect(() => {
     async function loadSurveyAndRegions() {
@@ -292,25 +517,6 @@ export default function Dashboard() {
     }
   }, [availableAttrs]);
 
-  // const [filters, setFilters] = useState(() => {
-  //   const saved = localStorage.getItem("dashboardFilters");
-  //   return saved
-  //     ? JSON.parse(saved)
-  //     // : { gender: null, participantType: null, period: new Date().getFullYear().toString() };
-  //     : {
-  //       gender: null,
-  //       participantType: null,
-  //       period: (new Date().getFullYear() - 1).toString()
-  //     };
-
-  // });
-  const [filters, setFilters] = useState(() => {
-    const saved = localStorage.getItem("dashboardFilters");
-    return saved
-      ? JSON.parse(saved)
-      : { gender: null, participantType: null, period: null }; // ✅ all-time
-  });
-
   useEffect(() => { localStorage.setItem("dashboardFilters", JSON.stringify(filters)); }, [filters]);
 
   useEffect(() => {
@@ -362,12 +568,65 @@ export default function Dashboard() {
         </h1>
 
         <div className="ml-auto flex items-center gap-3">
-          <button
-            onClick={downloadPDF}
-            className="px-4 py-2 bg-indigo-600 text-white rounded"
-          >
-            Download PDF
-          </button>
+          <div className="relative" ref={exportRef}>
+            <button
+              onClick={() => setShowExportMenu((prev) => !prev)}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-700 transition"
+            >
+              <Download size={18} />
+              <span>Export</span>
+              <ChevronDown size={16} />
+            </button>
+
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg z-50 overflow-hidden">
+                <button
+                  onClick={() => {
+                    downloadPDF();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <FileText size={16} />
+                  Download PDF
+                </button>
+
+                <button
+                  onClick={() => {
+                    downloadPNG();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <FileImage size={16} />
+                  Download PNG
+                </button>
+
+                <button
+                  onClick={() => {
+                    downloadPPT();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <Presentation size={16} />
+                  Download PPT
+                </button>
+
+                <button
+                  onClick={() => {
+                    downloadExcel();
+                    setShowExportMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <FileSpreadsheet size={16} />
+                  Download Excel
+                </button>
+              </div>
+            )}
+          </div>
+
           <img
             src="/team_icon.PNG"
             alt="Logo"
@@ -393,15 +652,64 @@ export default function Dashboard() {
         // <>
         <div id="dashboard-export">
           <div className="grid grid-cols-3 gap-6 mb-6">
-            <ResponseChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
-            <CustomerSatisfaction surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
-            <CustomerSatisfactionTrend surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
+            <ResponseChart
+              surveyId={surveyId}
+              regionIds={selectedRegions}
+              gender={filters.gender}
+              participantType={filters.participantType}
+              period={filters.period}
+              onData={setResponseData}
+            />
+
+            <CustomerSatisfaction
+              surveyId={surveyId}
+              regionIds={selectedRegions}
+              gender={filters.gender}
+              participantType={filters.participantType}
+              period={filters.period}
+              onData={setSatisfactionData}
+            />
+
+            <CustomerSatisfactionTrend
+              surveyId={surveyId}
+              regionIds={selectedRegions}
+              gender={filters.gender}
+              participantType={filters.participantType}
+              period={filters.period}
+              onData={setSatisfactionTrendData}
+            />
           </div>
 
           <div className="grid gap-6 mb-6 grid-cols-[1fr_1fr_2fr]">
-            <NpsChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
-            <NpsDistribution surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} />
-            <ServiceAttributeChart surveyId={surveyId} regionIds={selectedRegions} gender={filters.gender} participantType={filters.participantType} period={filters.period} selectedAttrs={selectedAttrs} onAvailableAttrs={setAvailableAttrs} onSelectedChange={setSelectedAttrs} />
+            <NpsChart
+              surveyId={surveyId}
+              regionIds={selectedRegions}
+              gender={filters.gender}
+              participantType={filters.participantType}
+              period={filters.period}
+              onData={setNpsData}
+            />
+
+            <NpsDistribution
+              surveyId={surveyId}
+              regionIds={selectedRegions}
+              gender={filters.gender}
+              participantType={filters.participantType}
+              period={filters.period}
+              onData={setNpsDistributionData}
+            />
+
+            <ServiceAttributeChart
+              surveyId={surveyId}
+              regionIds={selectedRegions}
+              gender={filters.gender}
+              participantType={filters.participantType}
+              period={filters.period}
+              selectedAttrs={selectedAttrs}
+              onAvailableAttrs={setAvailableAttrs}
+              onSelectedChange={setSelectedAttrs}
+              onData={setServiceAttrData}
+            />
           </div>
 
           <div className="mb-6" id="dashboard-filters">

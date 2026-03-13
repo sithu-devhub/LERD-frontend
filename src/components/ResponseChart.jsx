@@ -41,39 +41,60 @@ const VillageListModal = ({ visible, onClose, villages }) => {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50">
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-[350px] max-h-[70vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20 backdrop-blur-[2px]">
+      <div className="w-[380px] max-h-[72vh] rounded-3xl bg-white border border-[#EEF2FF] shadow-[0_20px_60px_rgba(15,23,42,0.18)] overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">
-            Selected Villages
-          </h3>
+        <div className="flex items-start justify-between px-6 pt-5 pb-3">
+          <div>
+            <h3 className="text-[20px] font-semibold text-[#2B3674]">
+              Selected Villages
+            </h3>
+            <p className="mt-1 text-sm text-[#A3AED0]">
+              {villages.length} regions included
+            </p>
+          </div>
+
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-800 text-xl"
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[#A3AED0] hover:bg-[#F4F7FE] hover:text-[#2B3674] transition"
+            aria-label="Close modal"
           >
             ✕
           </button>
         </div>
 
-        {/* Scrollable list */}
-        <ul className="overflow-y-auto pr-2 flex-1">
-          {villages.map((v) => (
-            <li
-              key={v}
-              className="px-3 py-2 rounded-lg bg-gray-50 text-gray-700 mb-2"
-            >
-              {v}
-            </li>
-          ))}
-        </ul>
+        {/* List */}
+        <div className="px-4 pb-5">
+          <div className="max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+            <ul className="space-y-2">
+              {villages.map((v, index) => (
+                <li
+                  key={v}
+                  className="flex items-center gap-3 py-3 text-sm text-[#2B3674] border-b border-[#EEF2FF] cursor-default"
+                >
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#EEF4FF] text-xs font-semibold text-[#3F11FF]">
+                    {index + 1}
+                  </span>
+                  <span className="leading-5">{v}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 /* === /modal === */
 
-export default function ResponseChart({ surveyId, regionIds = [], gender, participantType, period }) {
+export default function ResponseChart({
+  surveyId,
+  regionIds = [],
+  gender,
+  participantType,
+  period,
+  onData,
+}) {
   const [responseData, setResponseData] = useState([]);
   const [responseTotals, setResponseTotals] = useState({
     totalParticipants: 0,
@@ -87,8 +108,8 @@ export default function ResponseChart({ surveyId, regionIds = [], gender, partic
   const chartRef = useRef(null);
 
   const regionKey = Array.isArray(regionIds)
-  ? regionIds.map(String).sort().join(",")
-  : "";
+    ? regionIds.map(String).sort().join(",")
+    : "";
 
   useEffect(() => {
     if (!surveyId) return;
@@ -157,20 +178,38 @@ export default function ResponseChart({ surveyId, regionIds = [], gender, partic
           });
 
           if (Array.isArray(json.data.regions)) {
-            // Normalize regions
             const allRegions = (json.data.regions || [])
               .map((r) => ({
-                villageName: String(r.villageName || "").trim(),
-                name: String(r.villageName || "").trim(),
-                value: Number(r.participantCount) || 0,  // must be number
+                Region: String(r.villageName || "").trim(),
+                Participants: Number(r.participantCount) || 0,
               }))
-              .filter((r) => r.name && r.value > 0)
-              .sort((a, b) => b.value - a.value);
+              .filter((r) => r.Region && r.Participants > 0)
+              .sort((a, b) => b.Participants - a.Participants);
 
             console.log("[ResponseChart] allRegions:", allRegions);
-            
-            setResponseData(allRegions);
 
+            // For chart rendering
+            setResponseData(
+              allRegions.map((r) => ({
+                name: r.Region,
+                value: r.Participants,
+              }))
+            );
+
+            // For Excel export in Dashboard
+            if (onData) {
+              onData([
+                {
+                  Metric: "Total Participants",
+                  Value: json.data.totalParticipants || 0,
+                },
+                {
+                  Metric: "Response Rate",
+                  Value: json.data.responseRate || "0%",
+                },
+                ...allRegions,
+              ]);
+            }
           }
 
         }
@@ -219,9 +258,8 @@ export default function ResponseChart({ surveyId, regionIds = [], gender, partic
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="flex flex-col items-center gap-2">
                     <div
-                      className={`w-6 bg-gray-300 rounded-t ${
-                        i % 2 === 0 ? "h-24" : "h-16"
-                      }`}
+                      className={`w-6 bg-gray-300 rounded-t ${i % 2 === 0 ? "h-24" : "h-16"
+                        }`}
                     ></div>
                     <div className="h-3 w-12 bg-gray-200 rounded"></div>
                   </div>
@@ -267,9 +305,8 @@ export default function ResponseChart({ surveyId, regionIds = [], gender, partic
                         width="32"
                         height="32"
                         viewBox="0 0 24 24"
-                        className={`transition-transform duration-300 ${
-                          showAll ? "rotate-180" : "rotate-0"
-                        }`}
+                        className={`transition-transform duration-300 ${showAll ? "rotate-180" : "rotate-0"
+                          }`}
                       >
                         <defs>
                           <linearGradient
@@ -310,9 +347,8 @@ export default function ResponseChart({ surveyId, regionIds = [], gender, partic
                     {[...Array(5)].map((_, i) => (
                       <div key={i} className="flex flex-col items-center gap-2">
                         <div
-                          className={`w-6 bg-gray-200 rounded-t ${
-                            i % 2 === 0 ? "h-24" : "h-16"
-                          }`}
+                          className={`w-6 bg-gray-200 rounded-t ${i % 2 === 0 ? "h-24" : "h-16"
+                            }`}
                         ></div>
                         <div className="h-3 w-12 bg-gray-100 rounded"></div>
                       </div>
