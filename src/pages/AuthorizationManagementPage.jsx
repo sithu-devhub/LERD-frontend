@@ -97,7 +97,7 @@ function filterPermissionTree(nodes, searchTerm) {
 export default function AuthorizationManagementPage() {
   const [searchUser, setSearchUser] = useState('');
   const [facilitySearch, setFacilitySearch] = useState('');
-  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [permissions, setPermissions] = useState(initialPermissions);
 
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -122,16 +122,41 @@ export default function AuthorizationManagementPage() {
     setPermissions((prev) => setAllChildrenChecked(prev, checked));
   };
 
-  const toggleSelectedUser = (name) => {
-    setSelectedUsers((prev) =>
-      prev.includes(name)
-        ? prev.filter((u) => u !== name)
-        : [...prev, name]
-    );
+  const userPermissionsMap = {
+    June: initialPermissions,
+    Sithu: [
+      {
+        id: 'retirement-village',
+        label: 'Retirement Village',
+        checked: true,
+        children: [
+          { id: 'village-1', label: 'Village Name 1', checked: true },
+          { id: 'village-2', label: 'Village Name 2', checked: false },
+          { id: 'village-3', label: 'Village Name 3', checked: true },
+        ],
+      },
+      {
+        id: 'residential-care',
+        label: 'Residential Care',
+        checked: false,
+        children: [
+          { id: 'name-a', label: 'Name A', checked: false },
+          { id: 'name-b', label: 'Name B', checked: false },
+          { id: 'name-c', label: 'Name C', checked: false },
+          { id: 'name-d', label: 'Name D', checked: false },
+        ],
+      },
+    ],
+    'Xi Chen': initialPermissions,
+    Zhoujian: initialPermissions,
+    Jin: initialPermissions,
   };
 
-  const removeSelectedUser = (name) => {
-    setSelectedUsers((prev) => prev.filter((u) => u !== name));
+  const handleSelectUser = (user) => {
+    setSelectedUser(user);
+
+    const userPermissions = userPermissionsMap[user.name] || initialPermissions;
+    setPermissions(JSON.parse(JSON.stringify(userPermissions)));
   };
 
   const togglePermissionNode = (id, checked) => {
@@ -139,9 +164,14 @@ export default function AuthorizationManagementPage() {
   };
 
   const handleSave = () => {
-    console.log('Selected users:', selectedUsers);
+    if (!selectedUser) {
+      alert('Please select a user first');
+      return;
+    }
+
+    console.log('Selected user:', selectedUser);
     console.log('Permissions:', permissions);
-    alert('Permissions saved');
+    alert(`Permissions saved for ${selectedUser.name}`);
   };
 
   const handleAddUser = () => {
@@ -202,7 +232,7 @@ export default function AuthorizationManagementPage() {
             Authorisation Management
           </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Select one or more users to assign their permissions.
+            Select a user to view and assign permissions.
           </p>
         </div>
 
@@ -239,10 +269,11 @@ export default function AuthorizationManagementPage() {
                   className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-3 hover:bg-[#f8f9ff]"
                 >
                   <input
-                    type="checkbox"
-                    checked={selectedUsers.includes(user.name)}
-                    onChange={() => toggleSelectedUser(user.name)}
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    type="radio"
+                    name="selectedUser"
+                    checked={selectedUser?.id === user.id}
+                    onChange={() => handleSelectUser(user)}
+                    className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"
                   />
                   <span className="text-sm text-gray-700">{user.name}</span>
                 </label>
@@ -252,57 +283,36 @@ export default function AuthorizationManagementPage() {
 
           {/* Right panel */}
           <div className="min-h-[650px] rounded-2xl bg-white p-5 shadow-sm">
-            <div className="mb-4">
+            <div className="mb-4 border-b pb-4">
               <h2 className="mb-2 text-sm font-semibold text-gray-700">
-                Selected users:
+                Selected user
               </h2>
 
-              <div className="flex min-h-[52px] flex-wrap gap-2 border-b pb-4">
-                {selectedUsers.length > 0 ? (
-                  selectedUsers.map((user) => (
-                    <div
-                      key={user}
-                      className="flex items-center gap-2 rounded-full bg-[#eef0ff] px-3 py-1.5 text-sm text-[#4f46e5]"
-                    >
-                      <span>{user}</span>
-                      <button
-                        onClick={() => removeSelectedUser(user)}
-                        className="text-xs text-gray-500 hover:text-red-500"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-400">No users selected</p>
-                )}
-              </div>
+              {selectedUser ? (
+                <div className="rounded-lg bg-[#eef0ff] px-4 py-3 text-sm text-[#4f46e5]">
+                  {selectedUser.name}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-400">No user selected</p>
+              )}
             </div>
 
             <div className="mb-4">
               <h3 className="mb-3 text-sm font-semibold text-gray-700">
                 Select facility permission:
               </h3>
-
-              {/* <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
-                <input
-                  type="text"
-                  value={facilitySearch}
-                  onChange={(e) => setFacilitySearch(e.target.value)}
-                  placeholder="Search for facilities..."
-                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-                />
-
-                <select className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-500">
-                  <option>Service Type</option>
-                  <option>Experience</option>
-                  <option>Day Club</option>
-                  <option>Journey</option>
-                </select>
-              </div> */}
             </div>
 
-            <div className="min-h-[470px] rounded-xl bg-[#f8f9ff] p-4">
+            <div
+              className={`min-h-[470px] rounded-xl bg-[#f8f9ff] p-4 ${!selectedUser ? 'pointer-events-none opacity-50' : ''
+                }`}
+            >
+              {!selectedUser && (
+                <p className="mb-3 text-sm text-gray-400">
+                  Select a user to view and assign permissions.
+                </p>
+              )}
+
               <div className="max-h-[470px] overflow-y-auto pr-2">
                 <div className="mb-4">
                   <label className="flex items-center gap-3">
