@@ -113,9 +113,10 @@ export default function AuthorizationManagementPage() {
   const USERS_PER_PAGE = 10;
 
   const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserFullName, setNewUserFullName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserRole, setNewUserRole] = useState('Regional Manager');
+  const [newUserRole, setNewUserRole] = useState('Employee');
 
   const filteredUsers = useMemo(() => {
     return mockUsers.filter((user) =>
@@ -195,22 +196,29 @@ export default function AuthorizationManagementPage() {
   };
 
   const handleAddUser = () => {
-    if (!newUserName.trim() || !newUserPassword.trim()) {
+    if (
+      !newUserEmail.trim() ||
+      !newUserFullName.trim() ||
+      !newUserPassword.trim() ||
+      !newUserRole.trim()
+    ) {
       alert('Please fill in all required fields');
       return;
     }
 
     console.log('New user:', {
-      name: newUserName,
+      email: newUserEmail,
+      fullName: newUserFullName,
       password: newUserPassword,
       role: newUserRole,
     });
 
     alert('User added successfully');
 
-    setNewUserName('');
-    newUserPassword('');
-    setNewUserRole('Regional Manager');
+    setNewUserEmail('');
+    setNewUserFullName('');
+    setNewUserPassword('');
+    setNewUserRole('Employee');
     setShowAddUserModal(false);
   };
 
@@ -437,14 +445,28 @@ export default function AuthorizationManagementPage() {
             <div className="space-y-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
-                  User Name
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
+                  placeholder="Enter email"
+                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Full Name
                 </label>
                 <input
                   type="text"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  placeholder="Enter user name"
-                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
+                  value={newUserFullName}
+                  onChange={(e) => setNewUserFullName(e.target.value)}
+                  placeholder="Enter full name"
+                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                />
               </div>
 
               <div>
@@ -452,28 +474,27 @@ export default function AuthorizationManagementPage() {
                   Password
                 </label>
                 <input
-                  type="text"
+                  type="password"
                   value={newUserPassword}
-                  onChange={(e) => newUserPassword(e.target.value)}
-                  placeholder="Enter Password"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                  onChange={(e) => setNewUserPassword(e.target.value)}
+                  placeholder="Enter password"
+                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
 
-              {/* <div>
+              <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
                   Role
                 </label>
                 <select
                   value={newUserRole}
                   onChange={(e) => setNewUserRole(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 >
-                  <option>Admin</option>
-                  <option>Senior Leader</option>
-                  <option>Regional Manager</option>
+                  <option value="Admin">Admin</option>
+                  <option value="Employee">Employee</option>
                 </select>
-              </div> */}
+              </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
