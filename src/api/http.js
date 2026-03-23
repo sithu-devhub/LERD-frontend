@@ -15,11 +15,27 @@ export const loginHttp = axios.create({
   withCredentials: false,
 });
 
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((promise) => {
+    if (error) {
+      promise.reject(error);
+    } else {
+      promise.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+
 // Attach token before every request
 http.interceptors.request.use((config) => {
   const token = localStorage.getItem('accessToken');
   if (token) {
-    console.log("🔑 Using access token:", token); // log current token
+    config.headers = config.headers || {};
+    console.log("🔑 Using access token:", token);
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
@@ -31,39 +47,80 @@ http.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (originalRequest.url.includes('/Auth/refresh')) {
+    if (!originalRequest) {
       return Promise.reject(error);
     }
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      console.warn("⚠️ Access token expired. Retrying:", originalRequest.url);
+    const requestUrl = originalRequest.url || '';
 
-      try {
-        const refreshToken = localStorage.getItem('refreshToken');
-        if (!refreshToken) throw new Error('No refresh token');
-
-        const res = await http.post('/Auth/refresh', { refreshToken });
-        const newAccessToken = res.data.accessToken;
-
-        console.log("✅ Token refreshed. New access token:", newAccessToken);
-
-        localStorage.setItem('accessToken', newAccessToken);
-
-        // Retry original request with new token
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        console.log("🔁 Retrying original request:", originalRequest.url);
-        return http(originalRequest);
-      } catch (err) {
-        console.error("❌ Refresh failed. Logging out...");
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        window.location.href = '/login';
-      }
+    if (requestUrl.includes('/Auth/refresh')) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    if (error.response?.status !== 401) {
+      return Promise.reject(error);
+    }
+
+    if (originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      })
+        .then((newAccessToken) => {
+          originalRequest._retry = true;
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          console.log("🔁 Retrying queued request:", requestUrl);
+          return http(originalRequest);
+        })
+        .catch((err) => Promise.reject(err));
+    }
+
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
+      const refreshToken = localStorage.getItem('refreshToken');
+      if (!refreshToken) {
+        throw new Error('No refresh token');
+      }
+
+      console.warn("⚠️ Access token expired. Refreshing once...");
+      const res = await axios.post(`${DEFAULT_BASE}/Auth/refresh`, { refreshToken });
+
+      const newAccessToken = res.data.accessToken;
+      if (!newAccessToken) {
+        throw new Error('No access token returned from refresh');
+      }
+
+      console.log("✅ Token refreshed. New access token:", newAccessToken);
+
+      localStorage.setItem('accessToken', newAccessToken);
+      http.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
+
+      processQueue(null, newAccessToken);
+
+      originalRequest.headers = originalRequest.headers || {};
+      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+      console.log("🔁 Retrying original request:", requestUrl);
+
+      return http(originalRequest);
+    } catch (err) {
+      processQueue(err, null);
+
+      console.error("❌ Refresh failed. Logging out...");
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+
+      return Promise.reject(err);
+    } finally {
+      isRefreshing = false;
+    }
   }
 );
 
