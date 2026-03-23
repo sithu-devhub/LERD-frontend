@@ -6,6 +6,16 @@ const mockUsers = [
   { id: 3, name: 'Xi Chen' },
   { id: 4, name: 'Zhoujian' },
   { id: 5, name: 'Jin' },
+  { id: 6, name: 'Amara Silva' },
+  { id: 7, name: 'Nimal Perera' },
+  { id: 8, name: 'Kavindu Fernando' },
+  { id: 9, name: 'Lakshmi Iyer' },
+  { id: 10, name: 'Chen Wei' },
+  { id: 11, name: 'John Smith' },
+  { id: 12, name: 'Emily Johnson' },
+  { id: 13, name: 'Michael Brown' },
+  { id: 14, name: 'Sophia Lee' },
+  { id: 15, name: 'Daniel Kim' },
 ];
 
 const initialPermissions = [
@@ -99,6 +109,8 @@ export default function AuthorizationManagementPage() {
   const [facilitySearch, setFacilitySearch] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [permissions, setPermissions] = useState(initialPermissions);
+  const [currentPage, setCurrentPage] = useState(1);
+  const USERS_PER_PAGE = 10;
 
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [newUserName, setNewUserName] = useState('');
@@ -110,6 +122,14 @@ export default function AuthorizationManagementPage() {
       user.name.toLowerCase().includes(searchUser.toLowerCase())
     );
   }, [searchUser]);
+
+  const totalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
+
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * USERS_PER_PAGE;
+    const endIndex = startIndex + USERS_PER_PAGE;
+    return filteredUsers.slice(startIndex, endIndex);
+  }, [filteredUsers, currentPage]);
 
   const filteredPermissionTree = useMemo(() => {
     return filterPermissionTree(permissions, facilitySearch);
@@ -209,8 +229,8 @@ export default function AuthorizationManagementPage() {
           />
           <span
             className={`text-sm ${level === 0
-              ? 'font-medium text-gray-700'
-              : 'font-normal text-gray-500'
+              ? 'font-semibold text-[#33406f]'
+              : 'font-medium text-gray-600'
               }`}
           >
             {node.label}
@@ -228,20 +248,20 @@ export default function AuthorizationManagementPage() {
     <div className="min-h-screen w-full bg-[#f6f7fb] px-8 py-6">
       <div className="w-full">
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-[#1f2a5a]">
+          <h1 className="text-2xl font-semibold tracking-tight text-[#1e2b5c]">
             Authorisation Management
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm font-medium text-gray-600">
             Select a user to view and assign permissions.
           </p>
         </div>
 
         <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[550px_minmax(0,1fr)]">
           {/* Left panel */}
-          <div className="min-h-[650px] rounded-2xl bg-white p-5 shadow-sm">
+          <div className="flex min-h-[650px] flex-col rounded-2xl bg-white p-5 shadow-sm">
             <div className="mb-4 border-b pb-3">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-700">User Name</h2>
+                <h2 className="text-sm font-semibold tracking-wide text-[#2f3a68]">User Name</h2>
 
                 <button
                   onClick={() => setShowAddUserModal(true)}
@@ -255,45 +275,101 @@ export default function AuthorizationManagementPage() {
                 <input
                   type="text"
                   value={searchUser}
-                  onChange={(e) => setSearchUser(e.target.value)}
+                  onChange={(e) => {
+                    setSearchUser(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   placeholder="Search for users..."
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
             </div>
 
-            <div className="space-y-1">
-              {filteredUsers.map((user) => (
-                <label
-                  key={user.id}
-                  className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-3 hover:bg-[#f8f9ff]"
+            <div className="flex-1">
+              <div className="space-y-1">
+                {paginatedUsers.map((user) => (
+                  <label
+                    key={user.id}
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 transition ${selectedUser?.id === user.id
+                      ? 'bg-[#eef0ff] shadow-sm'
+                      : 'hover:bg-[#f8f9ff]'
+                      }`}                  >
+                    <input
+                      type="radio"
+                      name="selectedUser"
+                      checked={selectedUser?.id === user.id}
+                      onChange={() => handleSelectUser(user)}
+                      className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span
+                      className={`text-sm ${selectedUser?.id === user.id
+                        ? 'font-semibold text-[#2f3a68]'
+                        : 'font-medium text-gray-700'
+                        }`}
+                    >
+                      {user.name}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-auto pt-5">
+              <div className="flex items-center justify-between rounded-2xl border border-[#e8ebfb] bg-[#f7f8ff] px-3 py-2.5 shadow-sm">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#dde2f3] bg-white text-gray-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <input
-                    type="radio"
-                    name="selectedUser"
-                    checked={selectedUser?.id === user.id}
-                    onChange={() => handleSelectUser(user)}
-                    className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span className="text-sm text-gray-700">{user.name}</span>
-                </label>
-              ))}
+                  ‹
+                </button>
+
+                <div className="flex items-center gap-2">
+                  {Array.from({ length: totalPages || 1 }, (_, index) => {
+                    const page = index + 1;
+                    const isActive = currentPage === page;
+
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition 
+                          ${isActive
+                            ? 'bg-[#4f46e5] text-white shadow-md'
+                            : 'border border-transparent bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))
+                  }
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#dde2f3] bg-white text-gray-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"                >
+                  ›
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Right panel */}
-          <div className="min-h-[650px] rounded-2xl bg-white p-5 shadow-sm">
+          <div className="flex min-h-[650px] flex-col rounded-2xl border border-[#eceffd] bg-white p-5 shadow-sm">
             <div className="mb-4 border-b pb-4">
               <h2 className="mb-2 text-sm font-semibold text-gray-700">
                 Selected user
               </h2>
 
               {selectedUser ? (
-                <div className="rounded-lg bg-[#eef0ff] px-4 py-3 text-sm text-[#4f46e5]">
+                <div className="rounded-xl border border-[#dfe3ff] bg-[#f3f4ff] px-4 py-3 text-sm font-semibold text-[#4338ca]">
                   {selectedUser.name}
                 </div>
               ) : (
-                <p className="text-sm text-gray-400">No user selected</p>
+                <p className="text-sm font-medium text-gray-500">No user selected</p>
               )}
             </div>
 
@@ -304,11 +380,11 @@ export default function AuthorizationManagementPage() {
             </div>
 
             <div
-              className={`min-h-[470px] rounded-xl bg-[#f8f9ff] p-4 ${!selectedUser ? 'pointer-events-none opacity-50' : ''
+              className={`min-h-[470px] rounded-2xl border border-[#e8ebfb] bg-[#f7f8ff] p-5 ${!selectedUser ? 'pointer-events-none opacity-50' : ''
                 }`}
             >
               {!selectedUser && (
-                <p className="mb-3 text-sm text-gray-400">
+                <p className="mb-3 text-sm font-medium text-gray-500">
                   Select a user to view and assign permissions.
                 </p>
               )}
@@ -322,7 +398,7 @@ export default function AuthorizationManagementPage() {
                       onChange={(e) => toggleAllPermissions(e.target.checked)}
                       className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
-                    <span className="text-sm text-gray-700">All</span>
+                    <span className="text-sm font-semibold text-[#33406f]">All</span>
                   </label>
                 </div>
 
@@ -331,12 +407,12 @@ export default function AuthorizationManagementPage() {
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
-              <button className="rounded-lg bg-gray-200 px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300">
+              <button className="rounded-xl border border-gray-200 bg-gray-100 px-5 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200">
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="rounded-lg bg-[#4f46e5] px-5 py-2 text-sm font-medium text-white hover:bg-[#4338ca]"
+                className="rounded-xl bg-[#4f46e5] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4338ca]"
               >
                 Save
               </button>
@@ -368,8 +444,7 @@ export default function AuthorizationManagementPage() {
                   value={newUserName}
                   onChange={(e) => setNewUserName(e.target.value)}
                   placeholder="Enter user name"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-                />
+                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100" />
               </div>
 
               <div>
