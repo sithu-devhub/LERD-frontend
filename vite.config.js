@@ -12,7 +12,7 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'https://live-dashboard-backend-production.up.railway.app',
+        target: 'https://livedashboard2026-d0d8gqd3deaqacf5.australiaeast-01.azurewebsites.net',
         changeOrigin: true,
         secure: true,
       },

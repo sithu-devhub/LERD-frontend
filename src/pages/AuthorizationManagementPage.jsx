@@ -1,23 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-
-const mockUsers = [
-  { id: 1, name: 'June' },
-  { id: 2, name: 'Sithu' },
-  { id: 3, name: 'Xi Chen' },
-  { id: 4, name: 'Zhoujian' },
-  { id: 5, name: 'Jin' },
-  { id: 6, name: 'Amara Silva' },
-  { id: 7, name: 'Nimal Perera' },
-  { id: 8, name: 'Kavindu Fernando' },
-  { id: 9, name: 'Lakshmi Iyer' },
-  { id: 10, name: 'Chen Wei' },
-  { id: 11, name: 'John Smith' },
-  { id: 12, name: 'Emily Johnson' },
-  { id: 13, name: 'Michael Brown' },
-  { id: 14, name: 'Sophia Lee' },
-  { id: 15, name: 'Daniel Kim' },
-];
+import { getAllUsers } from '../api/authService';
 
 const initialPermissions = [
   {
@@ -106,12 +89,9 @@ function filterPermissionTree(nodes, searchTerm) {
 }
 
 export default function AuthorizationManagementPage() {
-  const [searchUser, setSearchUser] = useState('');
   const [facilitySearch, setFacilitySearch] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [permissions, setPermissions] = useState(initialPermissions);
-  const [currentPage, setCurrentPage] = useState(1);
-  const USERS_PER_PAGE = 10;
 
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState('');
@@ -119,24 +99,95 @@ export default function AuthorizationManagementPage() {
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState('Employee');
 
+
+  // user management API-integration related states
+  const [users, setUsers] = useState([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [userError, setUserError] = useState('');
+  const [pageNumber, setPageNumber] = useState(1);
+  const [pageSize] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const displayedUsers = useMemo(() => users, [users]);
+
+  const fetchUsers = async (searchValue = '', page = 1) => {
+    try {
+      setLoadingUsers(true);
+      setUserError('');
+
+      const params = {
+        PageNumber: page,
+        PageSize: pageSize,
+      };
+
+      if (searchValue.trim()) {
+        params.Search = searchValue.trim();
+      }
+
+      const res = await getAllUsers(params);
+      const result = res.data;
+
+      if (result?.success) {
+        const userList = result.data || [];
+        setUsers(userList);
+        setTotalPages(result.totalPages || 1);
+
+        setSelectedUser((prev) => {
+          if (!userList.length) return null;
+          if (!prev) return userList[0];
+
+          const stillExists = userList.find((u) => u.id === prev.id);
+          return stillExists || userList[0];
+        });
+      } else {
+        setUsers([]);
+        setSelectedUser(null);
+        setUserError(result?.message || 'Failed to load users.');
+      }
+    } catch (error) {
+      console.error('Failed to fetch users:', error);
+      setUsers([]);
+      setSelectedUser(null);
+      setUserError(
+        error?.response?.data?.message || 'Failed to load users.'
+      );
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+
+  useEffect(() => {
+    fetchUsers('', 1);
+  }, []);
+
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPageNumber(1);
+      fetchUsers(userSearch, 1);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [userSearch]);
+
+
+  useEffect(() => {
+    fetchUsers(userSearch, pageNumber);
+  }, [pageNumber]);
+
+
+  const isAdminUser = (role) =>
+    role?.toLowerCase?.().trim() === 'admin';
+
+
+
+
   const [expandedNodes, setExpandedNodes] = useState({
     'retirement-village': false,
     'residential-care': false,
   });
-
-  const filteredUsers = useMemo(() => {
-    return mockUsers.filter((user) =>
-      user.name.toLowerCase().includes(searchUser.toLowerCase())
-    );
-  }, [searchUser]);
-
-  const totalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
-
-  const paginatedUsers = useMemo(() => {
-    const startIndex = (currentPage - 1) * USERS_PER_PAGE;
-    const endIndex = startIndex + USERS_PER_PAGE;
-    return filteredUsers.slice(startIndex, endIndex);
-  }, [filteredUsers, currentPage]);
 
   const filteredPermissionTree = useMemo(() => {
     return filterPermissionTree(permissions, facilitySearch);
@@ -243,7 +294,11 @@ export default function AuthorizationManagementPage() {
   const handleSelectUser = (user) => {
     setSelectedUser(user);
 
-    const userPermissions = userPermissionsMap[user.name] || initialPermissions;
+    const userPermissions =
+      userPermissionsMap[user.fullName] ||
+      userPermissionsMap[user.username] ||
+      initialPermissions;
+
     setPermissions(JSON.parse(JSON.stringify(userPermissions)));
 
     setExpandedNodes({
@@ -264,7 +319,7 @@ export default function AuthorizationManagementPage() {
 
     console.log('Selected user:', selectedUser);
     console.log('Permissions:', permissions);
-    alert(`Permissions saved for ${selectedUser.name}`);
+    alert(`Permissions saved for ${selectedUser.username}`);
   };
 
   const handleAddUser = () => {
@@ -377,12 +432,9 @@ export default function AuthorizationManagementPage() {
               <div className="w-full">
                 <input
                   type="text"
-                  value={searchUser}
-                  onChange={(e) => {
-                    setSearchUser(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  placeholder="Search for users..."
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder="Search by email or full name..."
                   className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
@@ -390,38 +442,60 @@ export default function AuthorizationManagementPage() {
 
             <div className="flex-1">
               <div className="space-y-1">
-                {paginatedUsers.map((user) => (
-                  <label
-                    key={user.id}
-                    className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 transition ${selectedUser?.id === user.id
-                      ? 'bg-[#eef0ff] shadow-sm'
-                      : 'hover:bg-[#f8f9ff]'
-                      }`}                  >
-                    <input
-                      type="radio"
-                      name="selectedUser"
-                      checked={selectedUser?.id === user.id}
-                      onChange={() => handleSelectUser(user)}
-                      className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <span
-                      className={`text-sm ${selectedUser?.id === user.id
-                        ? 'font-semibold text-[#2f3a68]'
-                        : 'font-medium text-gray-700'
+                {loadingUsers ? (
+                  <div className="px-3 py-3 text-sm text-gray-500">Loading users...</div>
+                ) : userError ? (
+                  <div className="px-3 py-3 text-sm text-red-500">{userError}</div>
+                ) : displayedUsers.length === 0 ? (
+                  <div className="px-3 py-3 text-sm text-gray-500">No users found.</div>
+                ) : (
+                  displayedUsers.map((user) => (
+                    <label
+                      key={user.id}
+                      className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 transition ${selectedUser?.id === user.id
+                        ? 'bg-[#eef0ff] shadow-sm'
+                        : 'hover:bg-[#f8f9ff]'
                         }`}
                     >
-                      {user.name}
-                    </span>
-                  </label>
-                ))}
+                      <input
+                        type="radio"
+                        name="selectedUser"
+                        checked={selectedUser?.id === user.id}
+                        onChange={() => handleSelectUser(user)}
+                        className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+
+                      <div className="group relative flex items-center gap-2">
+                        <span
+                          className={`text-sm ${selectedUser?.id === user.id
+                            ? 'font-semibold text-[#2f3a68]'
+                            : 'font-medium text-gray-700'
+                            }`}
+                        >
+                          {user.username}
+                        </span>
+
+                        {isAdminUser(user.userRole) && (
+                          <span className="rounded-full bg-[#ece8ff] px-2 py-0.5 text-[11px] font-semibold text-[#5b3df5]">
+                            Admin
+                          </span>
+                        )}
+
+                        <div className="pointer-events-none absolute left-full top-1/2 z-20 ml-2 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-900 px-3 py-1.5 text-xs text-white shadow-lg group-hover:block">
+                          {user.fullName || 'No full name'}
+                        </div>
+                      </div>
+                    </label>
+                  ))
+                )}
               </div>
             </div>
 
             <div className="mt-auto pt-5">
               <div className="flex items-center justify-between rounded-2xl border border-[#e8ebfb] bg-[#f7f8ff] px-3 py-2.5 shadow-sm">
                 <button
-                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
+                  onClick={() => setPageNumber((prev) => Math.max(prev - 1, 1))}
+                  disabled={pageNumber === 1}
                   className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#dde2f3] bg-white text-gray-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   ‹
@@ -439,9 +513,9 @@ export default function AuthorizationManagementPage() {
 
                 <button
                   onClick={() =>
-                    setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))
+                    setPageNumber((prev) => Math.min(prev + 1, totalPages || 1))
                   }
-                  disabled={currentPage === totalPages || totalPages === 0}
+                  disabled={pageNumber === totalPages || totalPages === 0}
                   className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#dde2f3] bg-white text-gray-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"                >
                   ›
                 </button>
@@ -457,8 +531,9 @@ export default function AuthorizationManagementPage() {
               </h2>
 
               {selectedUser ? (
-                <div className="rounded-xl border border-[#dfe3ff] bg-[#f3f4ff] px-4 py-3 text-sm font-semibold text-[#4338ca]">
-                  {selectedUser.name}
+                <div className="rounded-xl border border-[#dfe3ff] bg-[#f3f4ff] px-4 py-3 text-sm text-[#4338ca]">
+                  <div className="font-semibold">{selectedUser.username}</div>
+                  <div className="mt-1 text-xs text-[#5c6699]">{selectedUser.fullName}</div>
                 </div>
               ) : (
                 <p className="text-sm font-medium text-gray-500">No user selected</p>
