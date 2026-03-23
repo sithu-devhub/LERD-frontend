@@ -99,7 +99,6 @@ export default function AuthorizationManagementPage() {
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState('Employee');
 
-
   // user management API-integration related states
   const [users, setUsers] = useState([]);
   const [userSearch, setUserSearch] = useState('');
@@ -110,6 +109,24 @@ export default function AuthorizationManagementPage() {
   const [totalPages, setTotalPages] = useState(1);
 
   const displayedUsers = useMemo(() => users, [users]);
+
+  const visiblePages = useMemo(() => {
+    const maxVisible = 5;
+
+    if (totalPages <= maxVisible) {
+      return Array.from({ length: totalPages }, (_, index) => index + 1);
+    }
+
+    let start = Math.max(pageNumber - 2, 1);
+    let end = start + maxVisible - 1;
+
+    if (end > totalPages) {
+      end = totalPages;
+      start = end - maxVisible + 1;
+    }
+
+    return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+  }, [pageNumber, totalPages]);
 
   const fetchUsers = async (searchValue = '', page = 1) => {
     try {
@@ -157,11 +174,9 @@ export default function AuthorizationManagementPage() {
     }
   };
 
-
   useEffect(() => {
     fetchUsers('', 1);
   }, []);
-
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -172,17 +187,12 @@ export default function AuthorizationManagementPage() {
     return () => clearTimeout(timer);
   }, [userSearch]);
 
-
   useEffect(() => {
     fetchUsers(userSearch, pageNumber);
   }, [pageNumber]);
 
-
   const isAdminUser = (role) =>
     role?.toLowerCase?.().trim() === 'admin';
-
-
-
 
   const [expandedNodes, setExpandedNodes] = useState({
     'retirement-village': false,
@@ -300,11 +310,6 @@ export default function AuthorizationManagementPage() {
       initialPermissions;
 
     setPermissions(JSON.parse(JSON.stringify(userPermissions)));
-
-    setExpandedNodes({
-      'retirement-village': false,
-      'residential-care': false,
-    });
   };
 
   const togglePermissionNode = (id, checked) => {
@@ -419,7 +424,9 @@ export default function AuthorizationManagementPage() {
           <div className="flex min-h-[650px] flex-col rounded-2xl bg-white p-5 shadow-sm">
             <div className="mb-4 border-b pb-3">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold tracking-wide text-[#2f3a68]">User Name</h2>
+                <h2 className="text-sm font-semibold tracking-wide text-[#2f3a68]">
+                  User Name
+                </h2>
 
                 <button
                   onClick={() => setShowAddUserModal(true)}
@@ -502,13 +509,22 @@ export default function AuthorizationManagementPage() {
                 </button>
 
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={toggleExpandCollapseAll}
-                    className="rounded-xl border border-[#d9def0] bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
-                  >
-                    {areAllExpanded ? 'Collapse All' : 'Expand All'}
-                  </button>
+                  {visiblePages.map((page) => {
+                    const isActive = pageNumber === page;
+
+                    return (
+                      <button
+                        key={page}
+                        onClick={() => setPageNumber(page)}
+                        className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition ${isActive
+                          ? 'bg-[#4f46e5] text-white shadow-md'
+                          : 'border border-transparent bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
+                          }`}
+                      >
+                        {page}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 <button
@@ -516,7 +532,8 @@ export default function AuthorizationManagementPage() {
                     setPageNumber((prev) => Math.min(prev + 1, totalPages || 1))
                   }
                   disabled={pageNumber === totalPages || totalPages === 0}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#dde2f3] bg-white text-gray-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"                >
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#dde2f3] bg-white text-gray-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
+                >
                   ›
                 </button>
               </div>
@@ -533,7 +550,9 @@ export default function AuthorizationManagementPage() {
               {selectedUser ? (
                 <div className="rounded-xl border border-[#dfe3ff] bg-[#f3f4ff] px-4 py-3 text-sm text-[#4338ca]">
                   <div className="font-semibold">{selectedUser.username}</div>
-                  <div className="mt-1 text-xs text-[#5c6699]">{selectedUser.fullName}</div>
+                  <div className="mt-1 text-xs text-[#5c6699]">
+                    {selectedUser.fullName}
+                  </div>
                 </div>
               ) : (
                 <p className="text-sm font-medium text-gray-500">No user selected</p>
