@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 const mockUsers = [
   { id: 1, name: 'June' },
@@ -6,6 +7,16 @@ const mockUsers = [
   { id: 3, name: 'Xi Chen' },
   { id: 4, name: 'Zhoujian' },
   { id: 5, name: 'Jin' },
+  { id: 6, name: 'Amara Silva' },
+  { id: 7, name: 'Nimal Perera' },
+  { id: 8, name: 'Kavindu Fernando' },
+  { id: 9, name: 'Lakshmi Iyer' },
+  { id: 10, name: 'Chen Wei' },
+  { id: 11, name: 'John Smith' },
+  { id: 12, name: 'Emily Johnson' },
+  { id: 13, name: 'Michael Brown' },
+  { id: 14, name: 'Sophia Lee' },
+  { id: 15, name: 'Daniel Kim' },
 ];
 
 const initialPermissions = [
@@ -97,19 +108,35 @@ function filterPermissionTree(nodes, searchTerm) {
 export default function AuthorizationManagementPage() {
   const [searchUser, setSearchUser] = useState('');
   const [facilitySearch, setFacilitySearch] = useState('');
-  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [selectedUser, setSelectedUser] = useState(null);
   const [permissions, setPermissions] = useState(initialPermissions);
+  const [currentPage, setCurrentPage] = useState(1);
+  const USERS_PER_PAGE = 10;
 
   const [showAddUserModal, setShowAddUserModal] = useState(false);
-  const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserFullName, setNewUserFullName] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
-  const [newUserRole, setNewUserRole] = useState('Regional Manager');
+  const [newUserRole, setNewUserRole] = useState('Employee');
+
+  const [expandedNodes, setExpandedNodes] = useState({
+    'retirement-village': false,
+    'residential-care': false,
+  });
 
   const filteredUsers = useMemo(() => {
     return mockUsers.filter((user) =>
       user.name.toLowerCase().includes(searchUser.toLowerCase())
     );
   }, [searchUser]);
+
+  const totalPages = Math.ceil(filteredUsers.length / USERS_PER_PAGE);
+
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * USERS_PER_PAGE;
+    const endIndex = startIndex + USERS_PER_PAGE;
+    return filteredUsers.slice(startIndex, endIndex);
+  }, [filteredUsers, currentPage]);
 
   const filteredPermissionTree = useMemo(() => {
     return filterPermissionTree(permissions, facilitySearch);
@@ -122,16 +149,107 @@ export default function AuthorizationManagementPage() {
     setPermissions((prev) => setAllChildrenChecked(prev, checked));
   };
 
-  const toggleSelectedUser = (name) => {
-    setSelectedUsers((prev) =>
-      prev.includes(name)
-        ? prev.filter((u) => u !== name)
-        : [...prev, name]
-    );
+  const toggleExpandNode = (id) => {
+    setExpandedNodes((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
   };
 
-  const removeSelectedUser = (name) => {
-    setSelectedUsers((prev) => prev.filter((u) => u !== name));
+  const areAllExpanded = useMemo(() => {
+    const parentIds = [];
+
+    const collectParentIds = (nodes) => {
+      nodes.forEach((node) => {
+        if (node.children && node.children.length > 0) {
+          parentIds.push(node.id);
+          collectParentIds(node.children);
+        }
+      });
+    };
+
+    collectParentIds(permissions);
+
+    return (
+      parentIds.length > 0 &&
+      parentIds.every((id) => expandedNodes[id] === true)
+    );
+  }, [permissions, expandedNodes]);
+
+  const toggleExpandCollapseAll = () => {
+    const allParentIds = {};
+
+    const collectParentIds = (nodes, expandValue) => {
+      nodes.forEach((node) => {
+        if (node.children && node.children.length > 0) {
+          allParentIds[node.id] = expandValue;
+          collectParentIds(node.children, expandValue);
+        }
+      });
+    };
+
+    collectParentIds(permissions, !areAllExpanded);
+    setExpandedNodes(allParentIds);
+  };
+
+  useEffect(() => {
+    if (facilitySearch.trim()) {
+      const allParentIds = {};
+
+      const collectParentIds = (nodes) => {
+        nodes.forEach((node) => {
+          if (node.children && node.children.length > 0) {
+            allParentIds[node.id] = true;
+            collectParentIds(node.children);
+          }
+        });
+      };
+
+      collectParentIds(permissions);
+      setExpandedNodes(allParentIds);
+    }
+  }, [facilitySearch, permissions]);
+
+  const userPermissionsMap = {
+    June: initialPermissions,
+    Sithu: [
+      {
+        id: 'retirement-village',
+        label: 'Retirement Village',
+        checked: true,
+        children: [
+          { id: 'village-1', label: 'Village Name 1', checked: true },
+          { id: 'village-2', label: 'Village Name 2', checked: false },
+          { id: 'village-3', label: 'Village Name 3', checked: true },
+        ],
+      },
+      {
+        id: 'residential-care',
+        label: 'Residential Care',
+        checked: false,
+        children: [
+          { id: 'name-a', label: 'Name A', checked: false },
+          { id: 'name-b', label: 'Name B', checked: false },
+          { id: 'name-c', label: 'Name C', checked: false },
+          { id: 'name-d', label: 'Name D', checked: false },
+        ],
+      },
+    ],
+    'Xi Chen': initialPermissions,
+    Zhoujian: initialPermissions,
+    Jin: initialPermissions,
+  };
+
+  const handleSelectUser = (user) => {
+    setSelectedUser(user);
+
+    const userPermissions = userPermissionsMap[user.name] || initialPermissions;
+    setPermissions(JSON.parse(JSON.stringify(userPermissions)));
+
+    setExpandedNodes({
+      'retirement-village': false,
+      'residential-care': false,
+    });
   };
 
   const togglePermissionNode = (id, checked) => {
@@ -139,79 +257,114 @@ export default function AuthorizationManagementPage() {
   };
 
   const handleSave = () => {
-    console.log('Selected users:', selectedUsers);
+    if (!selectedUser) {
+      alert('Please select a user first');
+      return;
+    }
+
+    console.log('Selected user:', selectedUser);
     console.log('Permissions:', permissions);
-    alert('Permissions saved');
+    alert(`Permissions saved for ${selectedUser.name}`);
   };
 
   const handleAddUser = () => {
-    if (!newUserName.trim() || !newUserPassword.trim()) {
+    if (
+      !newUserEmail.trim() ||
+      !newUserFullName.trim() ||
+      !newUserPassword.trim() ||
+      !newUserRole.trim()
+    ) {
       alert('Please fill in all required fields');
       return;
     }
 
     console.log('New user:', {
-      name: newUserName,
+      email: newUserEmail,
+      fullName: newUserFullName,
       password: newUserPassword,
       role: newUserRole,
     });
 
     alert('User added successfully');
 
-    setNewUserName('');
-    newUserPassword('');
-    setNewUserRole('Regional Manager');
+    setNewUserEmail('');
+    setNewUserFullName('');
+    setNewUserPassword('');
+    setNewUserRole('Employee');
     setShowAddUserModal(false);
   };
 
   const renderPermissionTree = (nodes, level = 0) => {
-    return nodes.map((node) => (
-      <div key={node.id} className={level === 0 ? 'mb-6' : 'mb-3'}>
-        <label
-          className="flex items-center gap-3"
-          style={{ marginLeft: `${level * 28}px` }}
-        >
-          <input
-            type="checkbox"
-            checked={node.checked}
-            onChange={(e) => togglePermissionNode(node.id, e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-          />
-          <span
-            className={`text-sm ${level === 0
-              ? 'font-medium text-gray-700'
-              : 'font-normal text-gray-500'
-              }`}
-          >
-            {node.label}
-          </span>
-        </label>
+    return nodes.map((node) => {
+      const hasChildren = node.children && node.children.length > 0;
+      const isExpanded = expandedNodes[node.id] ?? false;
 
-        {node.children && node.children.length > 0 && (
-          <div className="mt-3">{renderPermissionTree(node.children, level + 1)}</div>
-        )}
-      </div>
-    ));
+      return (
+        <div key={node.id} className={level === 0 ? 'mb-6' : 'mb-3'}>
+          <div
+            className="flex items-center gap-3"
+            style={{ marginLeft: `${level * 28}px` }}
+          >
+            {hasChildren ? (
+              <button
+                type="button"
+                onClick={() => toggleExpandNode(node.id)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#d9def0] bg-white text-gray-500 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
+              >
+                {isExpanded ? (
+                  <ChevronDown size={16} strokeWidth={2.5} />
+                ) : (
+                  <ChevronRight size={16} strokeWidth={2.5} />
+                )}
+              </button>
+            ) : (
+              <div className="w-8" />
+            )}
+
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={node.checked}
+                onChange={(e) => togglePermissionNode(node.id, e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span
+                className={`text-sm ${level === 0
+                  ? 'font-semibold text-[#33406f]'
+                  : 'font-medium text-gray-600'
+                  }`}
+              >
+                {node.label}
+              </span>
+            </label>
+          </div>
+
+          {hasChildren && isExpanded && (
+            <div className="mt-3">{renderPermissionTree(node.children, level + 1)}</div>
+          )}
+        </div>
+      );
+    });
   };
 
   return (
     <div className="min-h-screen w-full bg-[#f6f7fb] px-8 py-6">
       <div className="w-full">
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-[#1f2a5a]">
+          <h1 className="text-2xl font-semibold tracking-tight text-[#1e2b5c]">
             Authorisation Management
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Select one or more users to assign their permissions.
+          <p className="mt-1 text-sm font-medium text-gray-600">
+            Select a user to view and assign permissions.
           </p>
         </div>
 
         <div className="grid w-full grid-cols-1 gap-6 xl:grid-cols-[550px_minmax(0,1fr)]">
           {/* Left panel */}
-          <div className="min-h-[650px] rounded-2xl bg-white p-5 shadow-sm">
+          <div className="flex min-h-[650px] flex-col rounded-2xl bg-white p-5 shadow-sm">
             <div className="mb-4 border-b pb-3">
               <div className="mb-3 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-gray-700">User Name</h2>
+                <h2 className="text-sm font-semibold tracking-wide text-[#2f3a68]">User Name</h2>
 
                 <button
                   onClick={() => setShowAddUserModal(true)}
@@ -225,86 +378,111 @@ export default function AuthorizationManagementPage() {
                 <input
                   type="text"
                   value={searchUser}
-                  onChange={(e) => setSearchUser(e.target.value)}
+                  onChange={(e) => {
+                    setSearchUser(e.target.value);
+                    setCurrentPage(1);
+                  }}
                   placeholder="Search for users..."
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
             </div>
 
-            <div className="space-y-1">
-              {filteredUsers.map((user) => (
-                <label
-                  key={user.id}
-                  className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-3 hover:bg-[#f8f9ff]"
+            <div className="flex-1">
+              <div className="space-y-1">
+                {paginatedUsers.map((user) => (
+                  <label
+                    key={user.id}
+                    className={`flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 transition ${selectedUser?.id === user.id
+                      ? 'bg-[#eef0ff] shadow-sm'
+                      : 'hover:bg-[#f8f9ff]'
+                      }`}                  >
+                    <input
+                      type="radio"
+                      name="selectedUser"
+                      checked={selectedUser?.id === user.id}
+                      onChange={() => handleSelectUser(user)}
+                      className="h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    />
+                    <span
+                      className={`text-sm ${selectedUser?.id === user.id
+                        ? 'font-semibold text-[#2f3a68]'
+                        : 'font-medium text-gray-700'
+                        }`}
+                    >
+                      {user.name}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-auto pt-5">
+              <div className="flex items-center justify-between rounded-2xl border border-[#e8ebfb] bg-[#f7f8ff] px-3 py-2.5 shadow-sm">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#dde2f3] bg-white text-gray-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedUsers.includes(user.name)}
-                    onChange={() => toggleSelectedUser(user.name)}
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                  />
-                  <span className="text-sm text-gray-700">{user.name}</span>
-                </label>
-              ))}
+                  ‹
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={toggleExpandCollapseAll}
+                    className="rounded-xl border border-[#d9def0] bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
+                  >
+                    {areAllExpanded ? 'Collapse All' : 'Expand All'}
+                  </button>
+                </div>
+
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))
+                  }
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#dde2f3] bg-white text-gray-600 shadow-sm transition hover:border-indigo-300 hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"                >
+                  ›
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Right panel */}
-          <div className="min-h-[650px] rounded-2xl bg-white p-5 shadow-sm">
-            <div className="mb-4">
+          <div className="flex min-h-[650px] flex-col rounded-2xl border border-[#eceffd] bg-white p-5 shadow-sm">
+            <div className="mb-4 border-b pb-4">
               <h2 className="mb-2 text-sm font-semibold text-gray-700">
-                Selected users:
+                Selected user
               </h2>
 
-              <div className="flex min-h-[52px] flex-wrap gap-2 border-b pb-4">
-                {selectedUsers.length > 0 ? (
-                  selectedUsers.map((user) => (
-                    <div
-                      key={user}
-                      className="flex items-center gap-2 rounded-full bg-[#eef0ff] px-3 py-1.5 text-sm text-[#4f46e5]"
-                    >
-                      <span>{user}</span>
-                      <button
-                        onClick={() => removeSelectedUser(user)}
-                        className="text-xs text-gray-500 hover:text-red-500"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-gray-400">No users selected</p>
-                )}
-              </div>
+              {selectedUser ? (
+                <div className="rounded-xl border border-[#dfe3ff] bg-[#f3f4ff] px-4 py-3 text-sm font-semibold text-[#4338ca]">
+                  {selectedUser.name}
+                </div>
+              ) : (
+                <p className="text-sm font-medium text-gray-500">No user selected</p>
+              )}
             </div>
 
             <div className="mb-4">
               <h3 className="mb-3 text-sm font-semibold text-gray-700">
                 Select facility permission:
               </h3>
-
-              {/* <div className="mb-4 grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
-                <input
-                  type="text"
-                  value={facilitySearch}
-                  onChange={(e) => setFacilitySearch(e.target.value)}
-                  placeholder="Search for facilities..."
-                  className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-500"
-                />
-
-                <select className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-indigo-500">
-                  <option>Service Type</option>
-                  <option>Experience</option>
-                  <option>Day Club</option>
-                  <option>Journey</option>
-                </select>
-              </div> */}
             </div>
 
-            <div className="min-h-[470px] rounded-xl bg-[#f8f9ff] p-4">
+            <div
+              className={`min-h-[470px] rounded-2xl border border-[#e8ebfb] bg-[#f7f8ff] p-5 ${!selectedUser ? 'pointer-events-none opacity-50' : ''
+                }`}
+            >
+              {!selectedUser && (
+                <p className="mb-3 text-sm font-medium text-gray-500">
+                  Select a user to view and assign permissions.
+                </p>
+              )}
+
               <div className="max-h-[470px] overflow-y-auto pr-2">
-                <div className="mb-4">
+                <div className="mb-4 flex items-center justify-between">
                   <label className="flex items-center gap-3">
                     <input
                       type="checkbox"
@@ -312,8 +490,18 @@ export default function AuthorizationManagementPage() {
                       onChange={(e) => toggleAllPermissions(e.target.checked)}
                       className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                     />
-                    <span className="text-sm text-gray-700">All</span>
+                    <span className="text-sm font-semibold text-[#33406f]">All</span>
                   </label>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={toggleExpandCollapseAll}
+                      className="rounded-xl border border-[#d9def0] bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      {areAllExpanded ? 'Collapse All' : 'Expand All'}
+                    </button>
+                  </div>
                 </div>
 
                 {renderPermissionTree(filteredPermissionTree)}
@@ -321,12 +509,12 @@ export default function AuthorizationManagementPage() {
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
-              <button className="rounded-lg bg-gray-200 px-5 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300">
+              <button className="rounded-xl border border-gray-200 bg-gray-100 px-5 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200">
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                className="rounded-lg bg-[#4f46e5] px-5 py-2 text-sm font-medium text-white hover:bg-[#4338ca]"
+                className="rounded-xl bg-[#4f46e5] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4338ca]"
               >
                 Save
               </button>
@@ -351,14 +539,27 @@ export default function AuthorizationManagementPage() {
             <div className="space-y-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
-                  User Name
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={newUserEmail}
+                  onChange={(e) => setNewUserEmail(e.target.value)}
+                  placeholder="Enter email"
+                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">
+                  Full Name
                 </label>
                 <input
                   type="text"
-                  value={newUserName}
-                  onChange={(e) => setNewUserName(e.target.value)}
-                  placeholder="Enter user name"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                  value={newUserFullName}
+                  onChange={(e) => setNewUserFullName(e.target.value)}
+                  placeholder="Enter full name"
+                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
 
@@ -367,28 +568,27 @@ export default function AuthorizationManagementPage() {
                   Password
                 </label>
                 <input
-                  type="text"
+                  type="password"
                   value={newUserPassword}
-                  onChange={(e) => newUserPassword(e.target.value)}
-                  placeholder="Enter Password"
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                  onChange={(e) => setNewUserPassword(e.target.value)}
+                  placeholder="Enter password"
+                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 />
               </div>
 
-              {/* <div>
+              <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
                   Role
                 </label>
                 <select
                   value={newUserRole}
                   onChange={(e) => setNewUserRole(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-indigo-500"
+                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
                 >
-                  <option>Admin</option>
-                  <option>Senior Leader</option>
-                  <option>Regional Manager</option>
+                  <option value="Admin">Admin</option>
+                  <option value="Employee">Employee</option>
                 </select>
-              </div> */}
+              </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
