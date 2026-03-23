@@ -1,5 +1,5 @@
 # Proxy API calls to backend
-/api/*  https://live-dashboard-backend-production.up.railway.app/api/:splat  200
+/api/*  https://livedashboard2026-d0d8gqd3deaqacf5.australiaeast-01.azurewebsites.net/api/:splat  200
 
 # Let React Router handle all other routes
 /*      /index.html   200
