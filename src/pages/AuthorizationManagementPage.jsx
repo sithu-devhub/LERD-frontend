@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 
 const mockUsers = [
   { id: 1, name: 'June' },
@@ -118,6 +119,11 @@ export default function AuthorizationManagementPage() {
   const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState('Employee');
 
+  const [expandedNodes, setExpandedNodes] = useState({
+    'retirement-village': false,
+    'residential-care': false,
+  });
+
   const filteredUsers = useMemo(() => {
     return mockUsers.filter((user) =>
       user.name.toLowerCase().includes(searchUser.toLowerCase())
@@ -142,6 +148,67 @@ export default function AuthorizationManagementPage() {
   const toggleAllPermissions = (checked) => {
     setPermissions((prev) => setAllChildrenChecked(prev, checked));
   };
+
+  const toggleExpandNode = (id) => {
+    setExpandedNodes((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  const areAllExpanded = useMemo(() => {
+    const parentIds = [];
+
+    const collectParentIds = (nodes) => {
+      nodes.forEach((node) => {
+        if (node.children && node.children.length > 0) {
+          parentIds.push(node.id);
+          collectParentIds(node.children);
+        }
+      });
+    };
+
+    collectParentIds(permissions);
+
+    return (
+      parentIds.length > 0 &&
+      parentIds.every((id) => expandedNodes[id] === true)
+    );
+  }, [permissions, expandedNodes]);
+
+  const toggleExpandCollapseAll = () => {
+    const allParentIds = {};
+
+    const collectParentIds = (nodes, expandValue) => {
+      nodes.forEach((node) => {
+        if (node.children && node.children.length > 0) {
+          allParentIds[node.id] = expandValue;
+          collectParentIds(node.children, expandValue);
+        }
+      });
+    };
+
+    collectParentIds(permissions, !areAllExpanded);
+    setExpandedNodes(allParentIds);
+  };
+
+  useEffect(() => {
+    if (facilitySearch.trim()) {
+      const allParentIds = {};
+
+      const collectParentIds = (nodes) => {
+        nodes.forEach((node) => {
+          if (node.children && node.children.length > 0) {
+            allParentIds[node.id] = true;
+            collectParentIds(node.children);
+          }
+        });
+      };
+
+      collectParentIds(permissions);
+      setExpandedNodes(allParentIds);
+    }
+  }, [facilitySearch, permissions]);
 
   const userPermissionsMap = {
     June: initialPermissions,
@@ -178,6 +245,11 @@ export default function AuthorizationManagementPage() {
 
     const userPermissions = userPermissionsMap[user.name] || initialPermissions;
     setPermissions(JSON.parse(JSON.stringify(userPermissions)));
+
+    setExpandedNodes({
+      'retirement-village': false,
+      'residential-care': false,
+    });
   };
 
   const togglePermissionNode = (id, checked) => {
@@ -223,33 +295,56 @@ export default function AuthorizationManagementPage() {
   };
 
   const renderPermissionTree = (nodes, level = 0) => {
-    return nodes.map((node) => (
-      <div key={node.id} className={level === 0 ? 'mb-6' : 'mb-3'}>
-        <label
-          className="flex items-center gap-3"
-          style={{ marginLeft: `${level * 28}px` }}
-        >
-          <input
-            type="checkbox"
-            checked={node.checked}
-            onChange={(e) => togglePermissionNode(node.id, e.target.checked)}
-            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-          />
-          <span
-            className={`text-sm ${level === 0
-              ? 'font-semibold text-[#33406f]'
-              : 'font-medium text-gray-600'
-              }`}
-          >
-            {node.label}
-          </span>
-        </label>
+    return nodes.map((node) => {
+      const hasChildren = node.children && node.children.length > 0;
+      const isExpanded = expandedNodes[node.id] ?? false;
 
-        {node.children && node.children.length > 0 && (
-          <div className="mt-3">{renderPermissionTree(node.children, level + 1)}</div>
-        )}
-      </div>
-    ));
+      return (
+        <div key={node.id} className={level === 0 ? 'mb-6' : 'mb-3'}>
+          <div
+            className="flex items-center gap-3"
+            style={{ marginLeft: `${level * 28}px` }}
+          >
+            {hasChildren ? (
+              <button
+                type="button"
+                onClick={() => toggleExpandNode(node.id)}
+                className="flex h-8 w-8 items-center justify-center rounded-lg border border-[#d9def0] bg-white text-gray-500 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
+              >
+                {isExpanded ? (
+                  <ChevronDown size={16} strokeWidth={2.5} />
+                ) : (
+                  <ChevronRight size={16} strokeWidth={2.5} />
+                )}
+              </button>
+            ) : (
+              <div className="w-8" />
+            )}
+
+            <label className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                checked={node.checked}
+                onChange={(e) => togglePermissionNode(node.id, e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+              />
+              <span
+                className={`text-sm ${level === 0
+                  ? 'font-semibold text-[#33406f]'
+                  : 'font-medium text-gray-600'
+                  }`}
+              >
+                {node.label}
+              </span>
+            </label>
+          </div>
+
+          {hasChildren && isExpanded && (
+            <div className="mt-3">{renderPermissionTree(node.children, level + 1)}</div>
+          )}
+        </div>
+      );
+    });
   };
 
   return (
@@ -333,24 +428,13 @@ export default function AuthorizationManagementPage() {
                 </button>
 
                 <div className="flex items-center gap-2">
-                  {Array.from({ length: totalPages || 1 }, (_, index) => {
-                    const page = index + 1;
-                    const isActive = currentPage === page;
-
-                    return (
-                      <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        className={`flex h-9 w-9 items-center justify-center rounded-lg text-sm font-medium transition 
-                          ${isActive
-                            ? 'bg-[#4f46e5] text-white shadow-md'
-                            : 'border border-transparent bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600'
-                          }`}
-                      >
-                        {page}
-                      </button>
-                    );
-                  })}
+                  <button
+                    type="button"
+                    onClick={toggleExpandCollapseAll}
+                    className="rounded-xl border border-[#d9def0] bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
+                  >
+                    {areAllExpanded ? 'Collapse All' : 'Expand All'}
+                  </button>
                 </div>
 
                 <button
@@ -398,7 +482,7 @@ export default function AuthorizationManagementPage() {
               )}
 
               <div className="max-h-[470px] overflow-y-auto pr-2">
-                <div className="mb-4">
+                <div className="mb-4 flex items-center justify-between">
                   <label className="flex items-center gap-3">
                     <input
                       type="checkbox"
@@ -408,6 +492,16 @@ export default function AuthorizationManagementPage() {
                     />
                     <span className="text-sm font-semibold text-[#33406f]">All</span>
                   </label>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={toggleExpandCollapseAll}
+                      className="rounded-xl border border-[#d9def0] bg-white px-4 py-2 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600"
+                    >
+                      {areAllExpanded ? 'Collapse All' : 'Expand All'}
+                    </button>
+                  </div>
                 </div>
 
                 {renderPermissionTree(filteredPermissionTree)}
