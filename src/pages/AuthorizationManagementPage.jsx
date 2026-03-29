@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
-import { getAllUsers } from '../api/authService';
+import { getAllUsers, createUser } from '../api/authService';
 
 const initialPermissions = [
   {
@@ -107,6 +107,13 @@ export default function AuthorizationManagementPage() {
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(1);
+  const [formErrors, setFormErrors] = useState({});
+  const [successToast, setSuccessToast] = useState({
+    open: false,
+    message: '',
+    userName: '',
+  });
+  const [creatingUser, setCreatingUser] = useState(false);
 
   const displayedUsers = useMemo(() => users, [users]);
 
@@ -327,31 +334,96 @@ export default function AuthorizationManagementPage() {
     alert(`Permissions saved for ${selectedUser.username}`);
   };
 
-  const handleAddUser = () => {
-    if (
-      !newUserEmail.trim() ||
-      !newUserFullName.trim() ||
-      !newUserPassword.trim() ||
-      !newUserRole.trim()
-    ) {
-      alert('Please fill in all required fields');
+  useEffect(() => {
+    if (!successToast.open) return;
+
+    const timer = setTimeout(() => {
+      setSuccessToast({ open: false, message: '', userName: '' });
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [successToast.open]);
+
+  // Add user API Integration
+  const handleAddUser = async () => {
+    setFormErrors({});
+
+    const errors = {};
+
+    if (!newUserEmail.trim()) {
+      errors.email = 'Email is required';
+    }
+
+    if (!newUserFullName.trim()) {
+      errors.fullName = 'Full name is required';
+    }
+
+    if (!newUserPassword.trim()) {
+      errors.password = 'Password is required';
+    } else {
+      if (newUserPassword.length < 6) {
+        errors.password = 'Password must be at least 6 characters';
+      } else if (!/[A-Za-z]/.test(newUserPassword)) {
+        errors.password = 'Password must contain a letter';
+      } else if (!/[0-9]/.test(newUserPassword)) {
+        errors.password = 'Password must contain a number';
+      }
+    }
+
+    if (!newUserRole.trim()) {
+      errors.role = 'Role is required';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
       return;
     }
 
-    console.log('New user:', {
-      email: newUserEmail,
-      fullName: newUserFullName,
-      password: newUserPassword,
-      role: newUserRole,
-    });
+    try {
+      setCreatingUser(true);
 
-    alert('User added successfully');
+      const payload = {
+        username: newUserEmail.trim(),
+        fullName: newUserFullName.trim(),
+        password: newUserPassword.trim(),
+        userRole: newUserRole.trim().toLowerCase(),
+        isActive: true,
+      };
 
-    setNewUserEmail('');
-    setNewUserFullName('');
-    setNewUserPassword('');
-    setNewUserRole('Employee');
-    setShowAddUserModal(false);
+      const res = await createUser(payload);
+      const result = res.data;
+
+      if (result?.success) {
+        setFormErrors({});
+
+        setNewUserEmail('');
+        setNewUserFullName('');
+        setNewUserPassword('');
+        setNewUserRole('Employee');
+        setShowAddUserModal(false);
+
+        setSuccessToast({
+          open: true,
+          message: result.message || 'User created successfully',
+          userName: newUserFullName.trim() || newUserEmail.trim(),
+        });
+
+        setPageNumber(1);
+        await fetchUsers(userSearch, 1);
+      } else {
+        setFormErrors({
+          api: result?.message || 'Failed to create user',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create user:', error);
+
+      setFormErrors({
+        api: error?.response?.data?.message || 'Failed to create user.',
+      });
+    } finally {
+      setCreatingUser(false);
+    }
   };
 
   const renderPermissionTree = (nodes, level = 0) => {
@@ -429,7 +501,10 @@ export default function AuthorizationManagementPage() {
                 </h2>
 
                 <button
-                  onClick={() => setShowAddUserModal(true)}
+                  onClick={() => {
+                    setFormErrors({});
+                    setShowAddUserModal(true);
+                  }}
                   className="rounded-lg bg-[#4f46e5] px-3 py-2 text-sm font-medium text-white shadow hover:bg-[#4338ca]"
                 >
                   + Add User
@@ -623,12 +698,21 @@ export default function AuthorizationManagementPage() {
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-800">Add User</h2>
               <button
-                onClick={() => setShowAddUserModal(false)}
+                onClick={() => {
+                  setShowAddUserModal(false);
+                  setFormErrors({});
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 ✕
               </button>
             </div>
+
+            {formErrors.api && (
+              <div className="mb-4 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-600">
+                {formErrors.api}
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>
@@ -638,10 +722,19 @@ export default function AuthorizationManagementPage() {
                 <input
                   type="email"
                   value={newUserEmail}
-                  onChange={(e) => setNewUserEmail(e.target.value)}
+                  onChange={(e) => {
+                    setNewUserEmail(e.target.value);
+                    setFormErrors((prev) => ({ ...prev, email: '', api: '' }));
+                  }}
                   placeholder="Enter email"
-                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                  className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:ring-2 focus:ring-indigo-100 ${formErrors.email
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-[#d9def0] focus:border-indigo-500'
+                    }`}
                 />
+                {formErrors.email && (
+                  <p className="mt-1 text-xs text-red-500">{formErrors.email}</p>
+                )}
               </div>
 
               <div>
@@ -651,10 +744,19 @@ export default function AuthorizationManagementPage() {
                 <input
                   type="text"
                   value={newUserFullName}
-                  onChange={(e) => setNewUserFullName(e.target.value)}
+                  onChange={(e) => {
+                    setNewUserFullName(e.target.value);
+                    setFormErrors((prev) => ({ ...prev, fullName: '', api: '' }));
+                  }}
                   placeholder="Enter full name"
-                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                  className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:ring-2 focus:ring-indigo-100 ${formErrors.fullName
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-[#d9def0] focus:border-indigo-500'
+                    }`}
                 />
+                {formErrors.fullName && (
+                  <p className="mt-1 text-xs text-red-500">{formErrors.fullName}</p>
+                )}
               </div>
 
               <div>
@@ -664,10 +766,19 @@ export default function AuthorizationManagementPage() {
                 <input
                   type="password"
                   value={newUserPassword}
-                  onChange={(e) => setNewUserPassword(e.target.value)}
+                  onChange={(e) => {
+                    setNewUserPassword(e.target.value);
+                    setFormErrors((prev) => ({ ...prev, password: '', api: '' }));
+                  }}
                   placeholder="Enter password"
-                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                  className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:ring-2 focus:ring-indigo-100 ${formErrors.password
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-[#d9def0] focus:border-indigo-500'
+                    }`}
                 />
+                {formErrors.password && (
+                  <p className="mt-1 text-xs text-red-500">{formErrors.password}</p>
+                )}
               </div>
 
               <div>
@@ -676,32 +787,103 @@ export default function AuthorizationManagementPage() {
                 </label>
                 <select
                   value={newUserRole}
-                  onChange={(e) => setNewUserRole(e.target.value)}
-                  className="w-full rounded-xl border border-[#d9def0] bg-white px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                  onChange={(e) => {
+                    setNewUserRole(e.target.value);
+                    setFormErrors((prev) => ({ ...prev, role: '', api: '' }));
+                  }}
+                  className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-gray-700 outline-none transition focus:ring-2 focus:ring-indigo-100 ${formErrors.role
+                    ? 'border-red-500 focus:border-red-500'
+                    : 'border-[#d9def0] focus:border-indigo-500'
+                    }`}
                 >
                   <option value="Admin">Admin</option>
                   <option value="Employee">Employee</option>
                 </select>
+                {formErrors.role && (
+                  <p className="mt-1 text-xs text-red-500">{formErrors.role}</p>
+                )}
               </div>
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
               <button
-                onClick={() => setShowAddUserModal(false)}
+                onClick={() => {
+                  setShowAddUserModal(false);
+                  setFormErrors({});
+                }}
                 className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddUser}
-                className="rounded-lg bg-[#4f46e5] px-4 py-2 text-sm font-medium text-white hover:bg-[#4338ca]"
+                disabled={creatingUser}
+                className="rounded-lg bg-[#4f46e5] px-4 py-2 text-sm font-medium text-white hover:bg-[#4338ca] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
-                Add User
+                {creatingUser && (
+                  <span className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin"></span>
+                )}
+                {creatingUser ? 'Creating...' : 'Add User'}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {successToast.open && (
+        <div className="fixed top-5 right-5 z-50">
+          <div className="w-[360px] rounded-2xl border border-[#dfe3ff] bg-white shadow-lg">
+            <div className="flex items-start gap-3 p-4">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eef2ff]">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5 text-[#4f46e5]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                >
+                  <path
+                    d="M20 6L9 17l-5-5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+
+              <div className="flex-1">
+                <div className="mt-1 text-sm text-gray-600">
+                  The user{" "}
+                  <span className="font-semibold text-[#4f46e5]">
+                    "{successToast.userName}"
+                  </span>{" "}
+                  was created successfully.
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSuccessToast({ open: false, message: '', userName: '' })}
+                className="ml-2 rounded-lg px-2 py-1 text-sm font-medium text-gray-500 hover:bg-gray-100"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="h-1 w-full overflow-hidden rounded-b-2xl bg-[#eef2ff]">
+              <div className="h-full w-full bg-[#4f46e5] animate-[toastbar_5s_linear_forwards]" />
+            </div>
+          </div>
+
+          <style>{`
+            @keyframes toastbar_5s_linear_forwards {
+            from { transform: translateX(0%); }
+            to { transform: translateX(-100%); }
+            }
+          `}</style>
+
+        </div>
+      )}
+
     </div>
   );
 }

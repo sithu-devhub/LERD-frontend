@@ -16,3 +16,7 @@ export const logout = () =>
 // Get all users
 export const getAllUsers = (params = {}) =>
   http.get('/user-management/users', { params });
+
+// Create User
+export const createUser = (payload) =>
+  http.post('/user-management/users', payload);
