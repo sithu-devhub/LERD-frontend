@@ -34,8 +34,8 @@ function ServiceTile({
         disabled
           ? "bg-[#BFC7DC] text-white opacity-70 cursor-not-allowed"
           : isSelected
-          ? "bg-gradient-to-r from-[#7B61FF] to-[#3F11FF] text-white"
-          : "bg-white text-[#2B3674] border border-[#E9EEF7] hover:border-[#C8D3EE] hover:shadow",
+            ? "bg-gradient-to-r from-[#7B61FF] to-[#3F11FF] text-white"
+            : "bg-white text-[#2B3674] border border-[#E9EEF7] hover:border-[#C8D3EE] hover:shadow",
       ].join(" ")}
     >
       <span
@@ -45,8 +45,8 @@ function ServiceTile({
           isSelected
             ? "border-white"
             : disabled
-            ? "border-[#D7DDEC]"
-            : "border-[#B9C4DD]",
+              ? "border-[#D7DDEC]"
+              : "border-[#B9C4DD]",
         ].join(" ")}
       >
         <span
