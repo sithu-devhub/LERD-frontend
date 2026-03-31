@@ -1,35 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { getAllUsers, createUser } from '../api/authService';
+import { getUserAccess } from '../api/accessService';
 
-const initialPermissions = [
-  {
-    id: 'retirement-village',
-    label: 'Retirement Village',
-    checked: false,
-    children: [
-      { id: 'village-1', label: 'Village Name 1', checked: false },
-      { id: 'village-2', label: 'Village Name 2', checked: false },
-      { id: 'village-3', label: 'Village Name 3', checked: false },
-    ],
-  },
-  {
-    id: 'residential-care',
-    label: 'Residential Care',
-    checked: false,
-    children: [
-      { id: 'name-a', label: 'Name A', checked: false },
-      { id: 'name-b', label: 'Name B', checked: false },
-      { id: 'name-c', label: 'Name C', checked: false },
-      { id: 'name-d', label: 'Name D', checked: false },
-    ],
-  },
-];
+
 
 function setAllChildrenChecked(nodes, checked) {
   return nodes.map((node) => ({
     ...node,
     checked,
+    indeterminate: false,
     children: node.children
       ? setAllChildrenChecked(node.children, checked)
       : undefined,
@@ -42,6 +22,7 @@ function updateTree(nodes, targetId, checked) {
       return {
         ...node,
         checked,
+        indeterminate: false,
         children: node.children
           ? setAllChildrenChecked(node.children, checked)
           : undefined,
@@ -50,19 +31,28 @@ function updateTree(nodes, targetId, checked) {
 
     if (node.children) {
       const updatedChildren = updateTree(node.children, targetId, checked);
-      const allChildrenChecked = updatedChildren.every((child) => child.checked);
+
+      const checkedChildrenCount = updatedChildren.filter(
+        (child) => child.checked
+      ).length;
+
+      const totalChildren = updatedChildren.length;
+      const allChildrenChecked =
+        totalChildren > 0 && checkedChildrenCount === totalChildren;
+      const someChildrenChecked =
+        checkedChildrenCount > 0 && checkedChildrenCount < totalChildren;
 
       return {
         ...node,
         children: updatedChildren,
-        checked: allChildrenChecked,
+        checked: checkedChildrenCount > 0,
+        indeterminate: false,
       };
     }
 
     return node;
   });
 }
-
 function filterPermissionTree(nodes, searchTerm) {
   if (!searchTerm.trim()) return nodes;
 
@@ -88,10 +78,39 @@ function filterPermissionTree(nodes, searchTerm) {
     .filter(Boolean);
 }
 
+
+function mapAccessResponseToPermissionTree(accessData) {
+  if (!accessData?.surveys) return [];
+
+  return accessData.surveys.map((survey) => {
+    return {
+      id: survey.surveyId,
+      label: survey.surveyName,
+      checked: survey.isGranted,
+      indeterminate: false,
+      allFacilitiesGranted: survey.allFacilitiesGranted,
+      children: (survey.facilities || []).map((facility) => ({
+        id: `${survey.surveyId}-${facility.facilityCode}`,
+        label: facility.facilityName,
+        checked: facility.isGranted,
+        indeterminate: false,
+        facilityCode: facility.facilityCode,
+        facilityName: facility.facilityName,
+        surveyId: survey.surveyId,
+      })),
+    };
+  });
+}
+
 export default function AuthorizationManagementPage() {
   const [facilitySearch, setFacilitySearch] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
-  const [permissions, setPermissions] = useState(initialPermissions);
+
+  //permissions and loading permissions
+  const [permissions, setPermissions] = useState([]);
+  const [loadingPermissions, setLoadingPermissions] = useState(false);
+  const [permissionError, setPermissionError] = useState('');
+  const [originalPermissions, setOriginalPermissions] = useState([]);
 
   const [showAddUserModal, setShowAddUserModal] = useState(false);
   const [newUserEmail, setNewUserEmail] = useState('');
@@ -210,6 +229,12 @@ export default function AuthorizationManagementPage() {
     return filterPermissionTree(permissions, facilitySearch);
   }, [permissions, facilitySearch]);
 
+  // Check whether the current permissions are different from the originally loaded permissions
+  // If different, enable Save button; if same, disable it
+  const hasChanges = useMemo(() => {
+    return JSON.stringify(permissions) !== JSON.stringify(originalPermissions);
+  }, [permissions, originalPermissions]);
+
   const allChecked =
     permissions.length > 0 && permissions.every((node) => node.checked);
 
@@ -278,46 +303,44 @@ export default function AuthorizationManagementPage() {
     }
   }, [facilitySearch, permissions]);
 
-  const userPermissionsMap = {
-    June: initialPermissions,
-    Sithu: [
-      {
-        id: 'retirement-village',
-        label: 'Retirement Village',
-        checked: true,
-        children: [
-          { id: 'village-1', label: 'Village Name 1', checked: true },
-          { id: 'village-2', label: 'Village Name 2', checked: false },
-          { id: 'village-3', label: 'Village Name 3', checked: true },
-        ],
-      },
-      {
-        id: 'residential-care',
-        label: 'Residential Care',
-        checked: false,
-        children: [
-          { id: 'name-a', label: 'Name A', checked: false },
-          { id: 'name-b', label: 'Name B', checked: false },
-          { id: 'name-c', label: 'Name C', checked: false },
-          { id: 'name-d', label: 'Name D', checked: false },
-        ],
-      },
-    ],
-    'Xi Chen': initialPermissions,
-    Zhoujian: initialPermissions,
-    Jin: initialPermissions,
+
+  const loadUserPermissions = async (user) => {
+    if (!user) return;
+
+    setPermissionError('');
+    setLoadingPermissions(true);
+
+    try {
+      const res = await getUserAccess(user);
+      const result = res.data;
+
+      if (result?.success) {
+        const mappedPermissions = mapAccessResponseToPermissionTree(result.data);
+        setPermissions(mappedPermissions);
+        setOriginalPermissions(JSON.parse(JSON.stringify(mappedPermissions)));
+      } else {
+        setPermissions([]);
+        setPermissionError(result?.message || 'Failed to load permissions.');
+      }
+    } catch (error) {
+      console.error('Failed to fetch user access:', error);
+      setPermissions([]);
+      setPermissionError(
+        error?.response?.data?.message || 'Failed to load permissions.'
+      );
+    } finally {
+      setLoadingPermissions(false);
+    }
   };
 
   const handleSelectUser = (user) => {
     setSelectedUser(user);
-
-    const userPermissions =
-      userPermissionsMap[user.fullName] ||
-      userPermissionsMap[user.username] ||
-      initialPermissions;
-
-    setPermissions(JSON.parse(JSON.stringify(userPermissions)));
   };
+
+  useEffect(() => {
+    if (!selectedUser) return;
+    loadUserPermissions(selectedUser);
+  }, [selectedUser?.id]);
 
   const togglePermissionNode = (id, checked) => {
     setPermissions((prev) => updateTree(prev, id, checked));
@@ -329,9 +352,30 @@ export default function AuthorizationManagementPage() {
       return;
     }
 
-    console.log('Selected user:', selectedUser);
-    console.log('Permissions:', permissions);
-    alert(`Permissions saved for ${selectedUser.username}`);
+    const payload = {
+      userId: selectedUser.id,
+      surveys: permissions.map((survey) => {
+        const children = survey.children || [];
+        const checkedChildrenCount = children.filter((child) => child.checked).length;
+        const totalChildren = children.length;
+
+        return {
+          surveyId: survey.id,
+          isGranted: survey.checked,
+          allFacilitiesGranted:
+            totalChildren > 0 && checkedChildrenCount === totalChildren,
+          facilities: children.map((facility) => ({
+            facilityCode: facility.facilityCode,
+            facilityName: facility.label,
+            isGranted: facility.checked,
+          })),
+        };
+      }),
+    };
+
+    console.log('Save payload:', payload);
+    alert(`Permissions prepared for ${selectedUser.username}`);
+    setOriginalPermissions(JSON.parse(JSON.stringify(permissions)));
   };
 
   useEffect(() => {
@@ -457,6 +501,11 @@ export default function AuthorizationManagementPage() {
               <input
                 type="checkbox"
                 checked={node.checked}
+                ref={(el) => {
+                  if (el) {
+                    el.indeterminate = !!node.indeterminate;
+                  }
+                }}
                 onChange={(e) => togglePermissionNode(node.id, e.target.checked)}
                 className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
               />
@@ -673,7 +722,13 @@ export default function AuthorizationManagementPage() {
                   </div>
                 </div>
 
-                {renderPermissionTree(filteredPermissionTree)}
+                {loadingPermissions ? (
+                  <p className="text-sm text-gray-500">Loading permissions...</p>
+                ) : permissionError ? (
+                  <p className="text-sm text-red-500">{permissionError}</p>
+                ) : (
+                  renderPermissionTree(filteredPermissionTree)
+                )}
               </div>
             </div>
 
@@ -683,7 +738,12 @@ export default function AuthorizationManagementPage() {
               </button>
               <button
                 onClick={handleSave}
-                className="rounded-xl bg-[#4f46e5] px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4338ca]"
+                disabled={!hasChanges}
+                className={`rounded-xl px-5 py-2 text-sm font-semibold shadow-sm transition
+                  ${hasChanges
+                    ? 'bg-[#4f46e5] text-white hover:bg-[#4338ca]'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
               >
                 Save
               </button>
