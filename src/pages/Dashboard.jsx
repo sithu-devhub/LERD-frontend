@@ -444,7 +444,7 @@ export default function Dashboard() {
           setHasServices(true);
 
           const match = services.find((s) => String(s.surveyId) === String(activeSurveyId));
-          activeServiceName = match?.serviceType || match?.serviceName;
+          activeServiceName = match?.serviceName || match?.serviceType;
         }
 
         setSurveyId(activeSurveyId);
