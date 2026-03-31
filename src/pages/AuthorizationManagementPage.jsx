@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { getAllUsers, createUser } from '../api/authService';
-import { getUserAccess } from '../api/accessService';
-
+import { getUserAccess, updateUserAccess } from '../api/accessService';
 
 
 function setAllChildrenChecked(nodes, checked) {
@@ -35,12 +34,6 @@ function updateTree(nodes, targetId, checked) {
       const checkedChildrenCount = updatedChildren.filter(
         (child) => child.checked
       ).length;
-
-      const totalChildren = updatedChildren.length;
-      const allChildrenChecked =
-        totalChildren > 0 && checkedChildrenCount === totalChildren;
-      const someChildrenChecked =
-        checkedChildrenCount > 0 && checkedChildrenCount < totalChildren;
 
       return {
         ...node,
@@ -100,6 +93,36 @@ function mapAccessResponseToPermissionTree(accessData) {
       })),
     };
   });
+}
+
+function buildAccessUpdatePayload(permissions) {
+  const surveys = permissions
+    .filter((survey) => survey.checked)
+    .map((survey) => {
+      const children = survey.children || [];
+      const checkedChildren = children.filter((child) => child.checked);
+
+      if (checkedChildren.length === 0) {
+        return null;
+      }
+
+      // all facilities selected
+      if (checkedChildren.length === children.length) {
+        return {
+          surveyId: survey.id,
+          facilityCodes: null,
+        };
+      }
+
+      // only some facilities selected
+      return {
+        surveyId: survey.id,
+        facilityCodes: checkedChildren.map((child) => child.facilityCode),
+      };
+    })
+    .filter(Boolean);
+
+  return { surveys };
 }
 
 export default function AuthorizationManagementPage() {
@@ -346,38 +369,32 @@ export default function AuthorizationManagementPage() {
     setPermissions((prev) => updateTree(prev, id, checked));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!selectedUser) {
       alert('Please select a user first');
       return;
     }
 
-    const payload = {
-      userId: selectedUser.id,
-      surveys: permissions.map((survey) => {
-        const children = survey.children || [];
-        const checkedChildrenCount = children.filter((child) => child.checked).length;
-        const totalChildren = children.length;
+    try {
+      const payload = buildAccessUpdatePayload(permissions);
 
-        return {
-          surveyId: survey.id,
-          isGranted: survey.checked,
-          allFacilitiesGranted:
-            totalChildren > 0 && checkedChildrenCount === totalChildren,
-          facilities: children.map((facility) => ({
-            facilityCode: facility.facilityCode,
-            facilityName: facility.label,
-            isGranted: facility.checked,
-          })),
-        };
-      }),
-    };
+      const res = await updateUserAccess(selectedUser.id, payload);
+      const result = res.data;
 
-    console.log('Save payload:', payload);
-    alert(`Permissions prepared for ${selectedUser.username}`);
-    setOriginalPermissions(JSON.parse(JSON.stringify(permissions)));
+      if (result?.success) {
+        console.log('Save response:', result);
+        alert(result.message || `Permissions saved for ${selectedUser.username}`);
+
+        // reset original state after successful save
+        setOriginalPermissions(JSON.parse(JSON.stringify(permissions)));
+      } else {
+        alert(result?.message || 'Failed to save permissions.');
+      }
+    } catch (error) {
+      console.error('Failed to save permissions:', error);
+      alert(error?.response?.data?.message || 'Failed to save permissions.');
+    }
   };
-
   useEffect(() => {
     if (!successToast.open) return;
 
