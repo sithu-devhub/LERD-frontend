@@ -38,6 +38,7 @@ export default function CustomerSatisfaction({
   gender,
   participantType,
   period,
+  onData,
 }) {
   const [data, setData] = useState({
     verySatisfiedPercentage: 0,
@@ -128,12 +129,32 @@ export default function CustomerSatisfaction({
 
         if (cancelled) return;
 
+        // Prepare customer satisfaction data for chart display and Excel export, then send it to parent via onData
         const d = res.data?.data || {};
+        const exportRows = [
+          {
+            Category: "Very Satisfied",
+            Percentage: round2(d.verySatisfiedPercentage),
+          },
+          {
+            Category: "Satisfied",
+            Percentage: round2(d.satisfiedPercentage),
+          },
+          {
+            Category: "Somewhat Satisfied",
+            Percentage: round2(d.somewhatSatisfiedPercentage),
+          },
+        ];
+
         setData({
           verySatisfiedPercentage: round2(d.verySatisfiedPercentage),
           satisfiedPercentage: round2(d.satisfiedPercentage),
           somewhatSatisfiedPercentage: round2(d.somewhatSatisfiedPercentage),
         });
+
+        if (onData) {
+          onData(exportRows);
+        }
 
       } catch (err) {
         if (!cancelled) {
@@ -151,11 +172,13 @@ export default function CustomerSatisfaction({
   }, [surveyId, gender, participantType, period, regionKey]);
 
 
+
   const pieData = [
     { name: "Very Satisfied", value: data.verySatisfiedPercentage },
     { name: "Satisfied", value: data.satisfiedPercentage },
     { name: "Somewhat Satisfied", value: data.somewhatSatisfiedPercentage },
   ];
+
 
   const noData = !loading && !error && pieData.every((p) => Number(p.value) === 0);
 

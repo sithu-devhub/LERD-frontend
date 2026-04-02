@@ -140,8 +140,6 @@ export default function Dashboard() {
       }
     }
 
-
-
     // Build export layout with filters
     holder.innerHTML = buildExportHTML(regionMap);
     document.body.appendChild(holder);
@@ -170,7 +168,7 @@ export default function Dashboard() {
 
     // Convert dashboard into a canvas image
     const canvas = await html2canvas(holder, {
-      scale: 2,            // Higher resolution
+      scale: 2,        // Higher resolution
       useCORS: true,
       backgroundColor: "#ffffff",
     });

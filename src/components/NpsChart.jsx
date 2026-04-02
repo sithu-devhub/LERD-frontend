@@ -15,6 +15,7 @@ export default function NpsChart({
   max = 100,
   size = 220,
   thickness = 22,
+  onData,
 }) {
 
   const [loading, setLoading] = useState(true);
@@ -22,8 +23,8 @@ export default function NpsChart({
   const [error, setError] = useState("");
 
   const regionKey = Array.isArray(regionIds)
-  ? regionIds.map(String).sort().join(",")
-  : "";
+    ? regionIds.map(String).sort().join(",")
+    : "";
 
   useEffect(() => {
     if (!surveyId) return;
@@ -82,12 +83,25 @@ export default function NpsChart({
         const json = res.data;
         console.log("[NpsChart] response:", json);
 
+        // Extract NPS score from API, update chart, and send it to parent for Excel export
         if (!cancelled && json?.success) {
-          setScore(toNumber(json.data?.npsScore));
+          const npsScore = toNumber(json.data?.npsScore);
+
+          setScore(npsScore);
+
+          if (onData) {
+            onData([
+              {
+                Metric: "Net Promoter Score",
+                Score: npsScore,
+              },
+            ]);
+          }
         }
       } catch (e) {
         if (!cancelled) setError(e?.message || "Failed to load NPS data");
         if (!cancelled) setScore(0);
+        if (!cancelled && onData) onData([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -127,7 +141,7 @@ export default function NpsChart({
         x={cx - outer + 15}  // shift right
         y={height - 1}
         textAnchor="middle"
-        fill="#A3AED0"  
+        fill="#A3AED0"
         fontSize="14"
         fontWeight="600"
       >
@@ -138,7 +152,7 @@ export default function NpsChart({
         x={cx + outer - 12}  // shift left
         y={height - 1}
         textAnchor="middle"
-        fill="#A3AED0"  
+        fill="#A3AED0"
         fontSize="14"
         fontWeight="600"
       >

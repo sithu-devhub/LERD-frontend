@@ -272,6 +272,7 @@ export default function ServiceAttributeChart({
   selectedAttrs,
   onAvailableAttrs,
   onSelectedChange,
+  onData,
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -373,28 +374,45 @@ export default function ServiceAttributeChart({
         const json = res.data;
         console.log("[ServiceAttributeChart] response:", json);
 
+        if (cancelled) return;
 
-        if (!cancelled && json.success) {
-          if (Array.isArray(json.data?.attributes)) {
-            const mapped = json.data.attributes.map((a) => ({
-              name: String(a.attributeName || "").trim(),
-              always: toNumber(a.alwaysPercentage),
-              most: toNumber(a.mostPercentage),
-            }));
+        if (json?.success && Array.isArray(json.data?.attributes)) {
+          const mapped = json.data.attributes.map((a) => ({
+            name: String(a.attributeName || "").trim(),
+            always: toNumber(a.alwaysPercentage),
+            most: toNumber(a.mostPercentage),
+          }));
 
-            setData(mapped);
+          setData(mapped);
 
-            const avail = mapped.map((a) => a.name);
-            setAvailableAttrs(avail);
-            onAvailableAttrs?.(avail);
+          // Format service attribute data for chart display and Excel export, then send it to parent via onData
+          const formatted = mapped.map((item) => ({
+            Attribute: item.name,
+            "Always %": item.always,
+            "Most of the time %": item.most,
+          }));
 
-            if (!selectedAttrs || selectedAttrs.size === 0) {
-              onSelectedChange?.(new Set(avail.slice(0, 5)));
-            }
+          if (onData) {
+            onData(formatted);
           }
+
+          const avail = mapped.map((a) => a.name);
+          setAvailableAttrs(avail);
+          onAvailableAttrs?.(avail);
+
+          if (!selectedAttrs || selectedAttrs.size === 0) {
+            onSelectedChange?.(new Set(avail.slice(0, 5)));
+          }
+        } else {
+          setData([]);
+          setAvailableAttrs([]);
+          if (onData) onData([]);
         }
       } catch (err) {
         if (!cancelled) setError(err.message || "Failed to load Service Attributes");
+        if (!cancelled) setData([]);
+        if (!cancelled) setAvailableAttrs([]);
+        if (!cancelled && onData) onData([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
