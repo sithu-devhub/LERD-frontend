@@ -107,6 +107,7 @@ export default function CustomerSatisfactionTrend({
   gender,
   participantType,
   period,
+  onData,
 }) {
   const [satisfactionTrend, setSatisfactionTrend] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -203,18 +204,31 @@ export default function CustomerSatisfactionTrend({
         console.log("[CustomerSatisfactionTrend] response:", json);
 
         if (cancelled) return;
-
         if (json?.success && Array.isArray(json.data?.years)) {
           const mapped = json.data.years.map((y) => ({
-            year: String(y.year),
-            very: toNumber(y.verySatisfiedPercentage),
-            satisfied: toNumber(y.satisfiedPercentage),
-            somewhat: toNumber(y.somewhatSatisfiedPercentage),
+            Year: String(y.year),
+            "Very Satisfied": toNumber(y.verySatisfiedPercentage),
+            Satisfied: toNumber(y.satisfiedPercentage),
+            "Somewhat Satisfied": toNumber(y.somewhatSatisfiedPercentage),
           }));
 
-          setSatisfactionTrend(mapped);
+          // For chart rendering
+          setSatisfactionTrend(
+            mapped.map((row) => ({
+              year: row.Year,
+              very: row["Very Satisfied"],
+              satisfied: row.Satisfied,
+              somewhat: row["Somewhat Satisfied"],
+            }))
+          );
+
+          // For Excel export in Dashboard
+          if (onData) {
+            onData(mapped);
+          }
         } else {
           setSatisfactionTrend([]);
+          if (onData) onData([]);
         }
       } catch (err) {
         if (!cancelled) setError(err?.message || "Failed to load trend");

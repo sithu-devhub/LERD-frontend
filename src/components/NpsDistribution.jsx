@@ -5,7 +5,7 @@ import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
 import http from "../api/http";
 
-export default function NpsDistribution({ surveyId, regionIds = [], gender, participantType, period }) {
+export default function NpsDistribution({ surveyId, regionIds = [], gender, participantType, period, onData }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [distribution, setDistribution] = useState([]);
@@ -83,32 +83,58 @@ export default function NpsDistribution({ surveyId, regionIds = [], gender, part
         if (json?.success) {
           const dist = json.data?.distribution || {};
 
+          const formatted = [
+            {
+              Category: "Detractor",
+              Percentage: toNumber(dist.detractorPercentage),
+              Count: toNumber(dist.detractorCount),
+            },
+            {
+              Category: "Passive",
+              Percentage: toNumber(dist.passivePercentage),
+              Count: toNumber(dist.passiveCount),
+            },
+            {
+              Category: "Promoter",
+              Percentage: toNumber(dist.promoterPercentage),
+              Count: toNumber(dist.promoterCount),
+            },
+          ];
+
+          // For chart UI
           setDistribution([
             {
               name: "Detractor",
-              value: toNumber(dist.detractorPercentage),
-              count: toNumber(dist.detractorCount),
+              value: formatted[0].Percentage,
+              count: formatted[0].Count,
               color: "#9CA3AF",
             },
             {
               name: "Passive",
-              value: toNumber(dist.passivePercentage),
-              count: toNumber(dist.passiveCount),
+              value: formatted[1].Percentage,
+              count: formatted[1].Count,
               color: "#6AD2FF",
             },
             {
               name: "Promoter",
-              value: toNumber(dist.promoterPercentage),
-              count: toNumber(dist.promoterCount),
+              value: formatted[2].Percentage,
+              count: formatted[2].Count,
               color: "#3F11FF",
             },
           ]);
+
+          // For Excel export
+          if (onData) {
+            onData(formatted);
+          }
         } else {
           setDistribution([]);
+          if (onData) onData([]);
         }
       } catch (err) {
         if (!cancelled) setError(err?.message || "Failed to load NPS distribution");
         if (!cancelled) setDistribution([]);
+        if (!cancelled && onData) onData([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
