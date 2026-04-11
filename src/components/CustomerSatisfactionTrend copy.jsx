@@ -112,7 +112,6 @@ export default function CustomerSatisfactionTrend({
   const [satisfactionTrend, setSatisfactionTrend] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const hasFetchedOnce = useRef(false);
 
   const [hoverBar, setHoverBar] = useState(false);
   const wrapRef = useRef(null);
@@ -123,11 +122,6 @@ export default function CustomerSatisfactionTrend({
 
   useEffect(() => {
     if (!surveyId) return;
-
-    if (!hasFetchedOnce.current && regionIds.length === 0) return;
-
-    hasFetchedOnce.current = true;
-
     let cancelled = false;
 
     console.log("[CustomerSatisfactionTrend effect trigger]", {
@@ -249,7 +243,7 @@ export default function CustomerSatisfactionTrend({
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType, period, regionKey, regionIds.length]);
+  }, [surveyId, gender, participantType, period, regionKey]);
 
   const noData =
     !loading && !error && (!satisfactionTrend || satisfactionTrend.length === 0);

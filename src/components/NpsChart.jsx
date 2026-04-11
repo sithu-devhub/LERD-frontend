@@ -1,5 +1,5 @@
 // src/components/NpsChart.jsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { PieChart, Pie, Cell } from "recharts";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
@@ -21,6 +21,7 @@ export default function NpsChart({
   const [loading, setLoading] = useState(true);
   const [score, setScore] = useState(0);
   const [error, setError] = useState("");
+  const hasFetchedOnce = useRef(false);
 
   const regionKey = Array.isArray(regionIds)
     ? regionIds.map(String).sort().join(",")
@@ -28,8 +29,12 @@ export default function NpsChart({
 
   useEffect(() => {
     if (!surveyId) return;
-    let cancelled = false;
 
+    if (!hasFetchedOnce.current && regionIds.length === 0) return;
+
+    hasFetchedOnce.current = true;
+
+    let cancelled = false;
     const isEmpty = (v) =>
       v === undefined ||
       v === null ||
@@ -112,8 +117,7 @@ export default function NpsChart({
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType, period, regionKey]);
-
+  }, [surveyId, gender, participantType, period, regionKey, regionIds.length]);
 
   const t = useMemo(() => {
     const v = Math.max(min, Math.min(max, score));
