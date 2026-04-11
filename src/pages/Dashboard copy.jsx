@@ -503,7 +503,7 @@ export default function Dashboard() {
     }
 
     loadSurveyAndRegions();
-  }, [serviceId, navigate]);
+  }, [serviceId, navigate, location.state?.service]);
 
 
   useEffect(() => {
