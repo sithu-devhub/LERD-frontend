@@ -1,6 +1,6 @@
 // src/components/CustomerSatisfactionChart.js.js
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
@@ -35,6 +35,7 @@ const PieTooltip = ({ active, payload, coordinate, viewBox }) => {
 export default function CustomerSatisfaction({
   surveyId,
   regionIds = [],
+  regionsLoaded,
   gender,
   participantType,
   period,
@@ -47,7 +48,6 @@ export default function CustomerSatisfaction({
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const hasFetchedOnce = useRef(false);
 
   const regionKey = Array.isArray(regionIds)
     ? [...regionIds].map(String).sort().join(",")
@@ -55,13 +55,7 @@ export default function CustomerSatisfaction({
 
 
   useEffect(() => {
-    if (!surveyId) return;
-
-    // Skip the first refresh-time call before selected regions are loaded
-    if (!hasFetchedOnce.current && regionIds.length === 0) return;
-
-    hasFetchedOnce.current = true;
-
+    if (!surveyId || !regionsLoaded) return;
     let cancelled = false;
 
     console.log("[CustomerSatisfaction effect trigger]", {
@@ -167,7 +161,7 @@ export default function CustomerSatisfaction({
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType, period, regionKey, regionIds.length]);
+  }, [surveyId, regionsLoaded, gender, participantType, period, regionKey]);
 
   const pieData = [
     { name: "Very Satisfied", value: data.verySatisfiedPercentage },
