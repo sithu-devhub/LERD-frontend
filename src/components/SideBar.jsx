@@ -17,6 +17,7 @@ export default function SideBar() {
   const [collapsed, setCollapsed] = React.useState(
     () => localStorage.getItem('sidebarCollapsed') === '1'
   );
+
   const toggleCollapsed = () => {
     setCollapsed((c) => {
       const next = !c;
@@ -69,7 +70,7 @@ export default function SideBar() {
     { name: 'Service Type', path: '/service', Icon: MdShoppingCart },
     { name: 'Region', path: '/region', Icon: MdBarChart },
     { name: 'Authorisation Management', path: '/auth', Icon: AuthorisationIcon },
-    { name: 'Attributes', path: '/attributes', Icon: MdBarChart },
+    // { name: 'Attributes', path: '/attributes', Icon: MdBarChart },
     { name: 'Log out', action: 'logout', Icon: LogoutIcon },
   ];
 

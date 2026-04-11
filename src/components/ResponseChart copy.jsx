@@ -311,12 +311,6 @@ export default function ResponseChart({
 
   useEffect(() => {
     if (!surveyId) return;
-
-    // Skip the first call when saved regions have not loaded yet
-    if (!hasFetchedOnce.current && regionIds.length === 0) return;
-
-    hasFetchedOnce.current = true;
-
     console.log("[ResponseChart effect trigger]", {
       surveyId,
       regionIdsCount: Array.isArray(regionIds) ? regionIds.length : 0,
@@ -335,23 +329,14 @@ export default function ResponseChart({
 
         const token = localStorage.getItem("accessToken");
 
-        console.log("[ResponseChart] props:", {
-          gender,
-          participantType,
-          period,
-          surveyId,
-          regionIds,
-        });
+        console.log("[ResponseChart] props:", { gender, participantType, period, surveyId, regionIds });
 
         const isEmpty = (v) =>
-          v === undefined ||
-          v === null ||
-          v === "" ||
-          v === "All" ||
-          v === "Select period";
+          v === undefined || v === null || v === "" || v === "All" || v === "Select period";
 
         const params = new URLSearchParams({ surveyId });
 
+        // Send only if user truly selected something
         if (!isEmpty(gender)) params.append("gender", gender);
         if (!isEmpty(participantType)) params.append("participantType", participantType);
 
@@ -360,8 +345,16 @@ export default function ResponseChart({
           params.append("period", period);
         }
 
+
+        /**
+         * Regions filter:
+         * - If user has saved specific regions -> send regions=...
+         * - If user selected all (or no saved filter) -> do not send regions
+         * - Prevent sending until filteredRegions is loaded
+         */
         const selectedIds = regionKey ? regionKey.split(",") : [];
 
+        // Send regions only if user selected something
         if (selectedIds.length > 0) {
           selectedIds.forEach((id) => {
             params.append("regions", id);
@@ -393,6 +386,7 @@ export default function ResponseChart({
 
             console.log("[ResponseChart] allRegions:", allRegions);
 
+            // For chart rendering
             setResponseData(
               allRegions.map((r) => ({
                 name: r.Region,
@@ -400,6 +394,7 @@ export default function ResponseChart({
               }))
             );
 
+            // For Excel export in Dashboard
             if (onData) {
               onData([
                 {
@@ -414,24 +409,21 @@ export default function ResponseChart({
               ]);
             }
           }
+
         }
       } catch (e) {
-        if (!aborted) {
-          setError(
-            e?.response?.data?.message || e.message || "Failed to load response chart"
-          );
-        }
+        if (!aborted) setError(e?.response?.data?.message || e.message || "Failed to load response chart");
       } finally {
         if (!aborted) setLoading(false);
       }
     }
 
     loadResponse();
-
     return () => {
       aborted = true;
     };
-  }, [gender, participantType, period, surveyId, regionKey, regionIds.length]);
+  }, [gender, participantType, period, surveyId, regionKey]);
+
 
 
   const hasMoreThanFiveRegions = responseData.length > 5;
