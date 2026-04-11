@@ -18,6 +18,8 @@ import html2canvas from "html2canvas";
 import jsPDF from "jspdf"; // Library used to generate pdf files
 import PptxGenJS from "pptxgenjs"; // Library used to generate PowerPoint files
 import * as XLSX from "xlsx"; // Library used to generate Excel files
+import { Pencil } from "lucide-react";
+import CustomizeDashboardModal from "../components/CustomizeDashboardModal";
 
 import {
   Download,
@@ -58,6 +60,15 @@ export default function Dashboard() {
   const [npsDistributionData, setNpsDistributionData] = useState([]);
   const [serviceAttrData, setServiceAttrData] = useState([]);
   const [isAllRegionsModalOpen, setIsAllRegionsModalOpen] = useState(false);
+
+  const [showRenameModal, setShowRenameModal] = useState(false);
+
+  const [customDashboardName, setCustomDashboardName] = useState("");
+  const [customRegionLabels, setCustomRegionLabels] = useState({});
+  const [customAttributeLabels, setCustomAttributeLabels] = useState({});
+
+  const [allRegions, setAllRegions] = useState([]);
+  const [allAttributes, setAllAttributes] = useState([]);
 
   const [filters, setFilters] = useState(() => {
     const saved = localStorage.getItem("dashboardFilters");
@@ -378,6 +389,20 @@ export default function Dashboard() {
     XLSX.writeFile(workbook, "dashboard_report.xlsx");
   };
 
+  // Fetch all service attributes for the survey (for custom naming modal)
+  const fetchAllAttributes = async ({ token, surveyId }) => {
+    const res = await http.get(`/charts/service-attributes?surveyId=${surveyId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const raw = res.data?.data?.attributes || [];
+
+    return raw.map((attr, index) => ({
+      id: String(attr.id ?? attr.attributeId ?? index),
+      name: String(attr.attributeName || "").trim() || `Attribute ${index + 1}`,
+    }));
+  };
+
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (exportRef.current && !exportRef.current.contains(event.target)) {
@@ -477,6 +502,7 @@ export default function Dashboard() {
           console.log("Regions API response:", regionsRes.data);
 
           const list = regionsRes.data?.data || [];
+          setAllRegions(list);
           const map = {};
           for (const r of list) {
             const id = String(r.facilityCode ?? r.regionId ?? r.id);
@@ -522,6 +548,17 @@ export default function Dashboard() {
     console.log("Dashboard filters state:", filters);
   }, [filters]);
 
+
+  // Sync the editable dashboard title with the loaded service name
+  // Runs whenever `serviceName` changes (after API load)
+  useEffect(() => {
+    // If service name exists, set it as the default editable dashboard name
+    if (serviceName) {
+      setCustomDashboardName(`Dashboard – ${serviceName}`);
+    }
+  }, [serviceName]); // dependency: re-run when serviceName updates
+
+
   const handleFilterChange = useCallback(({ gender, participantType, period }) => {
     setFilters({ gender, participantType, period });
   }, []);
@@ -563,10 +600,25 @@ export default function Dashboard() {
     <div className="p-0">
       <div className="relative mb-6 flex items-center">
         <h1 className="absolute left-1/2 transform -translate-x-1/2 text-2xl font-semibold text-gray-800">
-          Dashboard – {serviceLoading ? 'Loading…' : serviceName}
+          {serviceLoading ? 'Loading…' : customDashboardName}
         </h1>
 
         <div className="ml-auto flex items-center gap-3">
+
+          <button
+            onClick={() => setShowRenameModal(true)}
+            className="flex items-center gap-2 px-4 py-3 
+             bg-indigo-50 text-indigo-700 
+             border border-indigo-200
+             rounded-lg shadow-sm 
+             hover:bg-indigo-100 
+             hover:border-indigo-300
+             transition"
+          >
+            <Pencil size={18} className="text-indigo-600" />
+            <span className="text-m font-medium leading-none">Customized Name</span>
+          </button>
+
           <div className="relative" ref={exportRef}>
             <button
               onClick={() => setShowExportMenu((prev) => !prev)}
@@ -726,6 +778,50 @@ export default function Dashboard() {
 
         </div>
       )}
+      <CustomizeDashboardModal
+        open={showRenameModal}
+        onClose={() => setShowRenameModal(false)}
+
+        dashboardName={customDashboardName}
+        setDashboardName={setCustomDashboardName}
+
+        regions={allRegions.map((region) => ({
+          id: String(region.facilityCode ?? region.regionId ?? region.id),
+          name: region.regionName ?? region.name ?? "Unnamed Region",
+        }))}
+
+        attributes={availableAttrs.map((attr, index) => ({
+          id: String(attr.id ?? attr.attributeId ?? index),
+          name: attr.name ?? attr.label ?? `Attribute ${index + 1}`,
+        }))}
+
+        regionLabels={customRegionLabels}
+        attributeLabels={customAttributeLabels}
+
+        onRegionLabelChange={(id, value) =>
+          setCustomRegionLabels((prev) => ({ ...prev, [id]: value }))
+        }
+
+        onAttributeLabelChange={(id, value) =>
+          setCustomAttributeLabels((prev) => ({ ...prev, [id]: value }))
+        }
+
+        onReset={() => {
+          setCustomDashboardName(`Dashboard – ${serviceName}`);
+          setCustomRegionLabels({});
+          setCustomAttributeLabels({});
+        }}
+
+        onSave={() => {
+          console.log("Saved:", {
+            name: customDashboardName,
+            regions: customRegionLabels,
+            attrs: customAttributeLabels,
+          });
+
+          setShowRenameModal(false);
+        }}
+      />
     </div>
   );
 }
