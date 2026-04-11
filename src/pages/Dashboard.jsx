@@ -43,6 +43,8 @@ export default function Dashboard() {
   const [surveyId, setSurveyId] = useState(null);
   const [serviceName, setServiceName] = useState("Loading…");
   const [selectedRegions, setSelectedRegions] = useState([]);
+  const [regionsLoaded, setRegionsLoaded] = useState(false);
+
   const [serviceLoading, setServiceLoading] = useState(false);
   const [serviceError, setServiceError] = useState('');
 
@@ -487,6 +489,7 @@ export default function Dashboard() {
 
         const savedIds = filtersRes.data?.data?.region?.values?.map(String) || [];
         setSelectedRegions(savedIds);
+        setRegionsLoaded(true);
 
         const mapFromFilters = buildRegionMapFromFilters(filtersRes.data);
         if (Object.keys(mapFromFilters).length > 0) {
@@ -706,13 +709,13 @@ export default function Dashboard() {
             <ResponseChart
               surveyId={surveyId}
               regionIds={selectedRegions}
+              regionsLoaded={regionsLoaded}
               gender={filters.gender}
               participantType={filters.participantType}
               period={filters.period}
               onData={setResponseData}
               onAllRegionsModalToggle={setIsAllRegionsModalOpen}
             />
-
             <CustomerSatisfaction
               surveyId={surveyId}
               regionIds={selectedRegions}
