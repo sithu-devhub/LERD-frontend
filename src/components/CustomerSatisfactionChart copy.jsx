@@ -1,6 +1,6 @@
 // src/components/CustomerSatisfactionChart.js.js
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
@@ -47,7 +47,6 @@ export default function CustomerSatisfaction({
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const hasFetchedOnce = useRef(false);
 
   const regionKey = Array.isArray(regionIds)
     ? [...regionIds].map(String).sort().join(",")
@@ -55,13 +54,6 @@ export default function CustomerSatisfaction({
 
 
   useEffect(() => {
-    if (!surveyId) return;
-
-    // Skip the first refresh-time call before selected regions are loaded
-    if (!hasFetchedOnce.current && regionIds.length === 0) return;
-
-    hasFetchedOnce.current = true;
-
     let cancelled = false;
 
     console.log("[CustomerSatisfaction effect trigger]", {
@@ -71,6 +63,10 @@ export default function CustomerSatisfaction({
     });
 
     async function load() {
+      // Don't start loading until we have valid filters
+      if (!surveyId) return;
+
+
       setLoading(true);
       setError("");
 
@@ -100,6 +96,7 @@ export default function CustomerSatisfaction({
 
         const params = new URLSearchParams({ surveyId });
 
+        // send only if user actually selected something
         if (!isEmpty(gender)) params.append("gender", gender);
         if (!isEmpty(participantType)) params.append("participantType", participantType);
 
@@ -108,6 +105,7 @@ export default function CustomerSatisfaction({
           params.append("period", period);
         }
 
+        // region filter (only if selected) — repeat regions param
         const selectedIds = regionKey ? regionKey.split(",") : [];
         console.log("[CustomerSatisfaction selectedIds]", selectedIds);
 
@@ -116,6 +114,7 @@ export default function CustomerSatisfaction({
             params.append("regions", id);
           });
         }
+
 
         console.log("[CustomerSatisfaction] Sending params:", params.toString());
 
@@ -126,8 +125,11 @@ export default function CustomerSatisfaction({
           }
         );
 
+
+
         if (cancelled) return;
 
+        // Prepare customer satisfaction data for chart display and Excel export, then send it to parent via onData
         const d = res.data?.data || {};
         const exportRows = [
           {
@@ -153,21 +155,23 @@ export default function CustomerSatisfaction({
         if (onData) {
           onData(exportRows);
         }
+
       } catch (err) {
         if (!cancelled) {
           console.error("[CustomerSatisfaction] ❌ Fetch failed:", err);
           setError(err.message);
         }
-      } finally {
+      }
+      finally {
         if (!cancelled) setLoading(false);
       }
     }
 
     load();
-    return () => {
-      cancelled = true;
-    };
-  }, [surveyId, gender, participantType, period, regionKey, regionIds.length]);
+    return () => { cancelled = true; };
+  }, [surveyId, gender, participantType, period, regionKey]);
+
+
 
   const pieData = [
     { name: "Very Satisfied", value: data.verySatisfiedPercentage },
