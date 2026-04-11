@@ -280,6 +280,7 @@ const AllRegionsBarChartModal = ({ visible, onClose, data }) => {
 export default function ResponseChart({
   surveyId,
   regionIds = [],
+  regionsLoaded,
   gender,
   participantType,
   period,
@@ -297,7 +298,6 @@ export default function ResponseChart({
   const [showVillageModal, setShowVillageModal] = useState(false);
   const [showAllRegionsChartModal, setShowAllRegionsChartModal] = useState(false);
   const chartRef = useRef(null);
-  const hasFetchedOnce = useRef(false);
 
   useEffect(() => {
     if (onAllRegionsModalToggle) {
@@ -310,12 +310,7 @@ export default function ResponseChart({
     : "";
 
   useEffect(() => {
-    if (!surveyId) return;
-
-    // Skip the first call when saved regions have not loaded yet
-    if (!hasFetchedOnce.current && regionIds.length === 0) return;
-
-    hasFetchedOnce.current = true;
+    if (!surveyId || !regionsLoaded) return;
 
     console.log("[ResponseChart effect trigger]", {
       surveyId,
@@ -431,7 +426,7 @@ export default function ResponseChart({
     return () => {
       aborted = true;
     };
-  }, [gender, participantType, period, surveyId, regionKey, regionIds.length]);
+  }, [gender, participantType, period, surveyId, regionKey, regionsLoaded]);
 
 
   const hasMoreThanFiveRegions = responseData.length > 5;
