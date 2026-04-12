@@ -741,6 +741,7 @@ export default function Dashboard() {
             <NpsChart
               surveyId={surveyId}
               regionIds={selectedRegions}
+              regionsLoaded={regionsLoaded}
               gender={filters.gender}
               participantType={filters.participantType}
               period={filters.period}
@@ -750,6 +751,7 @@ export default function Dashboard() {
             <NpsDistribution
               surveyId={surveyId}
               regionIds={selectedRegions}
+              regionsLoaded={regionsLoaded}
               gender={filters.gender}
               participantType={filters.participantType}
               period={filters.period}
