@@ -8,6 +8,7 @@ import http from "../api/http";
 export default function NpsChart({
   surveyId,
   regionIds = [],
+  regionsLoaded,
   gender = null,
   participantType = null,
   period = null,
@@ -21,18 +22,13 @@ export default function NpsChart({
   const [loading, setLoading] = useState(true);
   const [score, setScore] = useState(0);
   const [error, setError] = useState("");
-  const hasFetchedOnce = useRef(false);
 
   const regionKey = Array.isArray(regionIds)
     ? regionIds.map(String).sort().join(",")
     : "";
 
   useEffect(() => {
-    if (!surveyId) return;
-
-    if (!hasFetchedOnce.current && regionIds.length === 0) return;
-
-    hasFetchedOnce.current = true;
+    if (!surveyId || !regionsLoaded) return;
 
     let cancelled = false;
     const isEmpty = (v) =>
@@ -117,7 +113,7 @@ export default function NpsChart({
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType, period, regionKey, regionIds.length]);
+  }, [surveyId, regionsLoaded, gender, participantType, period, regionKey]);
 
   const t = useMemo(() => {
     const v = Math.max(min, Math.min(max, score));
