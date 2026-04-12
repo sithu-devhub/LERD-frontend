@@ -104,6 +104,7 @@ const TrendLegendBelow = () => (
 export default function CustomerSatisfactionTrend({
   surveyId,
   regionIds = [],
+  regionsLoaded,
   gender,
   participantType,
   period,
@@ -112,7 +113,6 @@ export default function CustomerSatisfactionTrend({
   const [satisfactionTrend, setSatisfactionTrend] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const hasFetchedOnce = useRef(false);
 
   const [hoverBar, setHoverBar] = useState(false);
   const wrapRef = useRef(null);
@@ -122,11 +122,7 @@ export default function CustomerSatisfactionTrend({
     : "";
 
   useEffect(() => {
-    if (!surveyId) return;
-
-    if (!hasFetchedOnce.current && regionIds.length === 0) return;
-
-    hasFetchedOnce.current = true;
+    if (!surveyId || !regionsLoaded) return;
 
     let cancelled = false;
 
@@ -249,7 +245,7 @@ export default function CustomerSatisfactionTrend({
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType, period, regionKey, regionIds.length]);
+  }, [surveyId, regionsLoaded, gender, participantType, period, regionKey]);
 
   const noData =
     !loading && !error && (!satisfactionTrend || satisfactionTrend.length === 0);

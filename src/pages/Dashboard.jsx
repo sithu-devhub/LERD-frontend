@@ -729,6 +729,7 @@ export default function Dashboard() {
             <CustomerSatisfactionTrend
               surveyId={surveyId}
               regionIds={selectedRegions}
+              regionsLoaded={regionsLoaded}
               gender={filters.gender}
               participantType={filters.participantType}
               period={filters.period}
