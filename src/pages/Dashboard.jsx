@@ -761,6 +761,7 @@ export default function Dashboard() {
             <ServiceAttributeChart
               surveyId={surveyId}
               regionIds={selectedRegions}
+              regionsLoaded={regionsLoaded}
               gender={filters.gender}
               participantType={filters.participantType}
               period={filters.period}

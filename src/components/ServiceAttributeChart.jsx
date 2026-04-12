@@ -266,6 +266,7 @@ const ChartSkeleton = () => {
 export default function ServiceAttributeChart({
   surveyId,
   regionIds = [],
+  regionsLoaded,
   gender,
   participantType,
   period,
@@ -279,7 +280,6 @@ export default function ServiceAttributeChart({
   const [data, setData] = useState([]);
   const [availableAttrs, setAvailableAttrs] = useState([]);
   const [hoverBar, setHoverBar] = useState(false);
-  const hasFetchedOnce = useRef(false);
 
   const chartRef = useRef(null);
   const [cardWidth, setCardWidth] = useState(0);
@@ -298,11 +298,7 @@ export default function ServiceAttributeChart({
     : "";
 
   useEffect(() => {
-    if (!surveyId) return;
-
-    if (!hasFetchedOnce.current && regionIds.length === 0) return;
-
-    hasFetchedOnce.current = true;
+    if (!surveyId || !regionsLoaded) return;
 
     let cancelled = false;
 
@@ -427,7 +423,7 @@ export default function ServiceAttributeChart({
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType, period, regionKey, regionIds.length]);
+  }, [surveyId, regionsLoaded, gender, participantType, period, regionKey]);
 
   const dataForChart = useMemo(() => {
     if (!selectedAttrs || selectedAttrs.size === 0) return data;
