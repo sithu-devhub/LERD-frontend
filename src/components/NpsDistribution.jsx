@@ -1,15 +1,22 @@
 // src/components/NpsDistribution.jsx
 
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import ChartCard from "../components/ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
 import http from "../api/http";
 
-export default function NpsDistribution({ surveyId, regionIds = [], gender, participantType, period, onData }) {
+export default function NpsDistribution({
+  surveyId,
+  regionIds = [],
+  regionsLoaded,
+  gender,
+  participantType,
+  period,
+  onData,
+}) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [distribution, setDistribution] = useState([]);
-  const hasFetchedOnce = useRef(false);
 
   const regionKey = Array.isArray(regionIds)
     ? regionIds.map(String).sort().join(",")
@@ -17,11 +24,7 @@ export default function NpsDistribution({ surveyId, regionIds = [], gender, part
 
 
   useEffect(() => {
-    if (!surveyId) return;
-
-    if (!hasFetchedOnce.current && regionIds.length === 0) return;
-
-    hasFetchedOnce.current = true;
+    if (!surveyId || !regionsLoaded) return;
 
     let cancelled = false;
 
@@ -151,7 +154,7 @@ export default function NpsDistribution({ surveyId, regionIds = [], gender, part
     return () => {
       cancelled = true;
     };
-  }, [surveyId, gender, participantType, period, regionKey, regionIds.length]);
+  }, [surveyId, regionsLoaded, gender, participantType, period, regionKey]);
 
   return (
     <ChartCard
