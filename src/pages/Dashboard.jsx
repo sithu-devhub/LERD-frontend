@@ -657,7 +657,7 @@ export default function Dashboard() {
              transition"
           >
             <Pencil size={18} className="text-indigo-600" />
-            <span className="text-m font-medium leading-none">Customized Name</span>
+            <span className="text-m font-medium leading-none">Customize Name</span>
           </button>
 
           <div className="relative" ref={exportRef}>

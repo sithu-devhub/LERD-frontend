@@ -1,6 +1,6 @@
 // src/componenets/CustomizeDashboardModal.jsx
-import React from "react";
-import { X, PencilLine, RotateCcw, Save } from "lucide-react";
+import React, { useState } from "react";
+import { X, PencilLine, ChevronDown, Save } from "lucide-react";
 
 export default function CustomizeDashboardModal({
     open,
@@ -21,7 +21,9 @@ export default function CustomizeDashboardModal({
     onSave,
 }) {
     if (!open) return null;
-
+    const [isServiceOpen, setIsServiceOpen] = useState(true);
+    const [isRegionOpen, setIsRegionOpen] = useState(true);
+    const [isAttributeOpen, setIsAttributeOpen] = useState(true);
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/30 px-4 py-6">
             <div className="relative w-full max-w-4xl max-h-[90vh] rounded-[28px] bg-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] border border-slate-200 overflow-hidden flex flex-col">
@@ -46,7 +48,7 @@ export default function CustomizeDashboardModal({
                         {/* Dashboard name */}
                         <section>
                             <label className="mb-3 block text-[15px] font-semibold text-slate-700">
-                                Dashboard Name
+                                Current Dashboard Name
                             </label>
                             <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-[17px] text-slate-800 shadow-sm">
                                 {dashboardName}
@@ -76,141 +78,234 @@ export default function CustomizeDashboardModal({
                         {/* Service names */}
                         <section>
                             <div className="rounded-2xl border border-slate-200 overflow-hidden">
-                                <div className="grid grid-cols-2 bg-slate-50 px-5 py-4">
-                                    <div className="text-[15px] font-semibold text-slate-700">
-                                        Service Name
-                                    </div>
-                                    <div className="text-[15px] font-semibold text-slate-700">
-                                        Custom Label
-                                    </div>
-                                </div>
-
-                                <div className="divide-y divide-slate-100">
-                                    {services.map((service) => (
-                                        <div
-                                            key={service.id}
-                                            className="grid grid-cols-2 items-center px-5 py-4"
-                                        >
-                                            <div className="pr-4 text-[16px] text-slate-600">
-                                                {service.name}
+                                <button
+                                    type="button"
+                                    onClick={() => setIsServiceOpen((prev) => !prev)}
+                                    className="group flex w-full items-center justify-between rounded-t-2xl border-b border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-violet-50 px-5 py-4 text-left transition hover:from-indigo-100 hover:via-white hover:to-violet-100"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 shadow-sm">
+                                            <PencilLine size={16} />
+                                        </div>
+                                        <div>
+                                            <div className="text-[15px] font-semibold tracking-tight text-slate-800">
+                                                Customize Service Name
                                             </div>
-
-                                            <div className="relative">
-                                                <input
-                                                    type="text"
-                                                    value={serviceLabels[service.id] || ""}
-                                                    onChange={(e) => {
-                                                        const value = e.target.value;
-
-                                                        const safeLabelPattern = /^[a-zA-Z0-9\s\-_.()]*$/;
-
-                                                        if (safeLabelPattern.test(value) && value.length <= 50) {
-                                                            onServiceLabelChange(service.id, value);
-                                                        }
-                                                    }}
-                                                    placeholder={service.name}
-                                                    className="w-full rounded-xl border border-indigo-200 bg-white px-4 py-3 pr-12 text-[15px] text-slate-700 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                                                />
-                                                <PencilLine
-                                                    size={16}
-                                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
-                                                />
+                                            <div className="text-xs text-slate-500">
+                                                Edit labels for services
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
+                                        <ChevronDown
+                                            size={16}
+                                            className={`text-slate-600 transition-transform duration-200 ${isServiceOpen ? "rotate-180" : ""}`}
+                                        />
+                                    </div>
+                                </button>
+
+                                {isServiceOpen && (
+                                    <>
+                                        <div className="grid grid-cols-2 bg-slate-50 px-5 py-4 border-t border-slate-200">
+                                            <div className="text-[15px] font-semibold text-slate-700">
+                                                Service Name
+                                            </div>
+                                            <div className="text-[15px] font-semibold text-slate-700">
+                                                Custom Label
+                                            </div>
+                                        </div>
+
+                                        <div className="divide-y divide-slate-100">
+                                            {services.map((service) => (
+                                                <div
+                                                    key={service.id}
+                                                    className="grid grid-cols-2 items-center px-5 py-4"
+                                                >
+                                                    <div className="pr-4 text-[16px] text-slate-600">
+                                                        {service.name}
+                                                    </div>
+
+                                                    <div className="relative">
+                                                        <input
+                                                            type="text"
+                                                            value={serviceLabels[service.id] || ""}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value;
+
+                                                                const safeLabelPattern = /^[a-zA-Z0-9\s\-_.()]*$/;
+
+                                                                if (safeLabelPattern.test(value) && value.length <= 50) {
+                                                                    onServiceLabelChange(service.id, value);
+                                                                }
+                                                            }}
+                                                            placeholder={service.name}
+                                                            className="w-full rounded-xl border border-indigo-200 bg-white px-4 py-3 pr-12 text-[15px] text-slate-700 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                                                        />
+                                                        <PencilLine
+                                                            size={16}
+                                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </section>
 
                         {/* Region names */}
                         <section>
                             <div className="rounded-2xl border border-slate-200 overflow-hidden">
-                                <div className="grid grid-cols-2 bg-slate-50 px-5 py-4">
-                                    <div className="text-[15px] font-semibold text-slate-700">
-                                        Region Name
-                                    </div>
-                                    <div className="text-[15px] font-semibold text-slate-700">
-                                        Custom Label
-                                    </div>
-                                </div>
-
-                                <div className="divide-y divide-slate-100">
-                                    {regions.map((region) => (
-                                        <div
-                                            key={region.id}
-                                            className="grid grid-cols-2 items-center px-5 py-4"
-                                        >
-                                            <div className="pr-4 text-[16px] text-slate-600">
-                                                {region.name}
+                                <button
+                                    type="button"
+                                    onClick={() => setIsRegionOpen((prev) => !prev)}
+                                    className="group flex w-full items-center justify-between rounded-t-2xl border-b border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-violet-50 px-5 py-4 text-left transition hover:from-indigo-100 hover:via-white hover:to-violet-100"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 shadow-sm">
+                                            <PencilLine size={16} />
+                                        </div>
+                                        <div>
+                                            <div className="text-[15px] font-semibold tracking-tight text-slate-800">
+                                                Customize Region Name
                                             </div>
-
-                                            <div className="relative">
-                                                <input
-                                                    type="text"
-                                                    value={regionLabels[region.id] || ""}
-                                                    onChange={(e) => {
-                                                        const value = e.target.value;
-
-                                                        const safeLabelPattern = /^[a-zA-Z0-9\s\-_.()]*$/;
-
-                                                        if (safeLabelPattern.test(value) && value.length <= 50) {
-                                                            onRegionLabelChange(region.id, value);
-                                                        }
-                                                    }}
-                                                    placeholder={region.name}
-                                                    className="w-full rounded-xl border border-indigo-200 bg-white px-4 py-3 pr-12 text-[15px] text-slate-700 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                                                />
-                                                <PencilLine
-                                                    size={16}
-                                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
-                                                />
+                                            <div className="text-xs text-slate-500">
+                                                Edit labels for regions
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
+                                        <ChevronDown
+                                            size={16}
+                                            className={`text-slate-600 transition-transform duration-200 ${isRegionOpen ? "rotate-180" : ""}`}
+                                        />
+                                    </div>
+                                </button>
+
+                                {isRegionOpen && (
+                                    <>
+                                        <div className="grid grid-cols-2 bg-slate-50 px-5 py-4 border-t border-slate-200">
+                                            <div className="text-[15px] font-semibold text-slate-700">
+                                                Region Name
+                                            </div>
+                                            <div className="text-[15px] font-semibold text-slate-700">
+                                                Custom Label
+                                            </div>
+                                        </div>
+
+                                        <div className="divide-y divide-slate-100">
+                                            {regions.map((region) => (
+                                                <div
+                                                    key={region.id}
+                                                    className="grid grid-cols-2 items-center px-5 py-4"
+                                                >
+                                                    <div className="pr-4 text-[16px] text-slate-600">
+                                                        {region.name}
+                                                    </div>
+
+                                                    <div className="relative">
+                                                        <input
+                                                            type="text"
+                                                            value={regionLabels[region.id] || ""}
+                                                            onChange={(e) => {
+                                                                const value = e.target.value;
+
+                                                                const safeLabelPattern = /^[a-zA-Z0-9\s\-_.()]*$/;
+
+                                                                if (safeLabelPattern.test(value) && value.length <= 50) {
+                                                                    onRegionLabelChange(region.id, value);
+                                                                }
+                                                            }}
+                                                            placeholder={region.name}
+                                                            className="w-full rounded-xl border border-indigo-200 bg-white px-4 py-3 pr-12 text-[15px] text-slate-700 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                                                        />
+                                                        <PencilLine
+                                                            size={16}
+                                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </section>
 
                         {/* Service attributes */}
                         <section>
                             <div className="rounded-2xl border border-slate-200 overflow-hidden">
-                                <div className="grid grid-cols-2 bg-slate-50 px-5 py-4">
-                                    <div className="text-[15px] font-semibold text-slate-700">
-                                        Service Attribute
-                                    </div>
-                                    <div className="text-[15px] font-semibold text-slate-700">
-                                        Custom Label
-                                    </div>
-                                </div>
-
-                                <div className="divide-y divide-slate-100">
-                                    {attributes.map((attr) => (
-                                        <div
-                                            key={attr.id}
-                                            className="grid grid-cols-2 items-center px-5 py-4"
-                                        >
-                                            <div className="pr-4 text-[16px] text-slate-600">
-                                                {attr.name}
+                                <button
+                                    type="button"
+                                    onClick={() => setIsAttributeOpen((prev) => !prev)}
+                                    className="group flex w-full items-center justify-between rounded-t-2xl border-b border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-violet-50 px-5 py-4 text-left transition hover:from-indigo-100 hover:via-white hover:to-violet-100"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-700 shadow-sm">
+                                            <PencilLine size={16} />
+                                        </div>
+                                        <div>
+                                            <div className="text-[15px] font-semibold tracking-tight text-slate-800">
+                                                Customize Service Attribute
                                             </div>
-
-                                            <div className="relative">
-                                                <input
-                                                    type="text"
-                                                    value={attributeLabels[attr.id] || ""}
-                                                    onChange={(e) =>
-                                                        onAttributeLabelChange(attr.id, e.target.value)
-                                                    }
-                                                    placeholder={attr.name}
-                                                    className="w-full rounded-xl border border-indigo-200 bg-white px-4 py-3 pr-12 text-[15px] text-slate-700 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                                                />
-                                                <PencilLine
-                                                    size={16}
-                                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
-                                                />
+                                            <div className="text-xs text-slate-500">
+                                                Edit labels for service attributes
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
+                                    </div>
+
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-200">
+                                        <ChevronDown
+                                            size={16}
+                                            className={`text-slate-600 transition-transform duration-200 ${isAttributeOpen ? "rotate-180" : ""}`}
+                                        />
+                                    </div>
+                                </button>
+
+                                {isAttributeOpen && (
+                                    <>
+                                        <div className="grid grid-cols-2 bg-slate-50 px-5 py-4 border-t border-slate-200">
+                                            <div className="text-[15px] font-semibold text-slate-700">
+                                                Service Attribute
+                                            </div>
+                                            <div className="text-[15px] font-semibold text-slate-700">
+                                                Custom Label
+                                            </div>
+                                        </div>
+
+                                        <div className="divide-y divide-slate-100">
+                                            {attributes.map((attr) => (
+                                                <div
+                                                    key={attr.id}
+                                                    className="grid grid-cols-2 items-center px-5 py-4"
+                                                >
+                                                    <div className="pr-4 text-[16px] text-slate-600">
+                                                        {attr.name}
+                                                    </div>
+
+                                                    <div className="relative">
+                                                        <input
+                                                            type="text"
+                                                            value={attributeLabels[attr.id] || ""}
+                                                            onChange={(e) =>
+                                                                onAttributeLabelChange(attr.id, e.target.value)
+                                                            }
+                                                            placeholder={attr.name}
+                                                            className="w-full rounded-xl border border-indigo-200 bg-white px-4 py-3 pr-12 text-[15px] text-slate-700 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                                                        />
+                                                        <PencilLine
+                                                            size={16}
+                                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </section>
 
