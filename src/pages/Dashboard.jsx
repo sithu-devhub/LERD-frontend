@@ -1,5 +1,6 @@
 // src/pages/Dashboard.jsx
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import ChartCard from '../components/ChartCard';
 import '../styles/dashboard.css';
@@ -64,13 +65,33 @@ export default function Dashboard() {
   const [isAllRegionsModalOpen, setIsAllRegionsModalOpen] = useState(false);
 
   const [showRenameModal, setShowRenameModal] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [customDashboardName, setCustomDashboardName] = useState("");
   const [customRegionLabels, setCustomRegionLabels] = useState({});
   const [customAttributeLabels, setCustomAttributeLabels] = useState({});
+  const [customServiceLabels, setCustomServiceLabels] = useState({});
+
+  const [tempDashboardName, setTempDashboardName] = useState("");
+  const [tempRegionLabels, setTempRegionLabels] = useState({});
+  const [tempAttributeLabels, setTempAttributeLabels] = useState({});
+  const [tempServiceLabels, setTempServiceLabels] = useState({});
+
+  // enable save only when modal values differ from saved values
+  const hasRenameChanges =
+    tempDashboardName !== customDashboardName ||
+    JSON.stringify(tempServiceLabels) !== JSON.stringify(customServiceLabels) ||
+    JSON.stringify(tempRegionLabels) !== JSON.stringify(customRegionLabels) ||
+    JSON.stringify(tempAttributeLabels) !== JSON.stringify(customAttributeLabels);
 
   const [allRegions, setAllRegions] = useState([]);
   const [allAttributes, setAllAttributes] = useState([]);
+
+  const dummyServices = [
+    { id: "1", name: "12-Question survey - Development" },
+    { id: "2", name: "20-Question survey RC - Development" },
+  ];
 
   const [filters, setFilters] = useState(() => {
     const saved = localStorage.getItem("dashboardFilters");
@@ -534,7 +555,6 @@ export default function Dashboard() {
     loadSurveyAndRegions();
   }, [serviceId, navigate]);
 
-
   useEffect(() => {
     if (availableAttrs.length) {
       if (availableAttrs.length <= 5) {
@@ -560,6 +580,19 @@ export default function Dashboard() {
       setCustomDashboardName(`Dashboard – ${serviceName}`);
     }
   }, [serviceName]); // dependency: re-run when serviceName updates
+
+
+  // Auto-hide success toast after 3 seconds when it becomes visible
+  useEffect(() => {
+    if (!showSuccessToast) return;
+
+    const timer = setTimeout(() => {
+      setShowSuccessToast(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [showSuccessToast]);
+
 
 
   const handleFilterChange = useCallback(({ gender, participantType, period }) => {
@@ -609,8 +642,13 @@ export default function Dashboard() {
         <div className="ml-auto flex items-center gap-3">
 
           <button
-            onClick={() => setShowRenameModal(true)}
-            className="flex items-center gap-2 px-4 py-3 
+            onClick={() => {
+              setTempDashboardName(customDashboardName);
+              setTempRegionLabels(customRegionLabels);
+              setTempAttributeLabels(customAttributeLabels);
+              setTempServiceLabels(customServiceLabels);
+              setShowRenameModal(true);
+            }} className="flex items-center gap-2 px-4 py-3 
              bg-indigo-50 text-indigo-700 
              border border-indigo-200
              rounded-lg shadow-sm 
@@ -619,7 +657,7 @@ export default function Dashboard() {
              transition"
           >
             <Pencil size={18} className="text-indigo-600" />
-            <span className="text-m font-medium leading-none">Customized Name</span>
+            <span className="text-m font-medium leading-none">Customize Name</span>
           </button>
 
           <div className="relative" ref={exportRef}>
@@ -790,8 +828,59 @@ export default function Dashboard() {
         open={showRenameModal}
         onClose={() => setShowRenameModal(false)}
 
-        dashboardName={customDashboardName}
-        setDashboardName={setCustomDashboardName}
+        dashboardName={tempDashboardName}
+        setDashboardName={setTempDashboardName}
+
+        hasChanges={hasRenameChanges}
+
+        services={dummyServices}
+        serviceLabels={tempServiceLabels}
+
+        regionLabels={tempRegionLabels}
+        attributeLabels={tempAttributeLabels}
+
+
+        onRegionLabelChange={(id, value) =>
+          setTempRegionLabels((prev) => {
+            const updated = { ...prev };
+
+            if (value.trim() === "") {
+              delete updated[id];
+            } else {
+              updated[id] = value;
+            }
+
+            return updated;
+          })
+        }
+
+        onAttributeLabelChange={(id, value) =>
+          setTempAttributeLabels((prev) => {
+            const updated = { ...prev };
+
+            if (value.trim() === "") {
+              delete updated[id];
+            } else {
+              updated[id] = value;
+            }
+
+            return updated;
+          })
+        }
+
+        onServiceLabelChange={(id, value) =>
+          setTempServiceLabels((prev) => {
+            const updated = { ...prev };
+
+            if (value.trim() === "") {
+              delete updated[id];
+            } else {
+              updated[id] = value;
+            }
+
+            return updated;
+          })
+        }
 
         regions={allRegions.map((region) => ({
           id: String(region.facilityCode ?? region.regionId ?? region.id),
@@ -803,33 +892,83 @@ export default function Dashboard() {
           name: attr.name ?? attr.label ?? `Attribute ${index + 1}`,
         }))}
 
-        regionLabels={customRegionLabels}
-        attributeLabels={customAttributeLabels}
-
-        onRegionLabelChange={(id, value) =>
-          setCustomRegionLabels((prev) => ({ ...prev, [id]: value }))
-        }
-
-        onAttributeLabelChange={(id, value) =>
-          setCustomAttributeLabels((prev) => ({ ...prev, [id]: value }))
-        }
-
         onReset={() => {
-          setCustomDashboardName(`Dashboard – ${serviceName}`);
-          setCustomRegionLabels({});
-          setCustomAttributeLabels({});
+          setTempDashboardName(`Dashboard – ${serviceName}`);
+          setTempRegionLabels({});
+          setTempAttributeLabels({});
+          setTempServiceLabels({});
         }}
 
         onSave={() => {
+          setCustomDashboardName(tempDashboardName);
+          setCustomRegionLabels(tempRegionLabels);
+          setCustomAttributeLabels(tempAttributeLabels);
+          setCustomServiceLabels(tempServiceLabels);
+
           console.log("Saved:", {
-            name: customDashboardName,
-            regions: customRegionLabels,
-            attrs: customAttributeLabels,
+            name: tempDashboardName,
+            services: tempServiceLabels,
+            regions: tempRegionLabels,
+            attrs: tempAttributeLabels,
           });
+
+          setSuccessMessage("Renaming Completed successfully");
+          setShowSuccessToast(true);
 
           setShowRenameModal(false);
         }}
       />
+
+      {showSuccessToast &&
+        createPortal(
+          <div className="fixed top-24 right-6 z-[20000]">
+            <div className="min-w-[320px] rounded-2xl border border-[#dfe3ff] bg-white shadow-lg">
+              <div className="flex items-start gap-3 p-4">
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eef2ff]">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5 text-[#4f46e5]"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <path
+                      d="M20 6L9 17l-5-5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-gray-800">Success</div>
+                  <div className="mt-1 text-sm text-gray-600">{successMessage}</div>
+                </div>
+
+                <button
+                  onClick={() => setShowSuccessToast(false)}
+                  className="ml-2 rounded-lg px-2 py-1 text-sm font-medium text-gray-500 hover:bg-gray-100"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="h-1 w-full overflow-hidden rounded-b-2xl bg-[#eef2ff]">
+                <div className="h-full w-full bg-[#4f46e5] animate-[toastbar_3s_linear_forwards]" />
+              </div>
+            </div>
+
+            <style>{`
+        @keyframes toastbar_3s_linear_forwards {
+          from { transform: translateX(0%); }
+          to { transform: translateX(-100%); }
+        }
+      `}</style>
+          </div>,
+          document.body
+        )}
+
     </div>
   );
 }
