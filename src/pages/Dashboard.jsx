@@ -64,6 +64,12 @@ export default function Dashboard() {
   const [serviceAttrData, setServiceAttrData] = useState([]);
   const [isAllRegionsModalOpen, setIsAllRegionsModalOpen] = useState(false);
 
+  // Stores whether the logged-in user is an admin
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Stores whether the admin check is still loading
+  const [isAdminLoading, setIsAdminLoading] = useState(true);
+
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -99,6 +105,46 @@ export default function Dashboard() {
       ? JSON.parse(saved)
       : { gender: null, participantType: null, period: null };
   });
+
+  // Calls the Search User API to check whether the logged-in user has admin role
+  const fetchLoggedInUserRole = async () => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const user = JSON.parse(localStorage.getItem("user"));
+
+      // Read the logged-in username from localStorage
+      const username = user?.username;
+
+      // Stop if required login data is missing
+      if (!token || !username) return null;
+
+      // Call Search User API using the logged-in username
+      const res = await http.get(`/user-management/users`, {
+        params: {
+          username: username,
+          pageNumber: 1,
+          pageSize: 10,
+        },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      // Find the exact logged-in user from returned user list
+      const matchedUser = res.data?.data?.find(
+        (u) => String(u.username).toLowerCase() === String(username).toLowerCase()
+      );
+
+      // Return both role and active status
+      return {
+        role: matchedUser?.userRole || null,
+        isActive: matchedUser?.isActive === true,
+      };
+    } catch (error) {
+      console.error("Failed to fetch logged-in user role:", error);
+      return null;
+    }
+  };
 
   // Builds { regionId: regionName } from the filters API response if labels/names exist.
   const buildRegionMapFromFilters = (filtersResData) => {
@@ -440,6 +486,31 @@ export default function Dashboard() {
   }, []);
 
 
+  // Checks whether the logged-in user is an admin when the dashboard page loads
+  useEffect(() => {
+    async function loadAdminStatus() {
+      setIsAdminLoading(true);
+
+      // Get role + active status from API
+      const userData = await fetchLoggedInUserRole();
+
+      // Check BOTH conditions:
+      // 1. user must be admin
+      // 2. user must be active
+      // Allow Customize Name button only for active admin users
+      const adminStatus =
+        String(userData?.role || "").toLowerCase() === "admin" &&
+        String(userData?.isActive).toLowerCase() === "true";
+
+      // Save admin visibility state
+      setIsAdmin(adminStatus);
+
+      setIsAdminLoading(false);
+    }
+
+    loadAdminStatus();
+  }, []);
+
   // Load survey + selected regions
   useEffect(() => {
     async function loadSurveyAndRegions() {
@@ -641,24 +712,28 @@ export default function Dashboard() {
 
         <div className="ml-auto flex items-center gap-3">
 
-          <button
-            onClick={() => {
-              setTempDashboardName(customDashboardName);
-              setTempRegionLabels(customRegionLabels);
-              setTempAttributeLabels(customAttributeLabels);
-              setTempServiceLabels(customServiceLabels);
-              setShowRenameModal(true);
-            }} className="flex items-center gap-2 px-4 py-3 
-             bg-indigo-50 text-indigo-700 
-             border border-indigo-200
-             rounded-lg shadow-sm 
-             hover:bg-indigo-100 
-             hover:border-indigo-300
-             transition"
-          >
-            <Pencil size={18} className="text-indigo-600" />
-            <span className="text-m font-medium leading-none">Customize Name</span>
-          </button>
+          {/* Show Customize Name button only for admin users */}
+          {!isAdminLoading && isAdmin && (
+            <button
+              onClick={() => {
+                setTempDashboardName(customDashboardName);
+                setTempRegionLabels(customRegionLabels);
+                setTempAttributeLabels(customAttributeLabels);
+                setTempServiceLabels(customServiceLabels);
+                setShowRenameModal(true);
+              }}
+              className="flex items-center gap-2 px-4 py-3 
+              bg-indigo-50 text-indigo-700 
+              border border-indigo-200
+              rounded-lg shadow-sm 
+              hover:bg-indigo-100 
+              hover:border-indigo-300
+              transition"
+            >
+              <Pencil size={18} className="text-indigo-600" />
+              <span className="text-m font-medium leading-none">Customize Name</span>
+            </button>
+          )}
 
           <div className="relative" ref={exportRef}>
             <button

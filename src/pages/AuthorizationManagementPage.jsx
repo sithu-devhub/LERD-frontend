@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Navigate } from 'react-router-dom';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { getAllUsers, createUser } from '../api/authService';
 import { getUserAccess, updateUserAccess } from '../api/accessService';
@@ -122,9 +123,20 @@ function buildAccessUpdatePayload(permissions) {
 
   return { surveys };
 }
+
+
 export default function AuthorizationManagementPage() {
+  // Stores search input for facility permissions
   const [facilitySearch, setFacilitySearch] = useState('');
+
+  // Stores the currently selected user from the user list
   const [selectedUser, setSelectedUser] = useState(null);
+
+  // Stores whether the logged-in user can access this page
+  const [canAccessPage, setCanAccessPage] = useState(false);
+
+  // Stores whether the page access check is still loading
+  const [checkingAccess, setCheckingAccess] = useState(true);
 
   //permissions and loading permissions
   const [permissions, setPermissions] = useState([]);
@@ -171,6 +183,64 @@ export default function AuthorizationManagementPage() {
 
     return Array.from({ length: end - start + 1 }, (_, index) => start + index);
   }, [pageNumber, totalPages]);
+
+  // Calls API to get role + active status of logged-in user
+  const checkActiveAdminAccess = async () => {
+    try {
+      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
+      const username = savedUser?.username;
+
+      if (!username) {
+        setCanAccessPage(false);
+        setCheckingAccess(false);
+        return;
+      }
+
+      // Call Search User API
+      const res = await getAllUsers({
+        PageNumber: 1,
+        PageSize: 10,
+        Search: username,
+      });
+
+      const result = res.data;
+
+      if (result?.success) {
+        const matchedUser = result.data.find(
+          (u) => u.username.toLowerCase() === username.toLowerCase()
+        );
+        console.log("Matched logged-in user:", matchedUser);
+
+        if (!matchedUser) {
+          setCanAccessPage(false);
+        } else {
+          // Save role + active into localStorage
+          const updatedUser = {
+            ...savedUser,
+            userRole: matchedUser.userRole,
+            isActive: matchedUser.isActive,
+          };
+
+          localStorage.setItem("user", JSON.stringify(updatedUser));
+
+          // Allow Authorization Management page only for active admin users
+          const isActiveAdmin =
+            String(matchedUser?.userRole || "").toLowerCase() === "admin" &&
+            String(matchedUser?.isActive).toLowerCase() === "true";
+
+          setCanAccessPage(isActiveAdmin);
+
+        }
+      } else {
+        setCanAccessPage(false);
+      }
+    } catch (error) {
+      console.error("Access check failed:", error);
+      setCanAccessPage(false);
+    } finally {
+      setCheckingAccess(false);
+    }
+  };
 
   const fetchUsers = async (searchValue = '', page = 1) => {
     try {
@@ -219,8 +289,15 @@ export default function AuthorizationManagementPage() {
   };
 
   useEffect(() => {
-    fetchUsers('', 1);
+    checkActiveAdminAccess();
   }, []);
+
+  useEffect(() => {
+    // Load users only after confirming the user is an active admin
+    if (canAccessPage) {
+      fetchUsers('', 1);
+    }
+  }, [canAccessPage]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -364,6 +441,10 @@ export default function AuthorizationManagementPage() {
     setPermissions((prev) => updateTree(prev, id, checked));
   };
 
+  const handleCancel = () => {
+    setPermissions(JSON.parse(JSON.stringify(originalPermissions)));
+    setPermissionError('');
+  };
   const handleSave = async () => {
     if (!selectedUser) {
       alert('Please select a user first');
@@ -404,6 +485,22 @@ export default function AuthorizationManagementPage() {
 
     return () => clearTimeout(timer);
   }, [successToast.open]);
+
+
+  // Reset all Add User form fields and validation errors
+  const resetAddUserForm = () => {
+    setNewUserEmail('');        // clear email input
+    setNewUserFullName('');     // clear full name input
+    setNewUserPassword('');     // clear password input
+    setNewUserRole('Employee'); // reset role to default
+    setFormErrors({});          // clear all validation / API errors
+  };
+
+  // Close modal and discard all unsaved form data
+  const handleCloseAddUserModal = () => {
+    resetAddUserForm();           // clear inputs + errors
+    setShowAddUserModal(false);   // close modal
+  };
 
   // Add user API Integration
   const handleAddUser = async () => {
@@ -471,11 +568,7 @@ export default function AuthorizationManagementPage() {
       if (result?.success) {
         setFormErrors({});
 
-        setNewUserEmail('');
-        setNewUserFullName('');
-        setNewUserPassword('');
-        setNewUserRole('Employee');
-        setShowAddUserModal(false);
+        handleCloseAddUserModal();
 
         setSuccessToast({
           open: true,
@@ -558,6 +651,16 @@ export default function AuthorizationManagementPage() {
       );
     });
   };
+
+  // Wait until access check is complete
+  if (checkingAccess) {
+    return null;
+  }
+
+  // Block non-admin or inactive users
+  if (!canAccessPage) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <div className="min-h-screen w-full bg-[#f6f7fb] px-8 py-6">
@@ -764,7 +867,14 @@ export default function AuthorizationManagementPage() {
             </div>
 
             <div className="mt-6 flex justify-end gap-3">
-              <button className="rounded-xl border border-gray-200 bg-gray-100 px-5 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-200">
+              <button
+                onClick={handleCancel}
+                disabled={!hasChanges}
+                className={`rounded-xl border px-5 py-2 text-sm font-medium transition ${!hasChanges
+                  ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
+                  : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+              >
                 Cancel
               </button>
               <button
@@ -789,10 +899,7 @@ export default function AuthorizationManagementPage() {
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-800">Add User</h2>
               <button
-                onClick={() => {
-                  setShowAddUserModal(false);
-                  setFormErrors({});
-                }}
+                onClick={handleCloseAddUserModal}
                 className="text-gray-400 hover:text-gray-600"
               >
                 ✕
@@ -918,10 +1025,7 @@ export default function AuthorizationManagementPage() {
 
             <div className="mt-6 flex justify-end gap-3">
               <button
-                onClick={() => {
-                  setShowAddUserModal(false);
-                  setFormErrors({});
-                }}
+                onClick={handleCloseAddUserModal}
                 className="rounded-lg bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-300"
               >
                 Cancel
