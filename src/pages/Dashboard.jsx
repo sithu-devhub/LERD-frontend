@@ -495,6 +495,8 @@ export default function Dashboard() {
           headers: { Authorization: `Bearer ${token}` },
         });
 
+        let match = null;
+
         if (servicesRes.data?.success && Array.isArray(servicesRes.data.data)) {
           const services = servicesRes.data.data;
 
@@ -506,8 +508,33 @@ export default function Dashboard() {
 
           setHasServices(true);
 
-          const match = services.find((s) => String(s.surveyId) === String(activeSurveyId));
-          activeServiceName = match?.serviceName || match?.serviceType;
+          match = services.find(
+            (s) => String(s.surveyId) === String(activeSurveyId)
+          );
+
+          if (!match) {
+            const selectedService = services.find((s) => s.isSelected) || services[0];
+
+            if (selectedService?.surveyId && String(selectedService.surveyId) !== String(activeSurveyId)) {
+              navigate(`/dashboard/${encodeURIComponent(selectedService.surveyId)}`, { replace: true });
+              return;
+            }
+          }
+
+          activeServiceName =
+            match?.serviceName ||
+            match?.serviceType ||
+            match?.surveyName ||
+            null;
+
+          console.log("Dashboard title debug:", {
+            activeSurveyId,
+            matchedService: match,
+            resolvedName: activeServiceName,
+            locationStateService: location.state?.service,
+            cachedSurveyName: localStorage.getItem(`surveyName:${activeSurveyId}`),
+            lastServiceName: localStorage.getItem("lastServiceName"),
+          });
         }
 
         setSurveyId(activeSurveyId);
@@ -515,8 +542,9 @@ export default function Dashboard() {
 
         // (cache)
         localStorage.setItem("lastServiceId", activeSurveyId);
-        localStorage.setItem("lastServiceName", activeServiceName || "");
-        localStorage.setItem(`surveyName:${activeSurveyId}`, activeServiceName || "");
+        if (match && activeServiceName) {
+          localStorage.setItem(`surveyName:${activeSurveyId}`, activeServiceName);
+        }
 
         // Regions from backend saved filters
         const filtersRes = await http.get(`/users/${user.userId}/filters`, {

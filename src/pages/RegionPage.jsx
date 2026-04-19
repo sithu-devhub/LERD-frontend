@@ -63,11 +63,14 @@ export default function RegionPage() {
             if (selectedService?.surveyId) {
               activeSurveyId = selectedService.surveyId;
 
-              const name = selectedService.serviceType || selectedService.surveyName;
+              const name =
+                selectedService.serviceType ||
+                selectedService.serviceName ||
+                selectedService.surveyName;
 
               localStorage.setItem("lastServiceId", activeSurveyId);
               localStorage.setItem(`surveyName:${activeSurveyId}`, name);
-              localStorage.setItem("lastServiceName", name);
+              // localStorage.setItem("lastServiceName", name);
             }
 
 
@@ -212,13 +215,9 @@ export default function RegionPage() {
         localStorage.setItem("regionNameMap", JSON.stringify(regionNameMap));
       }
 
-      const cachedName = localStorage.getItem(`surveyName:${surveyId}`);
-      if (cachedName) {
-        localStorage.setItem("lastServiceName", cachedName);
-      }
-
       localStorage.setItem("filtersRefresh", "true");
-      navigate(`/dashboard/${surveyId}`, { state: { service: cachedName } });
+      navigate(`/dashboard/${surveyId}`);
+
     } catch (err) {
       console.error("❌ Failed to save selected regions:", err);
       alert("Failed to save regions");
@@ -247,7 +246,7 @@ export default function RegionPage() {
           Current service type:&nbsp;
           <span className="text-[#2B3674] font-medium">
             {hasServices
-              ? localStorage.getItem("lastServiceName") || "Service Type"
+              ? localStorage.getItem(`surveyName:${serviceId || localStorage.getItem("lastServiceId")}`) || "Service Type"
               : "—"}
           </span>
         </div>
