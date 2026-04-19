@@ -577,7 +577,7 @@ export default function AuthorizationManagementPage() {
             <div className="mb-4 border-b pb-3">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-sm font-semibold tracking-wide text-[#2f3a68]">
-                  User Name
+                  User Management
                 </h2>
 
                 <button
