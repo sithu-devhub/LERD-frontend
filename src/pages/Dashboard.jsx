@@ -106,46 +106,6 @@ export default function Dashboard() {
       : { gender: null, participantType: null, period: null };
   });
 
-  // Calls the Search User API to check whether the logged-in user has admin role
-  const fetchLoggedInUserRole = async () => {
-    try {
-      const token = localStorage.getItem("accessToken");
-      const user = JSON.parse(localStorage.getItem("user"));
-
-      // Read the logged-in username from localStorage
-      const username = user?.username;
-
-      // Stop if required login data is missing
-      if (!token || !username) return null;
-
-      // Call Search User API using the logged-in username
-      const res = await http.get(`/user-management/users`, {
-        params: {
-          username: username,
-          pageNumber: 1,
-          pageSize: 10,
-        },
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      // Find the exact logged-in user from returned user list
-      const matchedUser = res.data?.data?.find(
-        (u) => String(u.username).toLowerCase() === String(username).toLowerCase()
-      );
-
-      // Return both role and active status
-      return {
-        role: matchedUser?.userRole || null,
-        isActive: matchedUser?.isActive === true,
-      };
-    } catch (error) {
-      console.error("Failed to fetch logged-in user role:", error);
-      return null;
-    }
-  };
-
   // Builds { regionId: regionName } from the filters API response if labels/names exist.
   const buildRegionMapFromFilters = (filtersResData) => {
     const region = filtersResData?.data?.region;
@@ -201,7 +161,7 @@ export default function Dashboard() {
     holder.style.zIndex = "-1";
 
     // Retrieve user information and token
-    const user = JSON.parse(localStorage.getItem("user"));
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
     const token = localStorage.getItem("accessToken");
 
     if (!user?.userId || !token || !surveyId) return null;
@@ -370,8 +330,7 @@ export default function Dashboard() {
 
   // Downloads dashboard filter/report data as an Excel file
   const downloadExcel = async () => {
-    const user = JSON.parse(localStorage.getItem("user"));
-    const token = localStorage.getItem("accessToken");
+    const user = JSON.parse(localStorage.getItem("user") || "{}"); const token = localStorage.getItem("accessToken");
 
     if (!user?.userId || !token || !surveyId) return;
 
@@ -486,35 +445,22 @@ export default function Dashboard() {
   }, []);
 
 
-  // Checks whether the logged-in user is an admin when the dashboard page loads
+  // Determine admin status from stored user (no API call needed)
   useEffect(() => {
-    async function loadAdminStatus() {
-      setIsAdminLoading(true);
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-      // Get role + active status from API
-      const userData = await fetchLoggedInUserRole();
+    const adminStatus =
+      String(user?.userRole || "").toLowerCase() === "admin" &&
+      user?.isActive === true;
 
-      // Check BOTH conditions:
-      // 1. user must be admin
-      // 2. user must be active
-      // Allow Customize Name button only for active admin users
-      const adminStatus =
-        String(userData?.role || "").toLowerCase() === "admin" &&
-        String(userData?.isActive).toLowerCase() === "true";
-
-      // Save admin visibility state
-      setIsAdmin(adminStatus);
-
-      setIsAdminLoading(false);
-    }
-
-    loadAdminStatus();
+    setIsAdmin(adminStatus);
+    setIsAdminLoading(false);
   }, []);
 
   // Load survey + selected regions
   useEffect(() => {
     async function loadSurveyAndRegions() {
-      const user = JSON.parse(localStorage.getItem("user"));
+      const user = JSON.parse(localStorage.getItem("user") || "{}");
       const token = localStorage.getItem("accessToken");
       if (!user?.userId || !token) return;
 

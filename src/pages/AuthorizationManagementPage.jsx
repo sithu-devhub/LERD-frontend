@@ -184,63 +184,6 @@ export default function AuthorizationManagementPage() {
     return Array.from({ length: end - start + 1 }, (_, index) => start + index);
   }, [pageNumber, totalPages]);
 
-  // Calls API to get role + active status of logged-in user
-  const checkActiveAdminAccess = async () => {
-    try {
-      const savedUser = JSON.parse(localStorage.getItem("user") || "{}");
-      const username = savedUser?.username;
-
-      if (!username) {
-        setCanAccessPage(false);
-        setCheckingAccess(false);
-        return;
-      }
-
-      // Call Search User API
-      const res = await getAllUsers({
-        PageNumber: 1,
-        PageSize: 10,
-        Search: username,
-      });
-
-      const result = res.data;
-
-      if (result?.success) {
-        const matchedUser = result.data.find(
-          (u) => u.username.toLowerCase() === username.toLowerCase()
-        );
-        console.log("Matched logged-in user:", matchedUser);
-
-        if (!matchedUser) {
-          setCanAccessPage(false);
-        } else {
-          // Save role + active into localStorage
-          const updatedUser = {
-            ...savedUser,
-            userRole: matchedUser.userRole,
-            isActive: matchedUser.isActive,
-          };
-
-          localStorage.setItem("user", JSON.stringify(updatedUser));
-
-          // Allow Authorization Management page only for active admin users
-          const isActiveAdmin =
-            String(matchedUser?.userRole || "").toLowerCase() === "admin" &&
-            String(matchedUser?.isActive).toLowerCase() === "true";
-
-          setCanAccessPage(isActiveAdmin);
-
-        }
-      } else {
-        setCanAccessPage(false);
-      }
-    } catch (error) {
-      console.error("Access check failed:", error);
-      setCanAccessPage(false);
-    } finally {
-      setCheckingAccess(false);
-    }
-  };
 
   const fetchUsers = async (searchValue = '', page = 1) => {
     try {
@@ -288,8 +231,16 @@ export default function AuthorizationManagementPage() {
     }
   };
 
+  // Check admin access from stored user
   useEffect(() => {
-    checkActiveAdminAccess();
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+
+    const isActiveAdmin =
+      String(user?.userRole || "").toLowerCase() === "admin" &&
+      user?.isActive === true;
+
+    setCanAccessPage(isActiveAdmin);
+    setCheckingAccess(false);
   }, []);
 
   useEffect(() => {
