@@ -7,6 +7,9 @@ export default function CustomizeDashboardModal({
     onClose,
     dashboardName,
     setDashboardName,
+    services = [],
+    serviceLabels = {},
+    onServiceLabelChange,
     regions = [],
     attributes = [],
     regionLabels = {},
@@ -64,6 +67,55 @@ export default function CustomizeDashboardModal({
                                     size={18}
                                     className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400"
                                 />
+                            </div>
+                        </section>
+
+                        {/* Service names */}
+                        <section>
+                            <div className="rounded-2xl border border-slate-200 overflow-hidden">
+                                <div className="grid grid-cols-2 bg-slate-50 px-5 py-4">
+                                    <div className="text-[15px] font-semibold text-slate-700">
+                                        Service Name
+                                    </div>
+                                    <div className="text-[15px] font-semibold text-slate-700">
+                                        Custom Label
+                                    </div>
+                                </div>
+
+                                <div className="divide-y divide-slate-100">
+                                    {services.map((service) => (
+                                        <div
+                                            key={service.id}
+                                            className="grid grid-cols-2 items-center px-5 py-4"
+                                        >
+                                            <div className="pr-4 text-[16px] text-slate-600">
+                                                {service.name}
+                                            </div>
+
+                                            <div className="relative">
+                                                <input
+                                                    type="text"
+                                                    value={serviceLabels[service.id] || ""}
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+
+                                                        const safeLabelPattern = /^[a-zA-Z0-9\s\-_.()]*$/;
+
+                                                        if (safeLabelPattern.test(value) && value.length <= 50) {
+                                                            onServiceLabelChange(service.id, value);
+                                                        }
+                                                    }}
+                                                    placeholder={service.name}
+                                                    className="w-full rounded-xl border border-indigo-200 bg-white px-4 py-3 pr-12 text-[15px] text-slate-700 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
+                                                />
+                                                <PencilLine
+                                                    size={16}
+                                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400"
+                                                />
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </section>
 

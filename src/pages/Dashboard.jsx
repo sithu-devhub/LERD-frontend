@@ -68,9 +68,15 @@ export default function Dashboard() {
   const [customDashboardName, setCustomDashboardName] = useState("");
   const [customRegionLabels, setCustomRegionLabels] = useState({});
   const [customAttributeLabels, setCustomAttributeLabels] = useState({});
+  const [customServiceLabels, setCustomServiceLabels] = useState({});
 
   const [allRegions, setAllRegions] = useState([]);
   const [allAttributes, setAllAttributes] = useState([]);
+
+  const dummyServices = [
+    { id: "1", name: "12-Question survey - Development" },
+    { id: "2", name: "20-Question survey RC - Development" },
+  ];
 
   const [filters, setFilters] = useState(() => {
     const saved = localStorage.getItem("dashboardFilters");
@@ -793,6 +799,12 @@ export default function Dashboard() {
         dashboardName={customDashboardName}
         setDashboardName={setCustomDashboardName}
 
+        services={dummyServices}
+        serviceLabels={customServiceLabels}
+        onServiceLabelChange={(id, value) =>
+          setCustomServiceLabels((prev) => ({ ...prev, [id]: value }))
+        }
+
         regions={allRegions.map((region) => ({
           id: String(region.facilityCode ?? region.regionId ?? region.id),
           name: region.regionName ?? region.name ?? "Unnamed Region",
@@ -818,11 +830,13 @@ export default function Dashboard() {
           setCustomDashboardName(`Dashboard – ${serviceName}`);
           setCustomRegionLabels({});
           setCustomAttributeLabels({});
+          setCustomServiceLabels({});
         }}
 
         onSave={() => {
           console.log("Saved:", {
             name: customDashboardName,
+            services: customServiceLabels,
             regions: customRegionLabels,
             attrs: customAttributeLabels,
           });
