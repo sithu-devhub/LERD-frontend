@@ -48,8 +48,10 @@ export default function CustomizeDashboardModal({
                             <label className="mb-3 block text-[15px] font-semibold text-slate-700">
                                 Dashboard Name
                             </label>
-
-                            <div className="relative">
+                            <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-[17px] text-slate-800 shadow-sm">
+                                {dashboardName}
+                            </div>
+                            {/* <div className="relative">
                                 <input
                                     type="text"
                                     value={dashboardName}
@@ -68,7 +70,7 @@ export default function CustomizeDashboardModal({
                                     size={18}
                                     className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400"
                                 />
-                            </div>
+                            </div> */}
                         </section>
 
                         {/* Service names */}
