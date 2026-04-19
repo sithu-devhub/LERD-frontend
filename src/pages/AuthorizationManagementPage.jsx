@@ -3,7 +3,6 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { getAllUsers, createUser } from '../api/authService';
 import { getUserAccess, updateUserAccess } from '../api/accessService';
 
-
 function setAllChildrenChecked(nodes, checked) {
   return nodes.map((node) => ({
     ...node,
@@ -15,37 +14,39 @@ function setAllChildrenChecked(nodes, checked) {
   }));
 }
 
+// update checkbox tree and handle parent-child + indeterminate state
 function updateTree(nodes, targetId, checked) {
   return nodes.map((node) => {
     if (node.id === targetId) {
       return {
         ...node,
         checked,
-        indeterminate: false,
+        indeterminate: false, // reset indeterminate when directly toggled
         children: node.children
-          ? setAllChildrenChecked(node.children, checked)
+          ? setAllChildrenChecked(node.children, checked) // update all children
           : undefined,
       };
     }
 
     if (node.children) {
       const updatedChildren = updateTree(node.children, targetId, checked);
-
       const checkedChildrenCount = updatedChildren.filter(
         (child) => child.checked
       ).length;
+      const totalChildren = updatedChildren.length;
 
       return {
         ...node,
         children: updatedChildren,
-        checked: checkedChildrenCount > 0,
-        indeterminate: false,
+        checked: checkedChildrenCount > 0, // show tick if any child is checked
+        indeterminate: false, // never show horizontal line
       };
     }
 
     return node;
   });
 }
+
 function filterPermissionTree(nodes, searchTerm) {
   if (!searchTerm.trim()) return nodes;
 
@@ -72,59 +73,55 @@ function filterPermissionTree(nodes, searchTerm) {
 }
 
 
+// map API access response into checkbox tree structure
 function mapAccessResponseToPermissionTree(accessData) {
   if (!accessData?.surveys) return [];
 
   return accessData.surveys.map((survey) => {
+    const children = (survey.facilities || []).map((facility) => ({
+      id: `${survey.surveyId}-${facility.facilityCode}`,
+      label: facility.facilityName,
+      checked: facility.isGranted,
+      indeterminate: false, // default child state
+      facilityCode: facility.facilityCode,
+      facilityName: facility.facilityName,
+      surveyId: survey.surveyId,
+    }));
+
+    const checkedChildrenCount = children.filter((child) => child.checked).length;
+    const totalChildren = children.length;
+
     return {
       id: survey.surveyId,
       label: survey.surveyName,
-      checked: survey.isGranted,
-      indeterminate: false,
+      checked: checkedChildrenCount > 0 || survey.isGranted, // show tick if any child is checked
+      indeterminate: false, // never show horizontal line
       allFacilitiesGranted: survey.allFacilitiesGranted,
-      children: (survey.facilities || []).map((facility) => ({
-        id: `${survey.surveyId}-${facility.facilityCode}`,
-        label: facility.facilityName,
-        checked: facility.isGranted,
-        indeterminate: false,
-        facilityCode: facility.facilityCode,
-        facilityName: facility.facilityName,
-        surveyId: survey.surveyId,
-      })),
+      children,
     };
   });
 }
 
+// build PUT API payload from selected permissions
 function buildAccessUpdatePayload(permissions) {
   const surveys = permissions
-    .filter((survey) => survey.checked)
     .map((survey) => {
       const children = survey.children || [];
       const checkedChildren = children.filter((child) => child.checked);
 
       if (checkedChildren.length === 0) {
-        return null;
+        return null; // skip if nothing selected
       }
 
-      // all facilities selected
-      if (checkedChildren.length === children.length) {
-        return {
-          surveyId: survey.id,
-          facilityCodes: null,
-        };
-      }
-
-      // only some facilities selected
       return {
         surveyId: survey.id,
-        facilityCodes: checkedChildren.map((child) => child.facilityCode),
+        facilityCodes: checkedChildren.map((child) => child.facilityCode), // send selected facilities
       };
     })
     .filter(Boolean);
 
   return { surveys };
 }
-
 export default function AuthorizationManagementPage() {
   const [facilitySearch, setFacilitySearch] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
@@ -156,9 +153,7 @@ export default function AuthorizationManagementPage() {
     userName: '',
   });
   const [creatingUser, setCreatingUser] = useState(false);
-
   const displayedUsers = useMemo(() => users, [users]);
-
   const visiblePages = useMemo(() => {
     const maxVisible = 5;
 
@@ -334,7 +329,7 @@ export default function AuthorizationManagementPage() {
     setLoadingPermissions(true);
 
     try {
-      const res = await getUserAccess(user);
+      const res = await getUserAccess(user.id);
       const result = res.data;
 
       if (result?.success) {
@@ -383,11 +378,16 @@ export default function AuthorizationManagementPage() {
 
       if (result?.success) {
         console.log('Save response:', result);
-        alert(result.message || `Permissions saved for ${selectedUser.username}`);
 
-        // reset original state after successful save
+        setSuccessToast({
+          open: true,
+          message: result.message || 'Access updated successfully',
+          userName: selectedUser.username,
+        });
+
         setOriginalPermissions(JSON.parse(JSON.stringify(permissions)));
-      } else {
+      }
+      else {
         alert(result?.message || 'Failed to save permissions.');
       }
     } catch (error) {
@@ -410,6 +410,20 @@ export default function AuthorizationManagementPage() {
     setFormErrors({});
 
     const errors = {};
+
+
+    // Strong validation patterns
+    const namePattern = /^[a-zA-Z\s'-]+$/;   // ONLY letters + space
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // proper email
+    // block script / symbols in name
+    if (newUserFullName && !namePattern.test(newUserFullName.trim())) {
+      errors.fullName = "Only letters and spaces allowed";
+    }
+    // proper email validation
+    if (newUserEmail && !emailPattern.test(newUserEmail.trim())) {
+      errors.email = "Enter a valid email";
+    }
+
 
     if (!newUserEmail.trim()) {
       errors.email = 'Email is required';
@@ -800,8 +814,18 @@ export default function AuthorizationManagementPage() {
                   type="email"
                   value={newUserEmail}
                   onChange={(e) => {
-                    setNewUserEmail(e.target.value);
-                    setFormErrors((prev) => ({ ...prev, email: '', api: '' }));
+                    const value = e.target.value;
+
+                    if (!/[<>"'`;(){}]/.test(value)) {
+                      setNewUserEmail(value);
+                      setFormErrors((prev) => ({ ...prev, email: '', api: '' }));
+                    } else {
+                      setFormErrors((prev) => ({
+                        ...prev,
+                        email: 'Invalid characters in email',
+                        api: '',
+                      }));
+                    }
                   }}
                   placeholder="Enter email"
                   className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:ring-2 focus:ring-indigo-100 ${formErrors.email
@@ -822,8 +846,18 @@ export default function AuthorizationManagementPage() {
                   type="text"
                   value={newUserFullName}
                   onChange={(e) => {
-                    setNewUserFullName(e.target.value);
-                    setFormErrors((prev) => ({ ...prev, fullName: '', api: '' }));
+                    const value = e.target.value;
+
+                    if (/^[a-zA-Z\s'-]*$/.test(value)) {
+                      setNewUserFullName(value);
+                      setFormErrors((prev) => ({ ...prev, fullName: '', api: '' }));
+                    } else {
+                      setFormErrors((prev) => ({
+                        ...prev,
+                        fullName: 'Only letters and spaces allowed',
+                        api: '',
+                      }));
+                    }
                   }}
                   placeholder="Enter full name"
                   className={`w-full rounded-xl border bg-white px-3 py-2.5 text-sm text-gray-700 placeholder:text-gray-400 outline-none transition focus:ring-2 focus:ring-indigo-100 ${formErrors.fullName
@@ -929,11 +963,10 @@ export default function AuthorizationManagementPage() {
 
               <div className="flex-1">
                 <div className="mt-1 text-sm text-gray-600">
-                  The user{" "}
+                  {successToast.message}{" "}
                   <span className="font-semibold text-[#4f46e5]">
                     "{successToast.userName}"
-                  </span>{" "}
-                  was created successfully.
+                  </span>
                 </div>
               </div>
 

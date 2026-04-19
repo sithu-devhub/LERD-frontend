@@ -49,8 +49,15 @@ export default function CustomizeDashboardModal({
                                 <input
                                     type="text"
                                     value={dashboardName}
-                                    onChange={(e) => setDashboardName(e.target.value)}
-                                    placeholder="Enter dashboard name"
+                                    onChange={(e) => {
+                                        const value = e.target.value;
+
+                                        const safeLabelPattern = /^[a-zA-Z0-9\s\-_.()]*$/;
+
+                                        if (safeLabelPattern.test(value) && value.length <= 50) {
+                                            setDashboardName(value);
+                                        }
+                                    }} placeholder="Enter dashboard name"
                                     className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 pr-14 text-[17px] text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                                 />
                                 <PencilLine
@@ -86,9 +93,15 @@ export default function CustomizeDashboardModal({
                                                 <input
                                                     type="text"
                                                     value={regionLabels[region.id] || ""}
-                                                    onChange={(e) =>
-                                                        onRegionLabelChange(region.id, e.target.value)
-                                                    }
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+
+                                                        const safeLabelPattern = /^[a-zA-Z0-9\s\-_.()]*$/;
+
+                                                        if (safeLabelPattern.test(value) && value.length <= 50) {
+                                                            onRegionLabelChange(region.id, value);
+                                                        }
+                                                    }}
                                                     placeholder={region.name}
                                                     className="w-full rounded-xl border border-indigo-200 bg-white px-4 py-3 pr-12 text-[15px] text-slate-700 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                                                 />
