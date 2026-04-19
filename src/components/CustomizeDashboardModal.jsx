@@ -170,14 +170,6 @@ export default function CustomizeDashboardModal({
                     {/* Footer */}
                     <div className="mt-8 flex items-center justify-end gap-4">
                         <button
-                            onClick={onReset}
-                            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-6 py-3 text-[15px] font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                        >
-                            <RotateCcw size={16} />
-                            Reset to Default
-                        </button>
-
-                        <button
                             onClick={onSave}
                             className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-7 py-3 text-[15px] font-semibold text-white shadow-[0_10px_25px_rgba(79,70,229,0.28)] transition hover:from-indigo-700 hover:to-violet-700"
                         >
