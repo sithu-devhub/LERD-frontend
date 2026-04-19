@@ -380,7 +380,10 @@ export default function ResponseChart({
           if (Array.isArray(json.data.regions)) {
             const allRegions = (json.data.regions || [])
               .map((r) => ({
-                Region: String(r.villageName || "").trim(),
+                Region: String(r.villageName || "")
+                  .replace(/[\u4e00-\u9fff]/g, "") // remove Chinese characters
+                  .replace("測試", "")              // remove "test"
+                  .trim(),
                 Participants: Number(r.participantCount) || 0,
               }))
               .filter((r) => r.Region && r.Participants > 0)
