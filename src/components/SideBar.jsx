@@ -8,7 +8,7 @@ import { FaUsers } from "react-icons/fa";
 import AuthorisationIcon from "../icons/AuthorisationIcon";
 import LogoutIcon from "../icons/LogoutIcon";
 import http from '../api/http';               // axios instance with interceptor
-import { logout as logoutApi } from '../api/authService'; // logout service
+import { logout as logoutApi, getAllUsers } from '../api/authService';
 
 export default function SideBar() {
   const navigate = useNavigate();
@@ -28,48 +28,150 @@ export default function SideBar() {
 
   const [user, setUser] = useState(null);
 
+  // Stores whether the logged-in user is an active admin
+  const [canViewAuthManagement, setCanViewAuthManagement] = useState(false);
+
   useEffect(() => {
     // Load from localStorage (fullName, position)
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const parsedUser = JSON.parse(savedUser);
+      setUser(parsedUser);
+
+      // Initial sidebar visibility check using saved login data
+      const isActiveAdmin =
+        String(parsedUser?.userRole || "").toLowerCase() === "admin" &&
+        String(parsedUser?.isActive).toLowerCase() === "true";
+
+      setCanViewAuthManagement(isActiveAdmin);
     }
 
     // Validate token and fetch current user info
+    // async function validateToken() {
+    //   try {
+    //     const res = await http.get("/Auth/me"); // axios with auto-refresh
+    //     console.log("🔎 /Auth/me response:", res.data); // Debug log
+
+    //     if (res?.data?.userId) {
+    //       // Merge current logged-in user data from /Auth/me into localStorage
+    //       const localUser = JSON.parse(localStorage.getItem("user")) || {};
+
+    //       const updatedUser = {
+    //         ...localUser,
+    //         userId: res.data.userId,
+    //         username: res.data.username,
+    //         // keep existing role if /Auth/me does not return it
+    //         userRole: res.data.userRole ?? localUser.userRole,
+    //         // keep existing active status if /Auth/me does not return it
+    //         isActive: res.data.isActive ?? localUser.isActive,
+    //       };
+
+    //       // Save updated logged-in user details
+    //       localStorage.setItem("user", JSON.stringify(updatedUser));
+    //       setUser(updatedUser);
+
+    //       // Show Authorization Management tab only for active admin users
+    //       const isActiveAdmin =
+    //         String(updatedUser?.userRole || "").toLowerCase() === "admin" &&
+    //         String(updatedUser?.isActive).toLowerCase() === "true";
+
+    //       setCanViewAuthManagement(isActiveAdmin);
+
+    //       console.log("✅ Updated user stored in localStorage:", updatedUser);
+    //     } else {
+    //       handleLogout();
+    //     }
+    //   } catch (e) {
+    //     console.warn("❌ Token validation failed:", e);
+    //     handleLogout();
+    //   }
+    // }
     async function validateToken() {
       try {
-        const res = await http.get("/Auth/me"); // axios with auto-refresh
-        console.log("🔎 /Auth/me response:", res.data); // Debug log
+        // 1. Only use /Auth/me to validate session/token
+        const res = await http.get("/Auth/me");
+        console.log("🔎 /Auth/me response:", res.data);
 
-        if (res?.data?.userId) {
-          // Merge with local user data
-          const localUser = JSON.parse(localStorage.getItem("user")) || {};
-          const updatedUser = {
-            ...localUser,
-            userId: res.data.userId,
-            username: res.data.username,
-          };
-
-          localStorage.setItem("user", JSON.stringify(updatedUser));
-          setUser(updatedUser);
-
-          console.log("✅ Updated user stored in localStorage:", updatedUser); // Debug log
-        } else {
+        if (!res?.data?.userId) {
           handleLogout();
+          return;
         }
+
+        const localUser = JSON.parse(localStorage.getItem("user")) || {};
+        const username = res.data.username || localUser.username;
+
+        // Save basic logged-in user info first
+        let updatedUser = {
+          ...localUser,
+          userId: res.data.userId,
+          username: username,
+          fullName: localUser.fullName,
+          position: localUser.position,
+        };
+
+        // 2. Try to fetch role/active status separately
+        // If this fails for non-admins, DO NOT logout
+        try {
+          if (username) {
+            const searchRes = await getAllUsers({
+              PageNumber: 1,
+              PageSize: 10,
+              Search: username,
+            });
+
+            const matchedUser = searchRes?.data?.data?.find(
+              (u) => String(u.username).toLowerCase() === String(username).toLowerCase()
+            );
+
+            if (matchedUser) {
+              updatedUser = {
+                ...updatedUser,
+                userRole: matchedUser.userRole,
+                isActive: matchedUser.isActive,
+              };
+            }
+          }
+        } catch (searchError) {
+          console.warn("Search user API not available for this user:", searchError);
+
+          // Non-admins may not be allowed to call this endpoint.
+          // Just hide admin-only tab and continue.
+          updatedUser = {
+            ...updatedUser,
+            userRole: updatedUser.userRole ?? null,
+            isActive: updatedUser.isActive ?? null,
+          };
+        }
+
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        setUser(updatedUser);
+
+        const isActiveAdmin =
+          String(updatedUser?.userRole || "").toLowerCase() === "admin" &&
+          String(updatedUser?.isActive).toLowerCase() === "true";
+
+        setCanViewAuthManagement(isActiveAdmin);
+
+        console.log("✅ Updated user stored in localStorage:", updatedUser);
+        console.log("✅ canViewAuthManagement:", isActiveAdmin);
       } catch (e) {
+        // Only logout if /Auth/me itself fails
         console.warn("❌ Token validation failed:", e);
         handleLogout();
       }
     }
+
     validateToken();
   }, []);
 
+  // Build sidebar items and only show Authorization Management for active admins
   const navItems = [
     { name: 'Dashboard', path: '/dashboard', Icon: MdHome },
     { name: 'Service Type', path: '/service', Icon: MdShoppingCart },
     { name: 'Region', path: '/region', Icon: MdBarChart },
-    { name: 'Authorisation Management', path: '/auth', Icon: AuthorisationIcon },
+    ...(canViewAuthManagement
+      ? [{ name: 'Authorisation Management', path: '/auth', Icon: AuthorisationIcon }]
+      : []),
     // { name: 'Attributes', path: '/attributes', Icon: MdBarChart },
     { name: 'Log out', action: 'logout', Icon: LogoutIcon },
   ];
