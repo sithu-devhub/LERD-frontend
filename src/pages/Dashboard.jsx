@@ -1,5 +1,6 @@
 // src/pages/Dashboard.jsx
 import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import ChartCard from '../components/ChartCard';
 import '../styles/dashboard.css';
@@ -64,6 +65,8 @@ export default function Dashboard() {
   const [isAllRegionsModalOpen, setIsAllRegionsModalOpen] = useState(false);
 
   const [showRenameModal, setShowRenameModal] = useState(false);
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [customDashboardName, setCustomDashboardName] = useState("");
   const [customRegionLabels, setCustomRegionLabels] = useState({});
@@ -545,7 +548,6 @@ export default function Dashboard() {
     loadSurveyAndRegions();
   }, [serviceId, navigate]);
 
-
   useEffect(() => {
     if (availableAttrs.length) {
       if (availableAttrs.length <= 5) {
@@ -571,6 +573,19 @@ export default function Dashboard() {
       setCustomDashboardName(`Dashboard – ${serviceName}`);
     }
   }, [serviceName]); // dependency: re-run when serviceName updates
+
+
+  // Auto-hide success toast after 3 seconds when it becomes visible
+  useEffect(() => {
+    if (!showSuccessToast) return;
+
+    const timer = setTimeout(() => {
+      setShowSuccessToast(false);
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [showSuccessToast]);
+
 
 
   const handleFilterChange = useCallback(({ gender, participantType, period }) => {
@@ -858,9 +873,63 @@ export default function Dashboard() {
             attrs: tempAttributeLabels,
           });
 
+          setSuccessMessage("Renaming Completed successfully");
+          setShowSuccessToast(true);
+
           setShowRenameModal(false);
         }}
       />
+
+      {showSuccessToast &&
+        createPortal(
+          <div className="fixed top-24 right-6 z-[20000]">
+            <div className="min-w-[320px] rounded-2xl border border-[#dfe3ff] bg-white shadow-lg">
+              <div className="flex items-start gap-3 p-4">
+                <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#eef2ff]">
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5 text-[#4f46e5]"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                  >
+                    <path
+                      d="M20 6L9 17l-5-5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+
+                <div className="flex-1">
+                  <div className="text-sm font-semibold text-gray-800">Success</div>
+                  <div className="mt-1 text-sm text-gray-600">{successMessage}</div>
+                </div>
+
+                <button
+                  onClick={() => setShowSuccessToast(false)}
+                  className="ml-2 rounded-lg px-2 py-1 text-sm font-medium text-gray-500 hover:bg-gray-100"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="h-1 w-full overflow-hidden rounded-b-2xl bg-[#eef2ff]">
+                <div className="h-full w-full bg-[#4f46e5] animate-[toastbar_3s_linear_forwards]" />
+              </div>
+            </div>
+
+            <style>{`
+        @keyframes toastbar_3s_linear_forwards {
+          from { transform: translateX(0%); }
+          to { transform: translateX(-100%); }
+        }
+      `}</style>
+          </div>,
+          document.body
+        )}
+
     </div>
   );
 }
