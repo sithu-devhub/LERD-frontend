@@ -177,15 +177,16 @@ export default function ServiceType() {
 
       localStorage.setItem("lastServiceId", selected);
       const selectedSurvey = surveys.find((s) => s.surveyId === selected);
-      const displayServiceLabel = selectedSurvey?.serviceType || selectedSurvey?.serviceName;
+      const displayServiceLabel =
+        selectedSurvey?.serviceType ||
+        selectedSurvey?.serviceName ||
+        selectedSurvey?.surveyName;
       if (displayServiceLabel) {
-        localStorage.setItem("lastServiceName", displayServiceLabel);
+        // localStorage.setItem("lastServiceName", displayServiceLabel);
         localStorage.setItem(`surveyName:${selected}`, displayServiceLabel);
       }
 
-      navigate(`/dashboard/${encodeURIComponent(selected)}`, {
-        state: { service: displayServiceLabel },
-      });
+      navigate(`/dashboard/${encodeURIComponent(selected)}`);;
     } else {
       alert("No valid surveys found for your account. Please contact admin.");
     }
