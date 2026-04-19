@@ -78,6 +78,13 @@ export default function Dashboard() {
   const [tempAttributeLabels, setTempAttributeLabels] = useState({});
   const [tempServiceLabels, setTempServiceLabels] = useState({});
 
+  // enable save only when modal values differ from saved values
+  const hasRenameChanges =
+    tempDashboardName !== customDashboardName ||
+    JSON.stringify(tempServiceLabels) !== JSON.stringify(customServiceLabels) ||
+    JSON.stringify(tempRegionLabels) !== JSON.stringify(customRegionLabels) ||
+    JSON.stringify(tempAttributeLabels) !== JSON.stringify(customAttributeLabels);
+
   const [allRegions, setAllRegions] = useState([]);
   const [allAttributes, setAllAttributes] = useState([]);
 
@@ -824,6 +831,8 @@ export default function Dashboard() {
         dashboardName={tempDashboardName}
         setDashboardName={setTempDashboardName}
 
+        hasChanges={hasRenameChanges}
+
         services={dummyServices}
         serviceLabels={tempServiceLabels}
 
@@ -832,15 +841,45 @@ export default function Dashboard() {
 
 
         onRegionLabelChange={(id, value) =>
-          setTempRegionLabels((prev) => ({ ...prev, [id]: value }))
+          setTempRegionLabels((prev) => {
+            const updated = { ...prev };
+
+            if (value.trim() === "") {
+              delete updated[id];
+            } else {
+              updated[id] = value;
+            }
+
+            return updated;
+          })
         }
 
         onAttributeLabelChange={(id, value) =>
-          setTempAttributeLabels((prev) => ({ ...prev, [id]: value }))
+          setTempAttributeLabels((prev) => {
+            const updated = { ...prev };
+
+            if (value.trim() === "") {
+              delete updated[id];
+            } else {
+              updated[id] = value;
+            }
+
+            return updated;
+          })
         }
 
         onServiceLabelChange={(id, value) =>
-          setTempServiceLabels((prev) => ({ ...prev, [id]: value }))
+          setTempServiceLabels((prev) => {
+            const updated = { ...prev };
+
+            if (value.trim() === "") {
+              delete updated[id];
+            } else {
+              updated[id] = value;
+            }
+
+            return updated;
+          })
         }
 
         regions={allRegions.map((region) => ({
@@ -854,10 +893,10 @@ export default function Dashboard() {
         }))}
 
         onReset={() => {
-          setCustomDashboardName(`Dashboard – ${serviceName}`);
-          setCustomRegionLabels({});
-          setCustomAttributeLabels({});
-          setCustomServiceLabels({});
+          setTempDashboardName(`Dashboard – ${serviceName}`);
+          setTempRegionLabels({});
+          setTempAttributeLabels({});
+          setTempServiceLabels({});
         }}
 
         onSave={() => {

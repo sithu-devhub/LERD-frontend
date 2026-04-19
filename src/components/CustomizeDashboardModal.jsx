@@ -17,6 +17,7 @@ export default function CustomizeDashboardModal({
     onRegionLabelChange,
     onAttributeLabelChange,
     onReset,
+    hasChanges = false,
     onSave,
 }) {
     if (!open) return null;
@@ -223,7 +224,12 @@ export default function CustomizeDashboardModal({
                     <div className="mt-8 flex items-center justify-end gap-4">
                         <button
                             onClick={onSave}
-                            className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-7 py-3 text-[15px] font-semibold text-white shadow-[0_10px_25px_rgba(79,70,229,0.28)] transition hover:from-indigo-700 hover:to-violet-700"
+                            disabled={!hasChanges}
+                            className={`inline-flex items-center gap-2 rounded-full px-7 py-3 text-[15px] font-semibold transition
+        ${hasChanges
+                                    ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-[0_10px_25px_rgba(79,70,229,0.28)] hover:from-indigo-700 hover:to-violet-700"
+                                    : "bg-slate-200 text-slate-400 cursor-not-allowed"
+                                }`}
                         >
                             <Save size={16} />
                             Save Changes
