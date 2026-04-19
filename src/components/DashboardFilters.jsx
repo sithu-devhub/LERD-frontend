@@ -2,8 +2,8 @@
 import React, { useMemo, useRef, useState, useEffect } from "react";
 import { ChevronDown, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { MdBarChart } from "react-icons/md";
+import http from "../api/http";
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL;
 const DEFAULT_YEAR = new Date().getFullYear() - 1;
 
 // outside-click helper
@@ -321,11 +321,14 @@ export default function DashboardFilters({ value, onChange, className = "", regi
     }
 
     let aborted = false;
+
     async function fetchFreshness() {
       try {
         setIsFreshnessLoading(true);
-        const res = await fetch(`${API_BASE}/surveys/${surveyId}/last-updated`);
-        const json = await res.json();
+
+        const res = await http.get(`/surveys/${surveyId}/last-updated`);
+        const json = res.data;
+
         if (!aborted) {
           if (json?.success && json?.data?.formattedTime) {
             setLastUpdated(json.data.formattedTime);
@@ -341,7 +344,10 @@ export default function DashboardFilters({ value, onChange, className = "", regi
     }
 
     fetchFreshness();
-    return () => { aborted = true; };
+
+    return () => {
+      aborted = true;
+    };
   }, [value?.surveyId]);
 
   const periodLabel = useMemo(() => {

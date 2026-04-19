@@ -1,7 +1,21 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../api/authService'; // use the login service
-import http from '../api/http'; // import axios instance for Auth/me
+
+
+// Decode JWT payload safely
+function parseJwt(token) {
+  try {
+    // Extract and decode the payload part of the token
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64));
+  } catch (error) {
+    // Handle invalid token format
+    console.error('Failed to parse JWT:', error);
+    return null;
+  }
+}
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -36,20 +50,31 @@ const Login = () => {
         localStorage.setItem('accessToken', data.accessToken);
         localStorage.setItem('refreshToken', data.refreshToken);
 
-        // Fetch user info to get userId
-        const meRes = await http.get('/Auth/me', {
-          headers: { Authorization: `Bearer ${data.accessToken}` },
-        });
-        const me = meRes.data;
 
-        // Save user info (with userId)
+        // Decode token - Save user info (with userId)
+        const claims = parseJwt(data.accessToken);
+
+        const userId =
+          claims?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier'] || null;
+
+        const username =
+          claims?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || formData.username;
+
+        const isAdmin =
+          String(claims?.is_admin).toLowerCase() === 'true';
+
+        const isActive =
+          String(claims?.is_active).toLowerCase() === 'true';
+
         localStorage.setItem(
           'user',
           JSON.stringify({
-            userId: me.userId,       
-            username: formData.username,
+            userId,
+            username,
             fullName: data.fullName,
-            position: data.position || "Position"
+            position: data.position || "Position",
+            userRole: isAdmin ? "admin" : "user",
+            isActive
           })
         );
 
@@ -64,6 +89,7 @@ const Login = () => {
     }
   };
 
+
   return (
     <div className="min-h-screen flex">
       {/* Left Side */}
@@ -71,7 +97,7 @@ const Login = () => {
         <div className="flex flex-col justify-center flex-1">
           <h1 className="text-5xl font-bold mb-6">Customer Experience Dashboard</h1>
           <p className="text-xl opacity-90 max-w-md leading-relaxed">
-            Empowering smarter decisions through a unified, insightful, and intuitive 
+            Empowering smarter decisions through a unified, insightful, and intuitive
             dashboard experience.
           </p>
         </div>

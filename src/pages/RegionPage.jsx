@@ -30,7 +30,7 @@ export default function RegionPage() {
     async function fetchRegionsAndFilters() {
       try {
         setLoading(true);
-        const user = JSON.parse(localStorage.getItem("user"));
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
         const token = localStorage.getItem("accessToken");
         if (!user?.userId || !token) return;
 
@@ -177,8 +177,8 @@ export default function RegionPage() {
       setToast({ open: true, message: "Please select at least one region to continue." });
       return;
     }
-    
-    const user = JSON.parse(localStorage.getItem("user"));
+
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
     const token = localStorage.getItem("accessToken");
     const surveyId = serviceId || localStorage.getItem("lastServiceId");
     if (!user?.userId || !token || !surveyId) return;
@@ -359,41 +359,41 @@ export default function RegionPage() {
           </div>
         </>
       )}
-    {toast.open && (
-      <div className="fixed top-5 right-5 z-50">
-        <div className="w-[360px] rounded-2xl border border-red-200 bg-white shadow-lg">
-          <div className="flex items-start gap-3 p-4">
-            <div className="mt-0.5 h-9 w-9 shrink-0 rounded-full bg-red-50 flex items-center justify-center">
-              <span className="text-red-600 font-bold">!</span>
+      {toast.open && (
+        <div className="fixed top-5 right-5 z-50">
+          <div className="w-[360px] rounded-2xl border border-red-200 bg-white shadow-lg">
+            <div className="flex items-start gap-3 p-4">
+              <div className="mt-0.5 h-9 w-9 shrink-0 rounded-full bg-red-50 flex items-center justify-center">
+                <span className="text-red-600 font-bold">!</span>
+              </div>
+
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-gray-800">Selection required</div>
+                <div className="mt-0.5 text-sm text-gray-600">{toast.message}</div>
+              </div>
+
+              <button
+                onClick={() => setToast({ open: false, message: "" })}
+                className="ml-2 rounded-lg px-2 py-1 text-sm font-medium text-gray-500 hover:bg-gray-100"
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
 
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-gray-800">Selection required</div>
-              <div className="mt-0.5 text-sm text-gray-600">{toast.message}</div>
+            <div className="h-1 w-full bg-red-100 overflow-hidden rounded-b-2xl">
+              <div className="h-full w-full bg-red-400 animate-[toastbar_3s_linear_forwards]" />
             </div>
-
-            <button
-              onClick={() => setToast({ open: false, message: "" })}
-              className="ml-2 rounded-lg px-2 py-1 text-sm font-medium text-gray-500 hover:bg-gray-100"
-              aria-label="Close"
-            >
-              ✕
-            </button>
           </div>
 
-          <div className="h-1 w-full bg-red-100 overflow-hidden rounded-b-2xl">
-            <div className="h-full w-full bg-red-400 animate-[toastbar_3s_linear_forwards]" />
-          </div>
-        </div>
-
-        <style>{`
+          <style>{`
           @keyframes toastbar {
             from { transform: translateX(0%); }
             to { transform: translateX(-100%); }
           }
         `}</style>
-      </div>
-    )}
+        </div>
+      )}
     </div>
   );
 }
