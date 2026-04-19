@@ -70,6 +70,11 @@ export default function Dashboard() {
   const [customAttributeLabels, setCustomAttributeLabels] = useState({});
   const [customServiceLabels, setCustomServiceLabels] = useState({});
 
+  const [tempDashboardName, setTempDashboardName] = useState("");
+  const [tempRegionLabels, setTempRegionLabels] = useState({});
+  const [tempAttributeLabels, setTempAttributeLabels] = useState({});
+  const [tempServiceLabels, setTempServiceLabels] = useState({});
+
   const [allRegions, setAllRegions] = useState([]);
   const [allAttributes, setAllAttributes] = useState([]);
 
@@ -615,8 +620,13 @@ export default function Dashboard() {
         <div className="ml-auto flex items-center gap-3">
 
           <button
-            onClick={() => setShowRenameModal(true)}
-            className="flex items-center gap-2 px-4 py-3 
+            onClick={() => {
+              setTempDashboardName(customDashboardName);
+              setTempRegionLabels(customRegionLabels);
+              setTempAttributeLabels(customAttributeLabels);
+              setTempServiceLabels(customServiceLabels);
+              setShowRenameModal(true);
+            }} className="flex items-center gap-2 px-4 py-3 
              bg-indigo-50 text-indigo-700 
              border border-indigo-200
              rounded-lg shadow-sm 
@@ -796,13 +806,26 @@ export default function Dashboard() {
         open={showRenameModal}
         onClose={() => setShowRenameModal(false)}
 
-        dashboardName={customDashboardName}
-        setDashboardName={setCustomDashboardName}
+        dashboardName={tempDashboardName}
+        setDashboardName={setTempDashboardName}
 
         services={dummyServices}
-        serviceLabels={customServiceLabels}
+        serviceLabels={tempServiceLabels}
+
+        regionLabels={tempRegionLabels}
+        attributeLabels={tempAttributeLabels}
+
+
+        onRegionLabelChange={(id, value) =>
+          setTempRegionLabels((prev) => ({ ...prev, [id]: value }))
+        }
+
+        onAttributeLabelChange={(id, value) =>
+          setTempAttributeLabels((prev) => ({ ...prev, [id]: value }))
+        }
+
         onServiceLabelChange={(id, value) =>
-          setCustomServiceLabels((prev) => ({ ...prev, [id]: value }))
+          setTempServiceLabels((prev) => ({ ...prev, [id]: value }))
         }
 
         regions={allRegions.map((region) => ({
@@ -815,17 +838,6 @@ export default function Dashboard() {
           name: attr.name ?? attr.label ?? `Attribute ${index + 1}`,
         }))}
 
-        regionLabels={customRegionLabels}
-        attributeLabels={customAttributeLabels}
-
-        onRegionLabelChange={(id, value) =>
-          setCustomRegionLabels((prev) => ({ ...prev, [id]: value }))
-        }
-
-        onAttributeLabelChange={(id, value) =>
-          setCustomAttributeLabels((prev) => ({ ...prev, [id]: value }))
-        }
-
         onReset={() => {
           setCustomDashboardName(`Dashboard – ${serviceName}`);
           setCustomRegionLabels({});
@@ -834,11 +846,16 @@ export default function Dashboard() {
         }}
 
         onSave={() => {
+          setCustomDashboardName(tempDashboardName);
+          setCustomRegionLabels(tempRegionLabels);
+          setCustomAttributeLabels(tempAttributeLabels);
+          setCustomServiceLabels(tempServiceLabels);
+
           console.log("Saved:", {
-            name: customDashboardName,
-            services: customServiceLabels,
-            regions: customRegionLabels,
-            attrs: customAttributeLabels,
+            name: tempDashboardName,
+            services: tempServiceLabels,
+            regions: tempRegionLabels,
+            attrs: tempAttributeLabels,
           });
 
           setShowRenameModal(false);
