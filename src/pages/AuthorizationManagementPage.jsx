@@ -266,6 +266,8 @@ export default function AuthorizationManagementPage() {
   const isAdminUser = (role) =>
     role?.toLowerCase?.().trim() === 'admin';
 
+  const selectedUserIsAdmin = isAdminUser(selectedUser?.userRole);
+
   const [expandedNodes, setExpandedNodes] = useState({
     'retirement-village': false,
     'residential-care': false,
@@ -285,6 +287,7 @@ export default function AuthorizationManagementPage() {
     permissions.length > 0 && permissions.every((node) => node.checked);
 
   const toggleAllPermissions = (checked) => {
+    if (selectedUserIsAdmin) return;
     setPermissions((prev) => setAllChildrenChecked(prev, checked));
   };
 
@@ -362,8 +365,13 @@ export default function AuthorizationManagementPage() {
 
       if (result?.success) {
         const mappedPermissions = mapAccessResponseToPermissionTree(result.data);
-        setPermissions(mappedPermissions);
-        setOriginalPermissions(JSON.parse(JSON.stringify(mappedPermissions)));
+
+        const finalPermissions = isAdminUser(user?.userRole)
+          ? setAllChildrenChecked(mappedPermissions, true)
+          : mappedPermissions;
+
+        setPermissions(finalPermissions);
+        setOriginalPermissions(JSON.parse(JSON.stringify(finalPermissions)));
       } else {
         setPermissions([]);
         setPermissionError(result?.message || 'Failed to load permissions.');
@@ -389,6 +397,7 @@ export default function AuthorizationManagementPage() {
   }, [selectedUser?.id]);
 
   const togglePermissionNode = (id, checked) => {
+    if (selectedUserIsAdmin) return;
     setPermissions((prev) => updateTree(prev, id, checked));
   };
 
@@ -576,13 +585,15 @@ export default function AuthorizationManagementPage() {
               <input
                 type="checkbox"
                 checked={node.checked}
+                disabled={selectedUserIsAdmin}
                 ref={(el) => {
                   if (el) {
                     el.indeterminate = !!node.indeterminate;
                   }
                 }}
                 onChange={(e) => togglePermissionNode(node.id, e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                className={`h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 ${selectedUserIsAdmin ? 'cursor-not-allowed opacity-70' : ''
+                  }`}
               />
               <span
                 className={`text-sm ${level === 0
@@ -772,6 +783,12 @@ export default function AuthorizationManagementPage() {
               <h3 className="mb-3 text-sm font-semibold text-gray-700">
                 Select facility permission:
               </h3>
+
+              {selectedUserIsAdmin && (
+                <div className="rounded-xl border border-[#dfe3ff] bg-[#f3f4ff] px-4 py-3 text-sm text-[#4f46e5]">
+                  This user is an admin. Full permissions are applied by default and cannot be edited here.
+                </div>
+              )}
             </div>
 
             <div
@@ -790,8 +807,10 @@ export default function AuthorizationManagementPage() {
                     <input
                       type="checkbox"
                       checked={allChecked}
+                      disabled={selectedUserIsAdmin}
                       onChange={(e) => toggleAllPermissions(e.target.checked)}
-                      className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      className={`h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 ${selectedUserIsAdmin ? 'cursor-not-allowed opacity-70' : ''
+                        }`}
                     />
                     <span className="text-sm font-semibold text-[#33406f]">All</span>
                   </label>
@@ -820,21 +839,20 @@ export default function AuthorizationManagementPage() {
             <div className="mt-6 flex justify-end gap-3">
               <button
                 onClick={handleCancel}
-                disabled={!hasChanges}
-                className={`rounded-xl border px-5 py-2 text-sm font-medium transition ${!hasChanges
-                  ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
-                  : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200'
+                disabled={!hasChanges || selectedUserIsAdmin}
+                className={`rounded-xl border px-5 py-2 text-sm font-medium transition ${!hasChanges || selectedUserIsAdmin
+                    ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
+                    : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
-                disabled={!hasChanges}
-                className={`rounded-xl px-5 py-2 text-sm font-semibold shadow-sm transition
-                  ${hasChanges
+                disabled={!hasChanges || selectedUserIsAdmin}
+                className={`rounded-xl px-5 py-2 text-sm font-semibold shadow-sm transition ${hasChanges && !selectedUserIsAdmin
                     ? 'bg-[#4f46e5] text-white hover:bg-[#4338ca]'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'cursor-not-allowed bg-gray-300 text-gray-500'
                   }`}
               >
                 Save
