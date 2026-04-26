@@ -80,7 +80,7 @@ export default function CustomizeDashboardModal({
                             </div>
                         </section>
 
-                        {/* Service names */}
+                        {/* Service Types */}
                         <section>
                             <div className="rounded-2xl border border-slate-200 overflow-hidden">
                                 <button
@@ -94,10 +94,10 @@ export default function CustomizeDashboardModal({
                                         </div>
                                         <div>
                                             <div className="text-[15px] font-semibold tracking-tight text-slate-800">
-                                                Customize Service Name
+                                                Customize Service Type
                                             </div>
                                             <div className="text-xs text-slate-500">
-                                                Edit labels for services
+                                                Edit labels for service types
                                             </div>
                                         </div>
                                     </div>
@@ -114,7 +114,7 @@ export default function CustomizeDashboardModal({
                                     <>
                                         <div className="grid grid-cols-2 bg-slate-50 px-5 py-4 border-t border-slate-200">
                                             <div className="text-[15px] font-semibold text-slate-700">
-                                                Service Name
+                                                Service Type
                                             </div>
                                             <div className="text-[15px] font-semibold text-slate-700">
                                                 Custom Label
