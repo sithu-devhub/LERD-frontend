@@ -1,5 +1,5 @@
 // src/componenets/CustomizeDashboardModal.jsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { X, PencilLine, ChevronDown, Save } from "lucide-react";
 
 export default function CustomizeDashboardModal({
@@ -20,10 +20,21 @@ export default function CustomizeDashboardModal({
     hasChanges = false,
     onSave,
 }) {
-    if (!open) return null;
+    const [localDashboardName, setLocalDashboardName] = useState(dashboardName || "");
     const [isServiceOpen, setIsServiceOpen] = useState(true);
     const [isRegionOpen, setIsRegionOpen] = useState(true);
     const [isAttributeOpen, setIsAttributeOpen] = useState(true);
+
+    useEffect(() => {
+        if (open) {
+            setLocalDashboardName(dashboardName || "");
+        }
+    }, [open]);
+
+    if (!open) return null;
+
+    const dashboardNameChanged = localDashboardName !== dashboardName;
+
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/30 px-4 py-6">
             <div className="relative w-full max-w-4xl max-h-[90vh] rounded-[28px] bg-white shadow-[0_20px_60px_rgba(15,23,42,0.18)] border border-slate-200 overflow-hidden flex flex-col">
@@ -50,29 +61,23 @@ export default function CustomizeDashboardModal({
                             <label className="mb-3 block text-[15px] font-semibold text-slate-700">
                                 Current Dashboard Name
                             </label>
-                            <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-[17px] text-slate-800 shadow-sm">
+                            {/* <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-[17px] text-slate-800 shadow-sm">
                                 {dashboardName}
-                            </div>
-                            {/* <div className="relative">
+                            </div> */}
+                            <div className="relative">
                                 <input
                                     type="text"
-                                    value={dashboardName}
+                                    value={localDashboardName}
                                     onChange={(e) => {
-                                        const value = e.target.value;
-
-                                        const safeLabelPattern = /^[a-zA-Z0-9\s\-_.()]*$/;
-
-                                        if (safeLabelPattern.test(value) && value.length <= 50) {
-                                            setDashboardName(value);
-                                        }
-                                    }} placeholder="Enter dashboard name"
+                                        setLocalDashboardName(e.target.value);
+                                    }}
+                                    placeholder="Enter dashboard name"
                                     className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 pr-14 text-[17px] text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
                                 />
                                 <PencilLine
                                     size={18}
-                                    className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400"
-                                />
-                            </div> */}
+                                    className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                            </div>
                         </section>
 
                         {/* Service names */}
@@ -320,10 +325,10 @@ export default function CustomizeDashboardModal({
                     {/* Footer */}
                     <div className="mt-8 flex items-center justify-end gap-4">
                         <button
-                            onClick={onSave}
-                            disabled={!hasChanges}
+                            onClick={() => onSave(localDashboardName)}
+                            disabled={!(hasChanges || dashboardNameChanged)}
                             className={`inline-flex items-center gap-2 rounded-full px-7 py-3 text-[15px] font-semibold transition
-        ${hasChanges
+                            ${hasChanges || dashboardNameChanged
                                     ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-[0_10px_25px_rgba(79,70,229,0.28)] hover:from-indigo-700 hover:to-violet-700"
                                     : "bg-slate-200 text-slate-400 cursor-not-allowed"
                                 }`}
