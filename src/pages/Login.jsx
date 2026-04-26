@@ -60,20 +60,22 @@ const Login = () => {
         const username =
           claims?.['http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name'] || formData.username;
 
-        const isAdmin =
-          String(claims?.is_admin).toLowerCase() === 'true';
-
         const isActive =
           String(claims?.is_active).toLowerCase() === 'true';
 
+        const isAdmin =
+          String(claims?.is_admin).toLowerCase() === "true";
+
+        // normalize role
+        const userRole = isAdmin ? "admin" : "employee";
+
         localStorage.setItem(
-          'user',
+          "user",
           JSON.stringify({
             userId,
             username,
-            fullName: data.fullName,
-            position: data.position || "Position",
-            userRole: isAdmin ? "admin" : "user",
+            fullName: data.fullName || username,
+            userRole,
             isActive
           })
         );
