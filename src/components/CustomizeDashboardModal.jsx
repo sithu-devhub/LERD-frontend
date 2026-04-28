@@ -139,7 +139,7 @@ export default function CustomizeDashboardModal({
                                                                 const value = e.target.value;
                                                                 // only enforce max length
                                                                 if (value.length <= 50) {
-                                                                    onRegionLabelChange(region.id, value);
+                                                                    onServiceLabelChange(service.id, value);
                                                                 }
                                                             }}
                                                             placeholder={service.name}
