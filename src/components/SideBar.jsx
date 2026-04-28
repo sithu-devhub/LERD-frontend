@@ -8,6 +8,17 @@ import AuthorisationIcon from "../icons/AuthorisationIcon";
 import LogoutIcon from "../icons/LogoutIcon";
 import { logout as logoutApi } from '../api/authService';
 
+const getRoleDisplayName = (role) => {
+  const roleDisplayMap = {
+    admin: "Admin",
+    employee: "Client",
+  };
+
+  const normalizedRole = String(role || "").toLowerCase();
+
+  return roleDisplayMap[normalizedRole] || "Client";
+};
+
 export default function SideBar() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -29,72 +40,14 @@ export default function SideBar() {
   // Stores whether the logged-in user is an active admin
   const [canViewAuthManagement, setCanViewAuthManagement] = useState(false);
 
-  // useEffect(() => {
-  //   // Load from localStorage (fullName, position)
-  //   const savedUser = localStorage.getItem("user");
-  //   if (savedUser) {
-  //     const parsedUser = JSON.parse(savedUser);
-  //     setUser(parsedUser);
-
-  //     // Initial sidebar visibility check using saved login data
-  //     const isActiveAdmin =
-  //       String(parsedUser?.userRole || "").toLowerCase() === "admin" &&
-  //       String(parsedUser?.isActive).toLowerCase() === "true";
-
-  //     setCanViewAuthManagement(isActiveAdmin);
-  //   }
-
-  //   // Validate token and fetch current user info
-  //   // async function validateToken() {
-  //   //   try {
-  //   //     const res = await http.get("/Auth/me"); // axios with auto-refresh
-  //   //     console.log("🔎 /Auth/me response:", res.data); // Debug log
-
-  //   //     if (res?.data?.userId) {
-  //   //       // Merge current logged-in user data from /Auth/me into localStorage
-  //   //       const localUser = JSON.parse(localStorage.getItem("user")) || {};
-
-  //   //       const updatedUser = {
-  //   //         ...localUser,
-  //   //         userId: res.data.userId,
-  //   //         username: res.data.username,
-  //   //         // keep existing role if /Auth/me does not return it
-  //   //         userRole: res.data.userRole ?? localUser.userRole,
-  //   //         // keep existing active status if /Auth/me does not return it
-  //   //         isActive: res.data.isActive ?? localUser.isActive,
-  //   //       };
-
-  //   //       // Save updated logged-in user details
-  //   //       localStorage.setItem("user", JSON.stringify(updatedUser));
-  //   //       setUser(updatedUser);
-
-  //   //       // Show Authorization Management tab only for active admin users
-  //   //       const isActiveAdmin =
-  //   //         String(updatedUser?.userRole || "").toLowerCase() === "admin" &&
-  //   //         String(updatedUser?.isActive).toLowerCase() === "true";
-
-  //   //       setCanViewAuthManagement(isActiveAdmin);
-
-  //   //       console.log("✅ Updated user stored in localStorage:", updatedUser);
-  //   //     } else {
-  //   //       handleLogout();
-  //   //     }
-  //   //   } catch (e) {
-  //   //     console.warn("❌ Token validation failed:", e);
-  //   //     handleLogout();
-  //   //   }
-  //   // }
-  //   // validateToken();
-  // }, []);
-
   useEffect(() => {
     // Load logged-in user from localStorage and control admin-only sidebar items
     const parsedUser = JSON.parse(localStorage.getItem("user") || "{}");
     setUser(parsedUser);
 
     const isActiveAdmin =
-      String(parsedUser?.userRole || "").toLowerCase() === "admin" &&
-      parsedUser?.isActive === true;
+      String(parsedUser?.userRole || "").toLowerCase() === "admin"
+    parsedUser?.isActive === true;
 
     setCanViewAuthManagement(isActiveAdmin);
   }, []);
@@ -183,7 +136,7 @@ export default function SideBar() {
               {user?.fullName || "Name"}
             </p>
             <p className="text-xs text-gray-500">
-              {user?.position || "Position"}
+              {getRoleDisplayName(user?.userRole)}
             </p>
             {/* Optionally show username for debug */}
             <p className="text-xs text-gray-400">

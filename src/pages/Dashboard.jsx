@@ -33,6 +33,13 @@ import {
 
 const isUUID = (value) => /^[0-9a-fA-F-]{36}$/.test(value);
 
+const getDisplayName = (item, fallback = "Unnamed") => {
+  const customName = String(item?.customName || "").trim();
+  const name = String(item?.name || fallback).trim();
+
+  return customName.length > 0 ? customName : name;
+};
+
 export default function Dashboard() {
   const genderReverseMap = { null: "All", 1: "Male", 2: "Female", 3: "Other" };
   const clientReverseMap = { null: "All", 1: "Residents", 2: "Next of Kin" };
@@ -92,12 +99,10 @@ export default function Dashboard() {
     JSON.stringify(tempAttributeLabels) !== JSON.stringify(customAttributeLabels);
 
   const [allRegions, setAllRegions] = useState([]);
+  const [modalRegions, setModalRegions] = useState([]);
   const [allAttributes, setAllAttributes] = useState([]);
 
-  const dummyServices = [
-    { id: "1", name: "12-Question survey - Development" },
-    { id: "2", name: "20-Question survey RC - Development" },
-  ];
+  const [modalServices, setModalServices] = useState([]);
 
   const [filters, setFilters] = useState(() => {
     const saved = localStorage.getItem("dashboardFilters");
@@ -540,6 +545,45 @@ export default function Dashboard() {
         setSurveyId(activeSurveyId);
         setServiceName(activeServiceName || "Unknown Survey");
 
+        let resolvedDashboardName = `Dashboard – ${activeServiceName || "Unknown Survey"}`;
+
+        try {
+          const res = await http.get(
+            `/admin/surveys/${activeSurveyId}/custom-naming/DashboardName`
+          );
+
+          console.log("Rename API response:", res.data);
+          console.log("Active survey id:", activeSurveyId);
+
+          const renameItems = Array.isArray(res.data)
+            ? res.data
+            : Array.isArray(res.data?.data)
+              ? res.data.data
+              : [];
+
+          const dashboardRecord = renameItems.find(
+            (item) =>
+              String(item.fieldType || "").trim().toLowerCase() === "dashboard" &&
+              String(item.customName || "").trim().length > 0
+          );
+
+          console.log("Matched dashboard record:", dashboardRecord);
+
+          if (dashboardRecord) {
+            resolvedDashboardName = getDisplayName(
+              dashboardRecord,
+              `Dashboard – ${activeServiceName || "Unknown Survey"}`
+            );
+          }
+
+        } catch (err) {
+          console.error("Dashboard name fetch failed:", err);
+        }
+
+        // SET FINAL VALUE
+        setCustomDashboardName(resolvedDashboardName);
+        setTempDashboardName(resolvedDashboardName);
+
         // (cache)
         localStorage.setItem("lastServiceId", activeSurveyId);
         if (match && activeServiceName) {
@@ -619,12 +663,12 @@ export default function Dashboard() {
 
   // Sync the editable dashboard title with the loaded service name
   // Runs whenever `serviceName` changes (after API load)
-  useEffect(() => {
-    // If service name exists, set it as the default editable dashboard name
-    if (serviceName) {
-      setCustomDashboardName(`Dashboard – ${serviceName}`);
-    }
-  }, [serviceName]); // dependency: re-run when serviceName updates
+  // useEffect(() => {
+  //   // If service name exists, set it as the default editable dashboard name
+  //   if (serviceName) {
+  //     setCustomDashboardName(`Dashboard – ${serviceName}`);
+  //   }
+  // }, [serviceName]); // dependency: re-run when serviceName updates
 
 
   // Auto-hide success toast after 3 seconds when it becomes visible
@@ -689,11 +733,148 @@ export default function Dashboard() {
           {/* Show Customize Name button only for admin users */}
           {!isAdminLoading && isAdmin && (
             <button
-              onClick={() => {
-                setTempDashboardName(customDashboardName);
-                setTempRegionLabels(customRegionLabels);
+              onClick={async () => {
+                const token = localStorage.getItem("accessToken");
+
+                try {
+                  console.log("Fetching latest dashboard name on button click...");
+
+                  const res = await http.get(
+                    `/admin/surveys/${surveyId}/custom-naming/DashboardName`
+                  );
+
+                  console.log("Rename API response (on click):", res.data);
+
+                  const renameItems = Array.isArray(res.data)
+                    ? res.data
+                    : Array.isArray(res.data?.data)
+                      ? res.data.data
+                      : [];
+
+                  console.log("Rename items:", renameItems);
+
+                  const dashboardRecord = renameItems.find(
+                    (item) =>
+                      String(item.fieldType || "").trim().toLowerCase() === "dashboard"
+                  );
+
+                  console.log("Matched dashboard record on click:", dashboardRecord);
+
+                  const latestName =
+                    String(dashboardRecord?.customName || "").trim() ||
+                    String(dashboardRecord?.name || "").trim() ||
+                    customDashboardName;
+
+                  // update BOTH states
+                  setCustomDashboardName(latestName);
+                  setTempDashboardName(latestName);
+
+
+                  // Call Service Type Renaming GET API
+                  const serviceTypeRes = await http.get(
+                    `/admin/surveys/${surveyId}/custom-naming/ServiceType?fieldType=service_type`
+                  );
+
+                  // Normalize response (API may return either array OR { data: [] })
+                  const serviceTypeItems = Array.isArray(serviceTypeRes.data)
+                    ? serviceTypeRes.data
+                    : Array.isArray(serviceTypeRes.data?.data)
+                      ? serviceTypeRes.data.data
+                      : [];
+
+                  // Filter only relevant records for:
+                  //    - current survey
+                  //    - fieldType = service_type
+                  // Then map into modal-friendly format:
+                  //    id → used as key
+                  //    name → shown under "Service Type"
+                  const filteredServiceTypes = serviceTypeItems
+                    .filter(
+                      (item) =>
+                        String(item.surveyId).trim() === String(surveyId).trim() &&
+                        String(item.fieldType || "").trim().toLowerCase() === "service_type"
+                    )
+                    .map((item) => ({
+                      id: String(item.id),
+                      // show originalName (if null → empty string)
+                      name:
+                        item.originalName && String(item.originalName).trim().length > 0
+                          ? String(item.originalName)
+                          : "-",
+                    }));
+
+                  // Prepare object to store custom labels - Format: { [id]: customName }
+                  const serviceTypeLabels = {};
+
+                  // Loop through API data again to extract custom names
+                  serviceTypeItems.forEach((item) => {
+                    if (
+                      String(item.surveyId).trim() === String(surveyId).trim() &&
+                      String(item.fieldType || "").trim().toLowerCase() === "service_type"
+                    ) {
+                      // If customName is null/empty → store ""
+                      serviceTypeLabels[String(item.id)] = String(item.customName || "");
+                    }
+                  });
+
+                  // Set data into modal state
+                  // This drives:
+                  // - left column → Service Type list
+                  // - right column → Custom Label inputs
+                  setModalServices(filteredServiceTypes);
+                  setTempServiceLabels(serviceTypeLabels);
+
+
+                  // ------------------------------------------------------------
+                  // Fetch region custom naming data for modal
+                  // ------------------------------------------------------------
+
+                  const regionRes = await http.get(
+                    `/admin/surveys/${surveyId}/custom-naming/regions`
+                  );
+
+                  // Normalize response because API may return array or { data: [] }
+                  const regionItems = Array.isArray(regionRes.data)
+                    ? regionRes.data
+                    : Array.isArray(regionRes.data?.data)
+                      ? regionRes.data.data
+                      : [];
+
+                  // Build region list for the left column
+                  const filteredRegions = regionItems.map((item) => ({
+                    id: String(item.originalKey || item.id),
+
+                    // Show originalName under Region Name
+                    name:
+                      item.originalName && String(item.originalName).trim().length > 0
+                        ? String(item.originalName)
+                        : "-",
+
+                    originalKey: String(item.originalKey || ""),
+                  }));
+
+                  // Build custom label object for the right column
+                  const regionLabelMap = {};
+
+                  regionItems.forEach((item) => {
+                    const key = String(item.originalKey || item.id);
+
+                    // If customName is null or empty, show "-"
+                    regionLabelMap[key] =
+                      item.customName && String(item.customName).trim().length > 0
+                        ? String(item.customName)
+                        : "";
+                  });
+
+                  setModalRegions(filteredRegions);
+                  setTempRegionLabels(regionLabelMap);
+
+                } catch (err) {
+                  console.error("Rename fetch failed on click:", err);
+                }
+
+                // open modal AFTER fetching
                 setTempAttributeLabels(customAttributeLabels);
-                setTempServiceLabels(customServiceLabels);
                 setShowRenameModal(true);
               }}
               className="flex items-center gap-2 px-4 py-3 
@@ -882,7 +1063,7 @@ export default function Dashboard() {
 
         hasChanges={hasRenameChanges}
 
-        services={dummyServices}
+        services={modalServices}
         serviceLabels={tempServiceLabels}
 
         regionLabels={tempRegionLabels}
@@ -931,10 +1112,7 @@ export default function Dashboard() {
           })
         }
 
-        regions={allRegions.map((region) => ({
-          id: String(region.facilityCode ?? region.regionId ?? region.id),
-          name: region.regionName ?? region.name ?? "Unnamed Region",
-        }))}
+        regions={modalRegions}
 
         attributes={availableAttrs.map((attr, index) => ({
           id: String(attr.id ?? attr.attributeId ?? index),
@@ -948,23 +1126,113 @@ export default function Dashboard() {
           setTempServiceLabels({});
         }}
 
-        onSave={() => {
-          setCustomDashboardName(tempDashboardName);
-          setCustomRegionLabels(tempRegionLabels);
-          setCustomAttributeLabels(tempAttributeLabels);
-          setCustomServiceLabels(tempServiceLabels);
+        onSave={async (updatedDashboardName) => {
+          try {
+            // ------------------------------------------------------------
+            // 1. Save dashboard name
+            // ------------------------------------------------------------
 
-          console.log("Saved:", {
-            name: tempDashboardName,
-            services: tempServiceLabels,
-            regions: tempRegionLabels,
-            attrs: tempAttributeLabels,
-          });
+            const dashboardPayload = {
+              surveyId: surveyId,              // survey id from URL/state
+              fieldType: "dashboard",          // identifies dashboard rename
+              customName: updatedDashboardName // value entered in modal
+            };
 
-          setSuccessMessage("Renaming Completed successfully");
-          setShowSuccessToast(true);
+            console.log("Saving dashboard name:", dashboardPayload);
 
-          setShowRenameModal(false);
+            const dashboardRes = await http.post(
+              `/admin/surveys/${surveyId}/custom-naming/DashboardName`,
+              dashboardPayload
+            );
+
+            console.log("Dashboard name save response:", dashboardRes.data);
+
+
+            // ------------------------------------------------------------
+            // 2. Prepare service type payload
+            // ------------------------------------------------------------
+
+            const serviceTypePayload = {
+              surveyId: surveyId,
+
+              // Build mappings from modal data
+              customMappings: modalServices.map((service) => ({
+                id: service.id,
+                customName: tempServiceLabels[service.id] || service.name || "-",
+                surveyId: surveyId,
+                fieldType: "service_type"
+              })),
+            };
+
+            console.log("Saving service type names:", serviceTypePayload);
+
+
+            // ------------------------------------------------------------
+            // 3. Call service type POST API
+            // ------------------------------------------------------------
+
+            const serviceTypeSaveRes = await http.post(
+              `/admin/surveys/${surveyId}/custom-naming/ServiceType`,
+              serviceTypePayload
+            );
+
+            console.log("Service type save response:", serviceTypeSaveRes.data);
+
+            // ------------------------------------------------------------
+            // Prepare region rename payload
+            // ------------------------------------------------------------
+
+            const regionPayload = {
+              mappings: modalRegions.map((region) => ({
+                originalKey: region.originalKey,
+                customName: tempRegionLabels[region.id] || region.name || "-",
+              })),
+            };
+
+            console.log("Saving region names:", regionPayload);
+
+            // ------------------------------------------------------------
+            // Call region POST API
+            // ------------------------------------------------------------
+
+            const regionSaveRes = await http.post(
+              `/admin/surveys/${surveyId}/custom-naming/regions`,
+              regionPayload
+            );
+
+            console.log("Region save response:", regionSaveRes.data);
+            // ------------------------------------------------------------
+            // 4. Update local UI state after success
+            // ------------------------------------------------------------
+
+            setCustomDashboardName(updatedDashboardName);
+            setTempDashboardName(updatedDashboardName);
+
+            setCustomRegionLabels(tempRegionLabels);
+            setCustomAttributeLabels(tempAttributeLabels);
+
+            // store updated service labels locally
+            setCustomServiceLabels(tempServiceLabels);
+
+            // show success message
+            setSuccessMessage("Names saved successfully");
+            setShowSuccessToast(true);
+
+            // close modal
+            setShowRenameModal(false);
+
+
+          } catch (err) {
+
+            // ------------------------------------------------------------
+            // 5. Error handling
+            // ------------------------------------------------------------
+
+            console.error("Name save failed:", err.response?.data || err);
+
+            setSuccessMessage("Failed to save names");
+            setShowSuccessToast(true);
+          }
         }}
       />
 
