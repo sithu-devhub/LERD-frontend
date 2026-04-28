@@ -33,6 +33,13 @@ import {
 
 const isUUID = (value) => /^[0-9a-fA-F-]{36}$/.test(value);
 
+const getDisplayName = (item, fallback = "Unnamed") => {
+  const customName = String(item?.customName || "").trim();
+  const name = String(item?.name || fallback).trim();
+
+  return customName.length > 0 ? customName : name;
+};
+
 export default function Dashboard() {
   const genderReverseMap = { null: "All", 1: "Male", 2: "Female", 3: "Other" };
   const clientReverseMap = { null: "All", 1: "Residents", 2: "Next of Kin" };
@@ -540,6 +547,45 @@ export default function Dashboard() {
         setSurveyId(activeSurveyId);
         setServiceName(activeServiceName || "Unknown Survey");
 
+        let resolvedDashboardName = `Dashboard – ${activeServiceName || "Unknown Survey"}`;
+
+        try {
+          const res = await http.get(
+            `/admin/surveys/${activeSurveyId}/custom-naming/DashboardName`
+          );
+
+          console.log("Rename API response:", res.data);
+          console.log("Active survey id:", activeSurveyId);
+
+          const renameItems = Array.isArray(res.data)
+            ? res.data
+            : Array.isArray(res.data?.data)
+              ? res.data.data
+              : [];
+
+          const dashboardRecord = renameItems.find(
+            (item) =>
+              String(item.fieldType || "").trim().toLowerCase() === "dashboard" &&
+              String(item.customName || "").trim().length > 0
+          );
+
+          console.log("Matched dashboard record:", dashboardRecord);
+
+          if (dashboardRecord) {
+            resolvedDashboardName = getDisplayName(
+              dashboardRecord,
+              `Dashboard – ${activeServiceName || "Unknown Survey"}`
+            );
+          }
+
+        } catch (err) {
+          console.error("Dashboard name fetch failed:", err);
+        }
+
+        // SET FINAL VALUE
+        setCustomDashboardName(resolvedDashboardName);
+        setTempDashboardName(resolvedDashboardName);
+
         // (cache)
         localStorage.setItem("lastServiceId", activeSurveyId);
         if (match && activeServiceName) {
@@ -619,12 +665,12 @@ export default function Dashboard() {
 
   // Sync the editable dashboard title with the loaded service name
   // Runs whenever `serviceName` changes (after API load)
-  useEffect(() => {
-    // If service name exists, set it as the default editable dashboard name
-    if (serviceName) {
-      setCustomDashboardName(`Dashboard – ${serviceName}`);
-    }
-  }, [serviceName]); // dependency: re-run when serviceName updates
+  // useEffect(() => {
+  //   // If service name exists, set it as the default editable dashboard name
+  //   if (serviceName) {
+  //     setCustomDashboardName(`Dashboard – ${serviceName}`);
+  //   }
+  // }, [serviceName]); // dependency: re-run when serviceName updates
 
 
   // Auto-hide success toast after 3 seconds when it becomes visible
@@ -689,8 +735,47 @@ export default function Dashboard() {
           {/* Show Customize Name button only for admin users */}
           {!isAdminLoading && isAdmin && (
             <button
-              onClick={() => {
-                setTempDashboardName(customDashboardName);
+              onClick={async () => {
+                const token = localStorage.getItem("accessToken");
+
+                try {
+                  console.log("Fetching latest dashboard name on button click...");
+
+                  const res = await http.get(
+                    `/admin/surveys/${surveyId}/custom-naming/DashboardName`
+                  );
+
+                  console.log("Rename API response (on click):", res.data);
+
+                  const renameItems = Array.isArray(res.data)
+                    ? res.data
+                    : Array.isArray(res.data?.data)
+                      ? res.data.data
+                      : [];
+
+                  console.log("Rename items:", renameItems);
+
+                  const dashboardRecord = renameItems.find(
+                    (item) =>
+                      String(item.fieldType || "").trim().toLowerCase() === "dashboard"
+                  );
+
+                  console.log("Matched dashboard record on click:", dashboardRecord);
+
+                  const latestName =
+                    String(dashboardRecord?.customName || "").trim() ||
+                    String(dashboardRecord?.name || "").trim() ||
+                    customDashboardName;
+
+                  // update BOTH states
+                  setCustomDashboardName(latestName);
+                  setTempDashboardName(latestName);
+
+                } catch (err) {
+                  console.error("Rename fetch failed on click:", err);
+                }
+
+                // open modal AFTER fetching
                 setTempRegionLabels(customRegionLabels);
                 setTempAttributeLabels(customAttributeLabels);
                 setTempServiceLabels(customServiceLabels);
@@ -948,23 +1033,40 @@ export default function Dashboard() {
           setTempServiceLabels({});
         }}
 
-        onSave={() => {
-          setCustomDashboardName(tempDashboardName);
-          setCustomRegionLabels(tempRegionLabels);
-          setCustomAttributeLabels(tempAttributeLabels);
-          setCustomServiceLabels(tempServiceLabels);
+        onSave={async (updatedDashboardName) => {
+          try {
+            const payload = {
+              surveyId: surveyId,
+              fieldType: "dashboard",
+              customName: updatedDashboardName,
+            };
 
-          console.log("Saved:", {
-            name: tempDashboardName,
-            services: tempServiceLabels,
-            regions: tempRegionLabels,
-            attrs: tempAttributeLabels,
-          });
+            console.log("Saving dashboard name:", payload);
 
-          setSuccessMessage("Renaming Completed successfully");
-          setShowSuccessToast(true);
+            const res = await http.post(
+              `/admin/surveys/${surveyId}/custom-naming/DashboardName`,
+              payload
+            );
 
-          setShowRenameModal(false);
+            console.log("Dashboard name save response:", res.data);
+
+            setCustomDashboardName(updatedDashboardName);
+            setTempDashboardName(updatedDashboardName);
+
+            setCustomRegionLabels(tempRegionLabels);
+            setCustomAttributeLabels(tempAttributeLabels);
+            setCustomServiceLabels(tempServiceLabels);
+
+            setSuccessMessage("Dashboard name saved successfully");
+            setShowSuccessToast(true);
+            setShowRenameModal(false);
+
+          } catch (err) {
+            console.error("Dashboard name save failed:", err.response?.data || err);
+
+            setSuccessMessage("Failed to save dashboard name");
+            setShowSuccessToast(true);
+          }
         }}
       />
 

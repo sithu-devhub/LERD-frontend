@@ -29,7 +29,7 @@ export default function CustomizeDashboardModal({
         if (open) {
             setLocalDashboardName(dashboardName || "");
         }
-    }, [open]);
+    }, [open, dashboardName]);
 
     if (!open) return null;
 
