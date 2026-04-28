@@ -137,11 +137,9 @@ export default function CustomizeDashboardModal({
                                                             value={serviceLabels[service.id] || ""}
                                                             onChange={(e) => {
                                                                 const value = e.target.value;
-
-                                                                const safeLabelPattern = /^[a-zA-Z0-9\s\-_.()]*$/;
-
-                                                                if (safeLabelPattern.test(value) && value.length <= 50) {
-                                                                    onServiceLabelChange(service.id, value);
+                                                                // only enforce max length
+                                                                if (value.length <= 50) {
+                                                                    onRegionLabelChange(region.id, value);
                                                                 }
                                                             }}
                                                             placeholder={service.name}
@@ -218,9 +216,8 @@ export default function CustomizeDashboardModal({
                                                             onChange={(e) => {
                                                                 const value = e.target.value;
 
-                                                                const safeLabelPattern = /^[a-zA-Z0-9\s\-_.()]*$/;
-
-                                                                if (safeLabelPattern.test(value) && value.length <= 50) {
+                                                                // only enforce max length
+                                                                if (value.length <= 50) {
                                                                     onRegionLabelChange(region.id, value);
                                                                 }
                                                             }}
