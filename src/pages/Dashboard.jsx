@@ -103,6 +103,7 @@ export default function Dashboard() {
   const [allAttributes, setAllAttributes] = useState([]);
 
   const [modalServices, setModalServices] = useState([]);
+  const [modalAttributes, setModalAttributes] = useState([]);
 
   const [filters, setFilters] = useState(() => {
     const saved = localStorage.getItem("dashboardFilters");
@@ -869,6 +870,43 @@ export default function Dashboard() {
                   setModalRegions(filteredRegions);
                   setTempRegionLabels(regionLabelMap);
 
+                  // ------------------------------------------------------------
+                  // Fetch service attribute custom naming data for modal
+                  // ------------------------------------------------------------
+
+                  const attributeRes = await http.get(
+                    `/admin/surveys/${surveyId}/custom-naming/service-attributes`
+                  );
+
+                  const attributeItems = Array.isArray(attributeRes.data?.data)
+                    ? attributeRes.data.data
+                    : Array.isArray(attributeRes.data)
+                      ? attributeRes.data
+                      : [];
+
+                  const filteredAttributes = attributeItems.map((item) => ({
+                    id: String(item.originalKey || item.id),
+                    name:
+                      item.originalKey && String(item.originalKey).trim().length > 0
+                        ? String(item.originalKey)
+                        : "-",
+                    originalKey: String(item.originalKey || ""),
+                  }));
+
+                  const attributeLabelMap = {};
+
+                  attributeItems.forEach((item) => {
+                    const key = String(item.originalKey || item.id);
+
+                    attributeLabelMap[key] =
+                      item.customName && String(item.customName).trim().length > 0
+                        ? String(item.customName)
+                        : "";
+                  });
+
+                  setModalAttributes(filteredAttributes);
+                  setTempAttributeLabels(attributeLabelMap);
+
                 } catch (err) {
                   console.error("Rename fetch failed on click:", err);
                 }
@@ -1113,11 +1151,7 @@ export default function Dashboard() {
         }
 
         regions={modalRegions}
-
-        attributes={availableAttrs.map((attr, index) => ({
-          id: String(attr.id ?? attr.attributeId ?? index),
-          name: attr.name ?? attr.label ?? `Attribute ${index + 1}`,
-        }))}
+        attributes={modalAttributes}
 
         onReset={() => {
           setTempDashboardName(`Dashboard – ${serviceName}`);
@@ -1201,6 +1235,32 @@ export default function Dashboard() {
             );
 
             console.log("Region save response:", regionSaveRes.data);
+
+            // ------------------------------------------------------------
+            // Prepare service attribute rename payload
+            // ------------------------------------------------------------
+
+            const attributePayload = {
+              mappings: modalAttributes.map((attr) => ({
+                originalKey: attr.originalKey,
+                customName: tempAttributeLabels[attr.id] || attr.name || "-",
+              })),
+            };
+
+            console.log("Saving service attribute names:", attributePayload);
+
+            // ------------------------------------------------------------
+            // Call service attribute POST API
+            // ------------------------------------------------------------
+
+            const attributeSaveRes = await http.post(
+              `/admin/surveys/${surveyId}/custom-naming/service-attributes`,
+              attributePayload
+            );
+
+            console.log("Service attribute save response:", attributeSaveRes.data);
+
+
             // ------------------------------------------------------------
             // 4. Update local UI state after success
             // ------------------------------------------------------------
