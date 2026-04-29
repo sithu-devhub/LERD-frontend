@@ -8,7 +8,7 @@ The system provides dynamic filtering and multiple chart visualizations to help 
 Access the live application - Staging:
 https://lerd.netlify.app/login
 
-Access the live application - Production:
+Access the live application - Production Deployment:
 https://lerd-insights.netlify.app/login
 
 ### Demo Credentials
