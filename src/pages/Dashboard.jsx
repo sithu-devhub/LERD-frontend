@@ -740,6 +740,7 @@ export default function Dashboard() {
                 try {
                   console.log("Fetching latest dashboard name on button click...");
 
+                  // Call Dashboard Renaming GET API
                   const res = await http.get(
                     `/admin/surveys/${surveyId}/custom-naming/DashboardName`
                   );
@@ -771,24 +772,18 @@ export default function Dashboard() {
                   setTempDashboardName(latestName);
 
 
-                  // Call Service Type Renaming GET API
+                  // Call Service Type Renaming GET API (Use SAME API as dashboard name)
                   const serviceTypeRes = await http.get(
-                    `/admin/surveys/${surveyId}/custom-naming/ServiceType?fieldType=service_type`
+                    `/admin/surveys/${surveyId}/custom-naming/DashboardName`
                   );
 
-                  // Normalize response (API may return either array OR { data: [] })
                   const serviceTypeItems = Array.isArray(serviceTypeRes.data)
                     ? serviceTypeRes.data
                     : Array.isArray(serviceTypeRes.data?.data)
                       ? serviceTypeRes.data.data
                       : [];
 
-                  // Filter only relevant records for:
-                  //    - current survey
-                  //    - fieldType = service_type
-                  // Then map into modal-friendly format:
-                  //    id → used as key
-                  //    name → shown under "Service Type"
+                  // Filter service_type records for this survey
                   const filteredServiceTypes = serviceTypeItems
                     .filter(
                       (item) =>
@@ -797,27 +792,24 @@ export default function Dashboard() {
                     )
                     .map((item) => ({
                       id: String(item.id),
-                      // show originalName (if null → empty string)
+
+                      // Show actual service type value
                       name:
-                        item.originalName && String(item.originalName).trim().length > 0
-                          ? String(item.originalName)
+                        item.serviceType && String(item.serviceType).trim().length > 0
+                          ? String(item.serviceType)
                           : "-",
                     }));
 
-                  // Prepare object to store custom labels - Format: { [id]: customName }
                   const serviceTypeLabels = {};
 
-                  // Loop through API data again to extract custom names
                   serviceTypeItems.forEach((item) => {
                     if (
                       String(item.surveyId).trim() === String(surveyId).trim() &&
                       String(item.fieldType || "").trim().toLowerCase() === "service_type"
                     ) {
-                      // If customName is null/empty → store ""
                       serviceTypeLabels[String(item.id)] = String(item.customName || "");
                     }
                   });
-
                   // Set data into modal state
                   // This drives:
                   // - left column → Service Type list
@@ -912,7 +904,6 @@ export default function Dashboard() {
                 }
 
                 // open modal AFTER fetching
-                setTempAttributeLabels(customAttributeLabels);
                 setShowRenameModal(true);
               }}
               className="flex items-center gap-2 px-4 py-3 
@@ -1243,7 +1234,7 @@ export default function Dashboard() {
             const attributePayload = {
               mappings: modalAttributes.map((attr) => ({
                 originalKey: attr.originalKey,
-                customName: tempAttributeLabels[attr.id] || attr.name || "-",
+                customName: tempAttributeLabels[attr.id] || "",
               })),
             };
 
