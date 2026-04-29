@@ -5,12 +5,15 @@ The system provides dynamic filtering and multiple chart visualizations to help 
 ---
 
 ## Live Demo
-Access the live application:
+Access the live application - Staging:
 https://lerd.netlify.app/login
+
+Access the live application - Production:
+https://lerd-insights.netlify.app/login
 
 ### Demo Credentials
 Username: `sithu`  
-Password: `123`
+Password: `456123abc`
 
 ---
 
