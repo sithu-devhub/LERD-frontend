@@ -12,7 +12,8 @@ export default defineConfig({
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'https://livedashboard2026-d0d8gqd3deaqacf5.australiaeast-01.azurewebsites.net',
+        // target: 'https://livedashboard2026-d0d8gqd3deaqacf5.australiaeast-01.azurewebsites.net',
+        target: 'https://ba-d5147e1ffcb94d448cd5604f98b1d081.ecs.ap-southeast-2.on.aws',
         changeOrigin: true,
         secure: true,
       },

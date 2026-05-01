@@ -1,0 +1,11 @@
+# Netlify configuration for LERD frontend deployment
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Handle React Router (SPA routing)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
