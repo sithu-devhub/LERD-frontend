@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from "react";
 import {
-  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine, Cell
 } from "recharts";
 import ChartCard from "./ChartCard";
 import ErrorPlaceholder from "./ErrorPlaceholder";
@@ -549,20 +549,42 @@ export default function ServiceAttributeChart({
                     stackId="a"
                     fill="#6AD2FF"
                     barSize={45}
+                    minPointSize={0}
                     onMouseEnter={() => setHoverBar(true)}
                     onMouseLeave={() => setHoverBar(false)}
-                  />
+                  >
+                    {dataForChart.map((entry) => (
+                      <Cell
+                        key={`most-${entry.name}`}
+                        radius={
+                          Number(entry.always || 0) === 0 && Number(entry.most || 0) > 0
+                            ? [8, 8, 0, 0]
+                            : [0, 0, 0, 0]
+                        }
+                      />
+                    ))}
+                  </Bar>
 
                   <Bar
                     dataKey="always"
                     stackId="a"
                     fill="#3F11FF"
                     barSize={32}
-                    radius={[8, 8, 0, 0]}
                     minPointSize={0}
                     onMouseEnter={() => setHoverBar(true)}
                     onMouseLeave={() => setHoverBar(false)}
-                  />
+                  >
+                    {dataForChart.map((entry) => (
+                      <Cell
+                        key={`always-${entry.name}`}
+                        radius={
+                          Number(entry.always || 0) > 0
+                            ? [8, 8, 0, 0]
+                            : [0, 0, 0, 0]
+                        }
+                      />
+                    ))}
+                  </Bar>
 
                 </BarChart>
               </ResponsiveContainer>

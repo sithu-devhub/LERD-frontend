@@ -8,6 +8,7 @@ import {
   YAxis,
   Tooltip,
   LabelList,
+  Cell,
 } from "recharts";
 import http from "../api/http";
 import ChartCard from "../components/ChartCard";
@@ -352,10 +353,19 @@ export default function CustomerSatisfactionTrend({
                   onMouseEnter={() => setHoverBar(true)}
                   onMouseLeave={() => setHoverBar(false)}
                 >
-                  <LabelList
-                    dataKey="somewhat"
-                    content={<SegmentLabel fill="#E0E6F5" />}
-                  />
+                  {satisfactionTrend.map((entry) => (
+                    <Cell
+                      key={`somewhat-${entry.year}`}
+                      radius={
+                        Number(entry.satisfied || 0) === 0 &&
+                          Number(entry.very || 0) === 0 &&
+                          Number(entry.somewhat || 0) > 0
+                          ? [8, 8, 0, 0]
+                          : [0, 0, 0, 0]
+                      }
+                    />
+                  ))}
+                  <LabelList dataKey="somewhat" content={<SegmentLabel fill="#E0E6F5" />} />
                 </Bar>
 
                 <Bar
@@ -367,10 +377,18 @@ export default function CustomerSatisfactionTrend({
                   onMouseEnter={() => setHoverBar(true)}
                   onMouseLeave={() => setHoverBar(false)}
                 >
-                  <LabelList
-                    dataKey="satisfied"
-                    content={<SegmentLabel fill="#40CFFF" />}
-                  />
+                  {satisfactionTrend.map((entry) => (
+                    <Cell
+                      key={`satisfied-${entry.year}`}
+                      radius={
+                        Number(entry.very || 0) === 0 &&
+                          Number(entry.satisfied || 0) > 0
+                          ? [8, 8, 0, 0]
+                          : [0, 0, 0, 0]
+                      }
+                    />
+                  ))}
+                  <LabelList dataKey="satisfied" content={<SegmentLabel fill="#40CFFF" />} />
                 </Bar>
 
                 <Bar
@@ -379,14 +397,20 @@ export default function CustomerSatisfactionTrend({
                   fill="#3F11FF"
                   minPointSize={0}
                   isAnimationActive={false}
-                  radius={[8, 8, 0, 0]}
                   onMouseEnter={() => setHoverBar(true)}
                   onMouseLeave={() => setHoverBar(false)}
                 >
-                  <LabelList
-                    dataKey="very"
-                    content={<SegmentLabel fill="#3F11FF" />}
-                  />
+                  {satisfactionTrend.map((entry) => (
+                    <Cell
+                      key={`very-${entry.year}`}
+                      radius={
+                        Number(entry.very || 0) > 0
+                          ? [8, 8, 0, 0]
+                          : [0, 0, 0, 0]
+                      }
+                    />
+                  ))}
+                  <LabelList dataKey="very" content={<SegmentLabel fill="#3F11FF" />} />
                 </Bar>
 
               </BarChart>
