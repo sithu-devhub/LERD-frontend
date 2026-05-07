@@ -559,7 +559,7 @@ export default function ServiceAttributeChart({
                     fill="#3F11FF"
                     barSize={32}
                     radius={[8, 8, 0, 0]}
-                    minPointSize={6}
+                    minPointSize={0}
                     onMouseEnter={() => setHoverBar(true)}
                     onMouseLeave={() => setHoverBar(false)}
                   />
