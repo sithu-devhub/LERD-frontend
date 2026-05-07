@@ -827,7 +827,9 @@ export default function Dashboard() {
                   // - left column → Service Type list
                   // - right column → Custom Label inputs
                   setModalServices(filteredServiceTypes);
+
                   setTempServiceLabels(serviceTypeLabels);
+                  setCustomServiceLabels(serviceTypeLabels);
 
 
                   // ------------------------------------------------------------
@@ -872,7 +874,9 @@ export default function Dashboard() {
                   });
 
                   setModalRegions(filteredRegions);
+
                   setTempRegionLabels(regionLabelMap);
+                  setCustomRegionLabels(regionLabelMap);
 
                   // ------------------------------------------------------------
                   // Fetch service attribute custom naming data for modal
@@ -909,7 +913,9 @@ export default function Dashboard() {
                   });
 
                   setModalAttributes(filteredAttributes);
+
                   setTempAttributeLabels(attributeLabelMap);
+                  setCustomAttributeLabels(attributeLabelMap);
 
                 } catch (err) {
                   console.error("Rename fetch failed on click:", err);
@@ -1244,10 +1250,15 @@ export default function Dashboard() {
             // ------------------------------------------------------------
 
             const attributePayload = {
-              mappings: modalAttributes.map((attr) => ({
-                originalKey: attr.originalKey,
-                customName: tempAttributeLabels[attr.id] || "",
-              })),
+              mappings: modalAttributes
+                .filter(
+                  (attr) =>
+                    String(tempAttributeLabels[attr.id] || "").trim().length > 0
+                )
+                .map((attr) => ({
+                  originalKey: attr.originalKey,
+                  customName: tempAttributeLabels[attr.id].trim(),
+                })),
             };
 
             console.log("Saving service attribute names:", attributePayload);
