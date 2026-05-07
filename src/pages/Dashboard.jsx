@@ -520,14 +520,21 @@ export default function Dashboard() {
             (s) => String(s.surveyId) === String(activeSurveyId)
           );
 
-          if (!match) {
-            const selectedService = services.find((s) => s.isSelected) || services[0];
+          const selectedService = services.find((s) => s.isSelected) || services[0];
 
-            if (selectedService?.surveyId && String(selectedService.surveyId) !== String(activeSurveyId)) {
-              navigate(`/dashboard/${encodeURIComponent(selectedService.surveyId)}`, { replace: true });
-              return;
-            }
+          if (
+            selectedService?.surveyId &&
+            String(selectedService.surveyId) !== String(activeSurveyId)
+          ) {
+            navigate(`/dashboard/${encodeURIComponent(selectedService.surveyId)}`, {
+              replace: true,
+            });
+            return;
           }
+
+          match = services.find(
+            (s) => String(s.surveyId) === String(selectedService.surveyId)
+          );
 
           activeServiceName =
             match?.serviceName ||
