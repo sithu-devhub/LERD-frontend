@@ -347,6 +347,7 @@ export default function CustomerSatisfactionTrend({
                   dataKey="somewhat"
                   stackId="a"
                   fill="#E0E6F5"
+                  minPointSize={0}
                   isAnimationActive={false}
                   onMouseEnter={() => setHoverBar(true)}
                   onMouseLeave={() => setHoverBar(false)}
@@ -361,6 +362,7 @@ export default function CustomerSatisfactionTrend({
                   dataKey="satisfied"
                   stackId="a"
                   fill="#40CFFF"
+                  minPointSize={0}
                   isAnimationActive={false}
                   onMouseEnter={() => setHoverBar(true)}
                   onMouseLeave={() => setHoverBar(false)}
@@ -375,6 +377,7 @@ export default function CustomerSatisfactionTrend({
                   dataKey="very"
                   stackId="a"
                   fill="#3F11FF"
+                  minPointSize={0}
                   isAnimationActive={false}
                   radius={[8, 8, 0, 0]}
                   onMouseEnter={() => setHoverBar(true)}
