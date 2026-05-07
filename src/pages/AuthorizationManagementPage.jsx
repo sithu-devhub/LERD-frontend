@@ -185,7 +185,7 @@ export default function AuthorizationManagementPage() {
   }, [pageNumber, totalPages]);
 
 
-  const fetchUsers = async (searchValue = '', page = 1) => {
+  const fetchUsers = async (searchValue = '', page = 1, selectFirstUser = false) => {
     try {
       setLoadingUsers(true);
       setUserError('');
@@ -209,6 +209,11 @@ export default function AuthorizationManagementPage() {
 
         setSelectedUser((prev) => {
           if (!userList.length) return null;
+
+          if (selectFirstUser) {
+            return userList[0];
+          }
+
           if (!prev) return userList[0];
 
           const stillExists = userList.find((u) => u.id === prev.id);
@@ -537,7 +542,7 @@ export default function AuthorizationManagementPage() {
         });
 
         setPageNumber(1);
-        await fetchUsers(userSearch, 1);
+        await fetchUsers(userSearch, 1, true);
       } else {
         setFormErrors({
           api: result?.message || 'Failed to create user',
@@ -841,8 +846,8 @@ export default function AuthorizationManagementPage() {
                 onClick={handleCancel}
                 disabled={!hasChanges || selectedUserIsAdmin}
                 className={`rounded-xl border px-5 py-2 text-sm font-medium transition ${!hasChanges || selectedUserIsAdmin
-                    ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
-                    : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  ? 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
+                  : 'border-gray-200 bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
               >
                 Cancel
@@ -851,8 +856,8 @@ export default function AuthorizationManagementPage() {
                 onClick={handleSave}
                 disabled={!hasChanges || selectedUserIsAdmin}
                 className={`rounded-xl px-5 py-2 text-sm font-semibold shadow-sm transition ${hasChanges && !selectedUserIsAdmin
-                    ? 'bg-[#4f46e5] text-white hover:bg-[#4338ca]'
-                    : 'cursor-not-allowed bg-gray-300 text-gray-500'
+                  ? 'bg-[#4f46e5] text-white hover:bg-[#4338ca]'
+                  : 'cursor-not-allowed bg-gray-300 text-gray-500'
                   }`}
               >
                 Save
