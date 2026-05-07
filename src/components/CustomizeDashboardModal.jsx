@@ -4,6 +4,7 @@ import { X, PencilLine, ChevronDown, Save } from "lucide-react";
 
 export default function CustomizeDashboardModal({
     open,
+    loading = false,
     onClose,
     dashboardName,
     setDashboardName,
@@ -24,6 +25,14 @@ export default function CustomizeDashboardModal({
     const [isServiceOpen, setIsServiceOpen] = useState(true);
     const [isRegionOpen, setIsRegionOpen] = useState(true);
     const [isAttributeOpen, setIsAttributeOpen] = useState(true);
+
+
+    const LoadingSpinner = () => (
+        <div className="flex items-center gap-2 text-xs text-indigo-600">
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-200 border-t-indigo-600"></span>
+            Loading...
+        </div>
+    );
 
     useEffect(() => {
         if (open) {
@@ -58,22 +67,26 @@ export default function CustomizeDashboardModal({
                     <div className="space-y-8 overflow-y-auto pr-2 min-h-0 flex-1">
                         {/* Dashboard name */}
                         <section>
-                            <label className="mb-3 block text-[15px] font-semibold text-slate-700">
-                                Current Dashboard Name
-                            </label>
+                            <div className="mb-3 flex items-center justify-between">
+                                <label className="text-[15px] font-semibold text-slate-700">
+                                    Current Dashboard Name
+                                </label>
+
+                                {loading && <LoadingSpinner />}
+                            </div>
                             {/* <div className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 text-[17px] text-slate-800 shadow-sm">
                                 {dashboardName}
                             </div> */}
                             <div className="relative">
                                 <input
                                     type="text"
+                                    disabled={loading}
                                     value={localDashboardName}
                                     onChange={(e) => {
                                         setLocalDashboardName(e.target.value);
                                     }}
                                     placeholder="Enter dashboard name"
-                                    className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 pr-14 text-[17px] text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100"
-                                />
+                                    className="w-full rounded-2xl border border-slate-200 bg-white px-5 py-4 pr-14 text-[17px] text-slate-800 shadow-sm outline-none transition focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 disabled:bg-slate-100 disabled:text-slate-400" />
                                 <PencilLine
                                     size={18}
                                     className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -97,7 +110,7 @@ export default function CustomizeDashboardModal({
                                                 Customize Service Type
                                             </div>
                                             <div className="text-xs text-slate-500">
-                                                Edit labels for service types
+                                                {loading ? <LoadingSpinner /> : "Edit labels for service types"}
                                             </div>
                                         </div>
                                     </div>
@@ -175,7 +188,7 @@ export default function CustomizeDashboardModal({
                                                 Customize Region Name
                                             </div>
                                             <div className="text-xs text-slate-500">
-                                                Edit labels for regions
+                                                {loading ? <LoadingSpinner /> : "Edit labels for regions"}
                                             </div>
                                         </div>
                                     </div>
@@ -254,8 +267,7 @@ export default function CustomizeDashboardModal({
                                                 Customize Service Attribute
                                             </div>
                                             <div className="text-xs text-slate-500">
-                                                Edit labels for service attributes
-                                            </div>
+                                                {loading ? <LoadingSpinner /> : "Edit labels for service attributes"}                                            </div>
                                         </div>
                                     </div>
 
@@ -323,7 +335,7 @@ export default function CustomizeDashboardModal({
                     <div className="mt-8 flex items-center justify-end gap-4">
                         <button
                             onClick={() => onSave(localDashboardName)}
-                            disabled={!(hasChanges || dashboardNameChanged)}
+                            disabled={loading || !(hasChanges || dashboardNameChanged)}
                             className={`inline-flex items-center gap-2 rounded-full px-7 py-3 text-[15px] font-semibold transition
                             ${hasChanges || dashboardNameChanged
                                     ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-[0_10px_25px_rgba(79,70,229,0.28)] hover:from-indigo-700 hover:to-violet-700"
@@ -336,6 +348,6 @@ export default function CustomizeDashboardModal({
                     </div>
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

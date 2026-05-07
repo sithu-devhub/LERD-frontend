@@ -78,6 +78,8 @@ export default function Dashboard() {
   const [isAdminLoading, setIsAdminLoading] = useState(true);
 
   const [showRenameModal, setShowRenameModal] = useState(false);
+  const [renameModalLoading, setRenameModalLoading] = useState(false);
+
   const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -735,6 +737,9 @@ export default function Dashboard() {
           {!isAdminLoading && isAdmin && (
             <button
               onClick={async () => {
+                setShowRenameModal(true);
+                setRenameModalLoading(true);
+
                 const token = localStorage.getItem("accessToken");
 
                 try {
@@ -901,10 +906,9 @@ export default function Dashboard() {
 
                 } catch (err) {
                   console.error("Rename fetch failed on click:", err);
+                } finally {
+                  setRenameModalLoading(false);
                 }
-
-                // open modal AFTER fetching
-                setShowRenameModal(true);
               }}
               className="flex items-center gap-2 px-4 py-3 
               bg-indigo-50 text-indigo-700 
@@ -1085,6 +1089,7 @@ export default function Dashboard() {
       )}
       <CustomizeDashboardModal
         open={showRenameModal}
+        loading={renameModalLoading}
         onClose={() => setShowRenameModal(false)}
 
         dashboardName={tempDashboardName}
