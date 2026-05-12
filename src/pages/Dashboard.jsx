@@ -785,15 +785,7 @@ export default function Dashboard() {
 
 
                   // Call Service Type Renaming GET API (Use SAME API as dashboard name)
-                  const serviceTypeRes = await http.get(
-                    `/admin/surveys/${surveyId}/custom-naming/DashboardName`
-                  );
-
-                  const serviceTypeItems = Array.isArray(serviceTypeRes.data)
-                    ? serviceTypeRes.data
-                    : Array.isArray(serviceTypeRes.data?.data)
-                      ? serviceTypeRes.data.data
-                      : [];
+                  const serviceTypeItems = renameItems;
 
                   // Filter service_type records for this survey
                   let filteredServiceTypes = serviceTypeItems
