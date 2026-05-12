@@ -796,7 +796,7 @@ export default function Dashboard() {
                       : [];
 
                   // Filter service_type records for this survey
-                  const filteredServiceTypes = serviceTypeItems
+                  let filteredServiceTypes = serviceTypeItems
                     .filter(
                       (item) =>
                         String(item.surveyId).trim() === String(surveyId).trim() &&
@@ -811,6 +811,20 @@ export default function Dashboard() {
                           ? String(item.serviceType)
                           : "-",
                     }));
+
+                  // FALLBACK → if no service_type mappings exist
+                  if (filteredServiceTypes.length === 0) {
+                    filteredServiceTypes = serviceTypeItems
+                      .filter(
+                        (item) =>
+                          String(item.surveyId).trim() === String(surveyId).trim() &&
+                          String(item.serviceType || "").trim().length > 0
+                      )
+                      .map((item) => ({
+                        id: String(item.id),
+                        name: String(item.serviceType),
+                      }));
+                  }
 
                   const serviceTypeLabels = {};
 
