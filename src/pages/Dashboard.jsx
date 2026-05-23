@@ -1291,11 +1291,11 @@ export default function Dashboard() {
               mappings: modalAttributes
                 .filter(
                   (attr) =>
-                    String(tempAttributeLabels[attr.id] || "").trim().length > 0
+                    tempAttributeLabels[attr.id] !== customAttributeLabels[attr.id]
                 )
                 .map((attr) => ({
                   originalKey: attr.originalKey,
-                  customName: tempAttributeLabels[attr.id].trim(),
+                  customName: tempAttributeLabels[attr.id] || "",
                 })),
             };
 
@@ -1311,10 +1311,7 @@ export default function Dashboard() {
             // );
 
             // console.log("Service attribute save response:", attributeSaveRes.data);
-            if (
-              JSON.stringify(tempAttributeLabels) !== JSON.stringify(customAttributeLabels) &&
-              attributePayload.mappings.length > 0
-            ) {
+            if (attributePayload.mappings.length > 0) {
               const attributeSaveRes = await saveServiceAttributeNames(
                 surveyId,
                 attributePayload
@@ -1322,7 +1319,7 @@ export default function Dashboard() {
 
               console.log("Service attribute save response:", attributeSaveRes.data);
             } else {
-              console.log("No service attribute custom name changes. Skipping API call.");
+              console.log("No service attribute custom names to save. Skipping API call.");
             }
 
             // ------------------------------------------------------------
