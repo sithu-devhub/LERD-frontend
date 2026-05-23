@@ -1194,13 +1194,22 @@ export default function Dashboard() {
 
             console.log("Saving dashboard name:", dashboardPayload);
 
-            const dashboardRes = await saveDashboardName(
-              surveyId,
-              dashboardPayload
-            );
+            // const dashboardRes = await saveDashboardName(
+            //   surveyId,
+            //   dashboardPayload
+            // );
 
-            console.log("Dashboard name save response:", dashboardRes.data);
+            // console.log("Dashboard name save response:", dashboardRes.data);
+            if (updatedDashboardName !== customDashboardName) {
+              const dashboardRes = await saveDashboardName(
+                surveyId,
+                dashboardPayload
+              );
 
+              console.log("Dashboard name save response:", dashboardRes.data);
+            } else {
+              console.log("No dashboard name changes. Skipping API call.");
+            }
 
             // ------------------------------------------------------------
             // 2. Prepare service type payload
@@ -1225,22 +1234,36 @@ export default function Dashboard() {
             // 3. Call service type POST API
             // ------------------------------------------------------------
 
-            const serviceTypeSaveRes = await saveServiceTypeNames(
-              surveyId,
-              serviceTypePayload
-            );
+            // const serviceTypeSaveRes = await saveServiceTypeNames(
+            //   surveyId,
+            //   serviceTypePayload
+            // );
 
-            console.log("Service type save response:", serviceTypeSaveRes.data);
+            // console.log("Service type save response:", serviceTypeSaveRes.data);
+            if (JSON.stringify(tempServiceLabels) !== JSON.stringify(customServiceLabels)) {
+              const serviceTypeSaveRes = await saveServiceTypeNames(
+                surveyId,
+                serviceTypePayload
+              );
 
+              console.log("Service type save response:", serviceTypeSaveRes.data);
+            } else {
+              console.log("No service type custom name changes. Skipping API call.");
+            }
             // ------------------------------------------------------------
             // Prepare region rename payload
             // ------------------------------------------------------------
 
             const regionPayload = {
-              mappings: modalRegions.map((region) => ({
-                originalKey: region.originalKey,
-                customName: tempRegionLabels[region.id] || region.name || "-",
-              })),
+              mappings: modalRegions
+                .filter(
+                  (region) =>
+                    tempRegionLabels[region.id] !== customRegionLabels[region.id]
+                )
+                .map((region) => ({
+                  originalKey: region.originalKey,
+                  customName: tempRegionLabels[region.id] || "",
+                })),
             };
 
             console.log("Saving region names:", regionPayload);
@@ -1249,12 +1272,16 @@ export default function Dashboard() {
             // Call region POST API
             // ------------------------------------------------------------
 
-            const regionSaveRes = await saveRegionNames(
-              surveyId,
-              regionPayload
-            );
+            if (JSON.stringify(tempRegionLabels) !== JSON.stringify(customRegionLabels)) {
+              const regionSaveRes = await saveRegionNames(
+                surveyId,
+                regionPayload
+              );
 
-            console.log("Region save response:", regionSaveRes.data);
+              console.log("Region save response:", regionSaveRes.data);
+            } else {
+              console.log("No region custom name changes. Skipping API call.");
+            }
 
             // ------------------------------------------------------------
             // Prepare service attribute rename payload
@@ -1284,7 +1311,10 @@ export default function Dashboard() {
             // );
 
             // console.log("Service attribute save response:", attributeSaveRes.data);
-            if (attributePayload.mappings.length > 0) {
+            if (
+              JSON.stringify(tempAttributeLabels) !== JSON.stringify(customAttributeLabels) &&
+              attributePayload.mappings.length > 0
+            ) {
               const attributeSaveRes = await saveServiceAttributeNames(
                 surveyId,
                 attributePayload
@@ -1292,7 +1322,7 @@ export default function Dashboard() {
 
               console.log("Service attribute save response:", attributeSaveRes.data);
             } else {
-              console.log("No service attribute custom names to save. Skipping API call.");
+              console.log("No service attribute custom name changes. Skipping API call.");
             }
 
             // ------------------------------------------------------------
