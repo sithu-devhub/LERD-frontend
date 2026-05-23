@@ -14,16 +14,6 @@ import NpsDistribution from "../components/NpsDistribution";
 import ServiceAttributeChart from "../components/ServiceAttributeChart.jsx";
 
 import http from '../api/http';
-import {
-  getDashboardAndServiceTypeNames,
-  getRegionNames,
-  getServiceAttributeNames,
-  saveDashboardName,
-  saveServiceTypeNames,
-  saveRegionNames,
-  saveServiceAttributeNames,
-} from "../api/customNamingService";
-
 
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf"; // Library used to generate pdf files
@@ -568,10 +558,9 @@ export default function Dashboard() {
         let resolvedDashboardName = `Dashboard – ${activeServiceName || "Unknown Survey"}`;
 
         try {
-          // const res = await http.get(
-          //   `/admin/surveys/${activeSurveyId}/custom-naming/DashboardName`
-          // );
-          const res = await getDashboardAndServiceTypeNames(activeSurveyId);
+          const res = await http.get(
+            `/admin/surveys/${activeSurveyId}/custom-naming/DashboardName`
+          );
 
           console.log("Rename API response:", res.data);
           console.log("Active survey id:", activeSurveyId);
@@ -764,7 +753,9 @@ export default function Dashboard() {
                   console.log("Fetching latest dashboard name on button click...");
 
                   // Call Dashboard Renaming GET API
-                  const res = await getDashboardAndServiceTypeNames(surveyId);
+                  const res = await http.get(
+                    `/admin/surveys/${surveyId}/custom-naming/DashboardName`
+                  );
 
                   console.log("Rename API response (on click):", res.data);
 
@@ -851,7 +842,9 @@ export default function Dashboard() {
                   // Fetch region custom naming data for modal
                   // ------------------------------------------------------------
 
-                  const regionRes = await getRegionNames(surveyId);
+                  const regionRes = await http.get(
+                    `/admin/surveys/${surveyId}/custom-naming/regions`
+                  );
 
                   // Normalize response because API may return array or { data: [] }
                   const regionItems = Array.isArray(regionRes.data)
@@ -895,7 +888,9 @@ export default function Dashboard() {
                   // Fetch service attribute custom naming data for modal
                   // ------------------------------------------------------------
 
-                  const attributeRes = await getServiceAttributeNames(surveyId);
+                  const attributeRes = await http.get(
+                    `/admin/surveys/${surveyId}/custom-naming/service-attributes`
+                  );
 
                   const attributeItems = Array.isArray(attributeRes.data?.data)
                     ? attributeRes.data.data
@@ -1194,8 +1189,8 @@ export default function Dashboard() {
 
             console.log("Saving dashboard name:", dashboardPayload);
 
-            const dashboardRes = await saveDashboardName(
-              surveyId,
+            const dashboardRes = await http.post(
+              `/admin/surveys/${surveyId}/custom-naming/DashboardName`,
               dashboardPayload
             );
 
@@ -1225,8 +1220,8 @@ export default function Dashboard() {
             // 3. Call service type POST API
             // ------------------------------------------------------------
 
-            const serviceTypeSaveRes = await saveServiceTypeNames(
-              surveyId,
+            const serviceTypeSaveRes = await http.post(
+              `/admin/surveys/${surveyId}/custom-naming/ServiceType`,
               serviceTypePayload
             );
 
@@ -1249,8 +1244,8 @@ export default function Dashboard() {
             // Call region POST API
             // ------------------------------------------------------------
 
-            const regionSaveRes = await saveRegionNames(
-              surveyId,
+            const regionSaveRes = await http.post(
+              `/admin/surveys/${surveyId}/custom-naming/regions`,
               regionPayload
             );
 
@@ -1278,8 +1273,8 @@ export default function Dashboard() {
             // Call service attribute POST API
             // ------------------------------------------------------------
 
-            const attributeSaveRes = await saveServiceAttributeNames(
-              surveyId,
+            const attributeSaveRes = await http.post(
+              `/admin/surveys/${surveyId}/custom-naming/service-attributes`,
               attributePayload
             );
 
