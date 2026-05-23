@@ -943,7 +943,7 @@ export default function Dashboard() {
                 }`}
             >
               <Pencil size={18} className="text-indigo-600" />
-              <span className="text-m font-medium leading-none">Customize Name</span>
+              <span className="text-m font-medium leading-none">Customise Name</span>
             </button>
           )}
 
