@@ -754,6 +754,7 @@ export default function Dashboard() {
           {/* Show Customize Name button only for admin users */}
           {!isAdminLoading && isAdmin && (
             <button
+              disabled={serviceLoading}
               onClick={async () => {
                 setShowRenameModal(true);
                 setRenameModalLoading(true);
@@ -934,13 +935,12 @@ export default function Dashboard() {
                   setRenameModalLoading(false);
                 }
               }}
-              className="flex items-center gap-2 px-4 py-3 
-              bg-indigo-50 text-indigo-700 
-              border border-indigo-200
-              rounded-lg shadow-sm 
-              hover:bg-indigo-100 
-              hover:border-indigo-300
-              transition"
+              className={`flex items-center gap-2 px-4 py-3 
+              border rounded-lg shadow-sm transition
+              ${serviceLoading
+                  ? "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                  : "bg-indigo-50 text-indigo-700 border-indigo-200 hover:bg-indigo-100 hover:border-indigo-300"
+                }`}
             >
               <Pencil size={18} className="text-indigo-600" />
               <span className="text-m font-medium leading-none">Customize Name</span>
