@@ -1278,13 +1278,22 @@ export default function Dashboard() {
             // Call service attribute POST API
             // ------------------------------------------------------------
 
-            const attributeSaveRes = await saveServiceAttributeNames(
-              surveyId,
-              attributePayload
-            );
+            // const attributeSaveRes = await saveServiceAttributeNames(
+            //   surveyId,
+            //   attributePayload
+            // );
 
-            console.log("Service attribute save response:", attributeSaveRes.data);
+            // console.log("Service attribute save response:", attributeSaveRes.data);
+            if (attributePayload.mappings.length > 0) {
+              const attributeSaveRes = await saveServiceAttributeNames(
+                surveyId,
+                attributePayload
+              );
 
+              console.log("Service attribute save response:", attributeSaveRes.data);
+            } else {
+              console.log("No service attribute custom names to save. Skipping API call.");
+            }
 
             // ------------------------------------------------------------
             // 4. Update local UI state after success
