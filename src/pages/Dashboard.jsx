@@ -237,7 +237,7 @@ export default function Dashboard() {
     return canvas;
   };
 
-  // Generates a PDF file from the captured dashboard image
+  // Downloads a PDF file from the captured dashboard image
   const downloadPDF = async () => {
 
     const canvas = await captureDashboardCanvas();
@@ -259,7 +259,6 @@ export default function Dashboard() {
     pdf.save("dashboard.pdf");
   };
 
-
   // Downloads the dashboard as a PNG image
   const downloadPNG = async () => {
 
@@ -278,7 +277,7 @@ export default function Dashboard() {
     link.click();
   };
 
-  // Generates a PowerPoint (.pptx) file containing the dashboard image
+  // Downloads a PowerPoint (.pptx) file containing the dashboard image
   const downloadPPT = async () => {
     const canvas = await captureDashboardCanvas();
     if (!canvas) return;
@@ -682,16 +681,6 @@ export default function Dashboard() {
   }, [filters]);
 
 
-  // Sync the editable dashboard title with the loaded service name
-  // Runs whenever `serviceName` changes (after API load)
-  // useEffect(() => {
-  //   // If service name exists, set it as the default editable dashboard name
-  //   if (serviceName) {
-  //     setCustomDashboardName(`Dashboard – ${serviceName}`);
-  //   }
-  // }, [serviceName]); // dependency: re-run when serviceName updates
-
-
   // Auto-hide success toast after 3 seconds when it becomes visible
   useEffect(() => {
     if (!showSuccessToast) return;
@@ -703,12 +692,9 @@ export default function Dashboard() {
     return () => clearTimeout(timer);
   }, [showSuccessToast]);
 
-
-
   const handleFilterChange = useCallback(({ gender, participantType, period }) => {
     setFilters({ gender, participantType, period });
   }, []);
-
 
   // Builds a simplified HTML layout for the PDF export, including a readable summary of the currently applied dashboard filters.
   const buildExportHTML = (regionMap) => {
@@ -1262,7 +1248,7 @@ export default function Dashboard() {
                 )
                 .map((region) => ({
                   originalKey: region.originalKey,
-                  customName: tempRegionLabels[region.id] || "",
+                  customName: String(tempRegionLabels[region.id] || region.name || region.originalKey).trim(),
                 })),
             };
 
@@ -1295,7 +1281,7 @@ export default function Dashboard() {
                 )
                 .map((attr) => ({
                   originalKey: attr.originalKey,
-                  customName: tempAttributeLabels[attr.id] || "",
+                  customName: String(tempAttributeLabels[attr.id] || attr.name || attr.originalKey).trim(),
                 })),
             };
 
